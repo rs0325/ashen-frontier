@@ -1,4 +1,13 @@
 {
+  "command.ashen_frontier.team.created": "チームを作成しました。",
+  "command.ashen_frontier.team.invited": "チームへの招待が届いています。",
+  "command.ashen_frontier.team.invite_sent": "招待を送りました。",
+  "command.ashen_frontier.team.none": "チームに所属していません。",
+  "command.ashen_frontier.team.already_member": "すでにチームへ所属しています。",
+  "command.ashen_frontier.team.no_invite": "参加できる招待がありません。",
+  "command.ashen_frontier.team.joined": "チームに参加しました。",
+  "command.ashen_frontier.team.left": "チームから脱退しました。",
+  "research.ashen_frontier.unlocked": "研究を解放しました: %s",
   "unit.ashen_frontier.kelvin": "K",
   "unit.ashen_frontier.celsius": "℃",
   "unit.ashen_frontier.pascal": "Pa",

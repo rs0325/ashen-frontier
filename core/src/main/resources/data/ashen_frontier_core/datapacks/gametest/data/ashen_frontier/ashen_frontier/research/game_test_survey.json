@@ -1,0 +1,10 @@
+{
+  "name": "research.ashen_frontier.game_test_survey",
+  "description": "research.ashen_frontier.game_test_survey.description",
+  "prerequisites": [],
+  "conditions": [
+    { "type": "ashen_frontier:game_test", "id": "surveyed" },
+    { "type": "ashen_frontier:document", "id": "ashen_frontier:game_test_document" }
+  ],
+  "unlocks": ["ashen_frontier:game_test_recipe"]
+}

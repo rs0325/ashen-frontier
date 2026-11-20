@@ -13,6 +13,10 @@ import net.neoforged.neoforge.event.AddPackFindersEvent;
 import org.slf4j.Logger;
 
 import java.util.Arrays;
+import io.github.rs0325.ashenfrontier.core.team.TeamCommands;
+import io.github.rs0325.ashenfrontier.core.team.TeamData;
+import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
+import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(AshenFrontierCore.MOD_ID)
 public final class AshenFrontierCore {
@@ -26,6 +30,9 @@ public final class AshenFrontierCore {
         ItemProperties.register(modEventBus);
         modEventBus.addListener(MaterialDataProvider::gatherData);
         modEventBus.addListener(AshenFrontierCore::addGameTestDataPack);
+        TeamData.register();
+        ResearchManager.register(modEventBus);
+        NeoForge.EVENT_BUS.addListener(TeamCommands::register);
     }
 
     /** Ashen Frontier全Mod共通の名前空間でリソースIDを作る。 */
