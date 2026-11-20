@@ -27,5 +27,19 @@
   "compatibility.ashen_frontier.title": "未対応のModを検出",
   "config.ashen_frontier_core.compatibility.allowedMods": "追加で許可するMod ID",
   "config.ashen_frontier_core.units.temperatureKelvin": "温度をケルビンで表示する",
-  "config.ashen_frontier_core.units.pressurePascal": "圧力をパスカルで表示する"
+  "config.ashen_frontier_core.units.pressurePascal": "圧力をパスカルで表示する",
+  "key.ashen_frontier.terminal": "個人端末を開く",
+  "key.categories.ashen_frontier": "Ashen Frontier",
+  "terminal.ashen_frontier.title": "個人端末",
+  "terminal.ashen_frontier.tab.status": "状態",
+  "terminal.ashen_frontier.tab.research": "研究",
+  "terminal.ashen_frontier.tab.modules": "拡張",
+  "terminal.ashen_frontier.insert": "差し込む",
+  "terminal.ashen_frontier.remove": "取り外す",
+  "terminal.ashen_frontier.status.empty": "状態表示の拡張モジュールがありません。",
+  "terminal.ashen_frontier.modules.empty": "拡張モジュールが差し込まれていません。",
+  "terminal.ashen_frontier.condition": "%s: %s",
+  "terminal.ashen_frontier.prerequisites": "前提: %s",
+  "terminal.ashen_frontier.complete": "達成",
+  "terminal.ashen_frontier.incomplete": "未達成"
 }

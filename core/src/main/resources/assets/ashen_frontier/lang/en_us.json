@@ -27,5 +27,19 @@
   "compatibility.ashen_frontier.title": "Unsupported mods detected",
   "config.ashen_frontier_core.compatibility.allowedMods": "Additional allowed mod IDs",
   "config.ashen_frontier_core.units.temperatureKelvin": "Display temperature in kelvin",
-  "config.ashen_frontier_core.units.pressurePascal": "Display pressure in pascals"
+  "config.ashen_frontier_core.units.pressurePascal": "Display pressure in pascals",
+  "key.ashen_frontier.terminal": "Open personal terminal",
+  "key.categories.ashen_frontier": "Ashen Frontier",
+  "terminal.ashen_frontier.title": "Personal terminal",
+  "terminal.ashen_frontier.tab.status": "Status",
+  "terminal.ashen_frontier.tab.research": "Research",
+  "terminal.ashen_frontier.tab.modules": "Modules",
+  "terminal.ashen_frontier.insert": "Insert",
+  "terminal.ashen_frontier.remove": "Remove",
+  "terminal.ashen_frontier.status.empty": "No status displays are installed.",
+  "terminal.ashen_frontier.modules.empty": "No expansion modules are registered.",
+  "terminal.ashen_frontier.condition": "%s: %s",
+  "terminal.ashen_frontier.prerequisites": "Requires: %s",
+  "terminal.ashen_frontier.complete": "Complete",
+  "terminal.ashen_frontier.incomplete": "Incomplete"
 }
