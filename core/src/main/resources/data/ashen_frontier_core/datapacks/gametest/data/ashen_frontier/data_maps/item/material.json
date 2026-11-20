@@ -1,7 +1,8 @@
 {
   "values": {
     "minecraft:stone": {
-      "mass_kg": 1.0
+      "mass_kg": 1.0,
+      "specific_heat_j_kg_k": 1000.0
     }
   }
 }
