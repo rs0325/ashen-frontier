@@ -57,7 +57,7 @@ public final class ItemProperties {
         return currentTemperature(stack, gameTime, ambientK).map(kelvin -> {
             long recordedAt = ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS);
             double recordedKelvin = currentTemperature(stack, recordedAt, ambientK).orElseThrow();
-            stack.set(TEMPERATURE.get(), new Temperature(recordedKelvin, recordedAt));
+            stack.set(TEMPERATURE.get(), Temperature.of(recordedKelvin, recordedAt));
             return kelvin;
         });
     }
@@ -80,7 +80,7 @@ public final class ItemProperties {
             long recordedAt = ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS);
             double recordedBq = ItemPropertyMath.activity(current.becquerels(),
                     GameTime.gameSeconds(recordedAt - current.gameTime()), halfLifeSeconds);
-            stack.set(RADIOACTIVITY.get(), new Radioactivity(current.nuclide(), recordedBq, recordedAt));
+            stack.set(RADIOACTIVITY.get(), Radioactivity.of(current.nuclide(), recordedBq, recordedAt));
             return Optional.of(becquerels);
         });
     }
@@ -96,7 +96,10 @@ public final class ItemProperties {
         return currentRotProgress(stack, gameTime, storageTemperatureK).map(referenceSeconds -> {
             Rot previous = stack.get(ROT);
             long recordedAt = ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS);
-            stack.set(ROT.get(), new Rot(previous.createdAt(), recordedAt, referenceSeconds));
+            stack.set(ROT.get(), Rot.of(previous.createdAt(), recordedAt,
+                    ItemPropertyMath.rotProgress(previous.referenceSeconds(),
+                            GameTime.gameSeconds(recordedAt - previous.lastCalculatedAt()), storageTemperatureK,
+                            ROT_REFERENCE_K, ROT_Q10)));
             return referenceSeconds;
         });
     }
@@ -107,48 +110,56 @@ public final class ItemProperties {
     }
 
     public record Temperature(double kelvin, long gameTime) {
+        /** 丸めて温度を生成する。標準コンストラクターは値を丸めないため、設定時はこのメソッドを使う。 */
+        public static Temperature of(double kelvin, long gameTime) {
+            return new Temperature(ItemPropertyMath.roundDown(kelvin, TEMPERATURE_STEP_K),
+                    ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS));
+        }
         public static final Codec<Temperature> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.DOUBLE.fieldOf("kelvin").forGetter(Temperature::kelvin),
                 Codec.LONG.fieldOf("game_time").forGetter(Temperature::gameTime)).apply(i, Temperature::new));
         public static final StreamCodec<RegistryFriendlyByteBuf, Temperature> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.DOUBLE, Temperature::kelvin, ByteBufCodecs.VAR_LONG, Temperature::gameTime, Temperature::new);
-        public Temperature {
-            kelvin = ItemPropertyMath.roundDown(kelvin, TEMPERATURE_STEP_K);
-            gameTime = ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS);
-        }
     }
 
     public record Wear(double value, double maximum) {
+        /** 丸めて摩耗を生成する。標準コンストラクターは値を丸めないため、設定時はこのメソッドを使う。 */
+        public static Wear of(double value, double maximum) {
+            return new Wear(ItemPropertyMath.roundDown(value, WEAR_STEP), ItemPropertyMath.roundDown(maximum, WEAR_STEP));
+        }
         public static final Codec<Wear> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.DOUBLE.fieldOf("value").forGetter(Wear::value),
                 Codec.DOUBLE.fieldOf("maximum").forGetter(Wear::maximum)).apply(i, Wear::new));
         public static final StreamCodec<RegistryFriendlyByteBuf, Wear> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.DOUBLE, Wear::value, ByteBufCodecs.DOUBLE, Wear::maximum, Wear::new);
-        public Wear {
-            value = ItemPropertyMath.roundDown(value, WEAR_STEP);
-            maximum = ItemPropertyMath.roundDown(maximum, WEAR_STEP);
-        }
     }
 
     public record Composition(Map<String, Double> massFractions) {
+        /** 質量比を丸めて生成する。標準コンストラクターは値を丸めないため、設定時はこのメソッドを使う。 */
+        public static Composition of(Map<String, Double> massFractions) {
+            return new Composition(quantizeMap(massFractions, COMPOSITION_STEP, false));
+        }
         public static final Codec<Composition> CODEC = Codec.unboundedMap(Codec.STRING, Codec.DOUBLE)
                 .xmap(Composition::new, Composition::massFractions);
         public static final StreamCodec<ByteBuf, Composition> STREAM_CODEC = ByteBufCodecs.fromCodec(CODEC);
-        public Composition {
-            massFractions = quantizeMap(massFractions, COMPOSITION_STEP, false);
-        }
     }
 
     public record Contamination(Map<String, Double> amounts) {
+        /** 汚染量を不利な側へ丸めて生成する。標準コンストラクターは値を丸めないため、設定時はこのメソッドを使う。 */
+        public static Contamination of(Map<String, Double> amounts) {
+            return new Contamination(quantizeMap(amounts, CONTAMINATION_STEP, true));
+        }
         public static final Codec<Contamination> CODEC = Codec.unboundedMap(Codec.STRING, Codec.DOUBLE)
                 .xmap(Contamination::new, Contamination::amounts);
         public static final StreamCodec<ByteBuf, Contamination> STREAM_CODEC = ByteBufCodecs.fromCodec(CODEC);
-        public Contamination {
-            amounts = quantizeMap(amounts, CONTAMINATION_STEP, true);
-        }
     }
 
     public record Radioactivity(String nuclide, double becquerels, long gameTime) {
+        /** 放射能と時刻を丸めて生成する。標準コンストラクターは値を丸めないため、設定時はこのメソッドを使う。 */
+        public static Radioactivity of(String nuclide, double becquerels, long gameTime) {
+            return new Radioactivity(nuclide, ItemPropertyMath.roundDown(becquerels, ACTIVITY_STEP_BQ),
+                    ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS));
+        }
         public static final Codec<Radioactivity> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("nuclide").forGetter(Radioactivity::nuclide),
                 Codec.DOUBLE.fieldOf("becquerels").forGetter(Radioactivity::becquerels),
@@ -156,13 +167,15 @@ public final class ItemProperties {
         public static final StreamCodec<RegistryFriendlyByteBuf, Radioactivity> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, Radioactivity::nuclide, ByteBufCodecs.DOUBLE, Radioactivity::becquerels,
                 ByteBufCodecs.VAR_LONG, Radioactivity::gameTime, Radioactivity::new);
-        public Radioactivity {
-            becquerels = ItemPropertyMath.roundDown(becquerels, ACTIVITY_STEP_BQ);
-            gameTime = ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS);
-        }
     }
 
     public record Rot(long createdAt, long lastCalculatedAt, double referenceSeconds) {
+        /** 作成・確定時刻と腐敗量を丸めて生成する。標準コンストラクターは値を丸めないため、設定時はこのメソッドを使う。 */
+        public static Rot of(long createdAt, long lastCalculatedAt, double referenceSeconds) {
+            return new Rot(ItemPropertyMath.floorTime(createdAt, TIME_STEP_TICKS),
+                    ItemPropertyMath.floorTime(lastCalculatedAt, TIME_STEP_TICKS),
+                    ItemPropertyMath.roundUp(referenceSeconds, ROT_STEP_SECONDS));
+        }
         public static final Codec<Rot> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.LONG.fieldOf("created_at").forGetter(Rot::createdAt),
                 Codec.LONG.fieldOf("last_calculated_at").forGetter(Rot::lastCalculatedAt),
@@ -170,11 +183,6 @@ public final class ItemProperties {
         public static final StreamCodec<RegistryFriendlyByteBuf, Rot> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_LONG, Rot::createdAt, ByteBufCodecs.VAR_LONG, Rot::lastCalculatedAt,
                 ByteBufCodecs.DOUBLE, Rot::referenceSeconds, Rot::new);
-        public Rot {
-            createdAt = ItemPropertyMath.floorTime(createdAt, TIME_STEP_TICKS);
-            lastCalculatedAt = ItemPropertyMath.floorTime(lastCalculatedAt, TIME_STEP_TICKS);
-            referenceSeconds = ItemPropertyMath.roundUp(referenceSeconds, ROT_STEP_SECONDS);
-        }
     }
 
     private static Map<String, Double> quantizeMap(Map<String, Double> values, double step, boolean roundUp) {
@@ -183,4 +191,5 @@ public final class ItemProperties {
                 roundUp ? ItemPropertyMath.roundUp(value, step) : ItemPropertyMath.roundDown(value, step)));
         return Map.copyOf(quantized);
     }
+
 }
