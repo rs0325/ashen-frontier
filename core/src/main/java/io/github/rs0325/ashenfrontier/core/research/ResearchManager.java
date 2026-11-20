@@ -14,6 +14,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.NeoForge;
@@ -24,7 +25,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.Set;
 import java.util.function.BiPredicate;
 
 /** データパックの研究定義を読み込み、条件報告と解放を管理する。 */
@@ -35,7 +35,16 @@ public final class ResearchManager {
     private ResearchManager() {}
     public static void register(IEventBus modBus) {
         modBus.addListener(ResearchProgressUpdate::register);
+        modBus.addListener(ResearchDefinitionsUpdate::register);
         NeoForge.EVENT_BUS.addListener((AddReloadListenerEvent event) -> event.addListener(new Loader()));
+        NeoForge.EVENT_BUS.addListener((OnDatapackSyncEvent event) -> {
+            ResearchDefinitionsUpdate definitions = new ResearchDefinitionsUpdate(tree.order().stream()
+                    .map(id -> ResearchDefinitionsUpdate.Definition.from(tree.definitions().get(id))).toList());
+            event.getRelevantPlayers().forEach(player -> {
+                PacketDistributor.sendToPlayer(player, definitions);
+                if (event.getPlayer() == null) sync(player);
+            });
+        });
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent event) -> {
             if (event.getEntity() instanceof ServerPlayer player) sync(player);
         });
@@ -46,23 +55,28 @@ public final class ResearchManager {
     }
     public static ResearchTree.Resolution tree() { return tree; }
     public static void sync(ServerPlayer player) {
-        TeamData.get(player.getServer()).teamFor(player.getUUID()).ifPresentOrElse(team -> {
-            ResearchProgress progress = ResearchProgress.get(player.getServer());
-            sendToTeam(player.getServer(), team, List.copyOf(progress.conditions(team.id())),
-                    List.copyOf(progress.unlocked(team.id())), List.copyOf(progress.knowledge(team.id())),
-                    true, player.getUUID());
-        }, () -> PacketDistributor.sendToPlayer(player,
+        TeamData.get(player.getServer()).teamFor(player.getUUID()).ifPresentOrElse(team ->
+                PacketDistributor.sendToPlayer(player, fullUpdate(player.getServer(), team)),
+                () -> PacketDistributor.sendToPlayer(player,
                 new ResearchProgressUpdate("", List.of(), List.of(), List.of(), true)));
+    }
+
+    /** チームのオンラインメンバー全員に、通知なしで研究進捗を置き換える。 */
+    public static void syncTeam(MinecraftServer server, TeamData.Team team) {
+        sendToTeam(server, team, fullUpdate(server, team));
+    }
+
+    private static ResearchProgressUpdate fullUpdate(MinecraftServer server, TeamData.Team team) {
+        ResearchProgress progress = ResearchProgress.get(server);
+        return new ResearchProgressUpdate(team.id(), List.copyOf(progress.conditions(team.id())),
+                progress.unlocked(team.id()).stream().filter(tree.definitions()::containsKey).toList(),
+                List.copyOf(progress.knowledge(team.id())), true);
     }
     /** プレイヤー所属チームの研究解放状態を返す。サーバー側から呼び出す。 */
     public static boolean isUnlocked(ServerPlayer player, ResourceLocation research) {
         return TeamData.get(player.getServer()).teamFor(player.getUUID())
                 .map(team -> ResearchProgress.get(player.getServer()).isUnlocked(team.id(), research.toString()))
                 .orElse(false);
-    }
-    /** 指定チームの研究解放状態を返す。 */
-    public static boolean isUnlocked(TeamData.Team team, ResourceLocation research, MinecraftServer server) {
-        return ResearchProgress.get(server).isUnlocked(team.id(), research.toString());
     }
     public static void report(ServerPlayer player, ResourceLocation type, String conditionId) {
         BiPredicate<ServerPlayer, String> validator = CONDITION_TYPES.get(type);
@@ -77,6 +91,15 @@ public final class ResearchManager {
         boolean newKnowledge = progress.know(team.id(), document.toString());
         recordAndShare(player.getServer(), team, progress, DOCUMENT_CONDITION,
                 document.toString(), newKnowledge ? document.toString() : null);
+    }
+
+    /** 招待を承諾して所属を移し、元の個人チームの進捗は引き継がず削除する。 */
+    public static boolean acceptTeam(MinecraftServer server, UUID player) {
+        TeamData data = TeamData.get(server);
+        var previous = data.teamFor(player);
+        if (!data.accept(player)) return false;
+        previous.ifPresent(team -> ResearchProgress.get(server).removeTeam(team.id()));
+        return true;
     }
 
     /** チームを脱退させ、空になった旧チームの研究進捗も削除する。 */
@@ -100,30 +123,22 @@ public final class ResearchManager {
         boolean newCondition = !progress.hasCondition(team.id(), key);
         List<String> unlocked = progress.recordCondition(team.id(), key, tree);
         if (newCondition || !unlocked.isEmpty() || knowledge != null) {
-            sendToTeam(server, team, newCondition ? List.of(key) : List.of(), unlocked,
-                    knowledge == null ? List.of() : List.of(knowledge), false, null);
+            sendToTeam(server, team, new ResearchProgressUpdate(team.id(),
+                    newCondition ? List.of(key) : List.of(), unlocked,
+                    knowledge == null ? List.of() : List.of(knowledge), false));
         }
     }
 
     private static void sendToTeam(MinecraftServer server, TeamData.Team team,
-                                   Set<String> conditions, Set<String> unlocked,
-                                   Set<String> knowledge, boolean replace) {
-        sendToTeam(server, team, List.copyOf(conditions), List.copyOf(unlocked),
-                List.copyOf(knowledge), replace, null);
-    }
-
-    private static void sendToTeam(MinecraftServer server, TeamData.Team team,
-                                   List<String> conditions, List<String> unlocked,
-                                   List<String> knowledge, boolean replace, UUID onlyMember) {
-        ResearchProgressUpdate update = new ResearchProgressUpdate(team.id(), conditions, unlocked,
-                knowledge, replace);
+                                   ResearchProgressUpdate update) {
         for (UUID member : team.members()) {
-            if (onlyMember != null && !onlyMember.equals(member)) continue;
             ServerPlayer online = server.getPlayerList().getPlayer(member);
             if (online == null) continue;
             PacketDistributor.sendToPlayer(online, update);
-            for (String id : unlocked) {
+            if (update.replace()) continue;
+            for (String id : update.unlocked()) {
                 ResearchTree.Definition definition = tree.definitions().get(id);
+                if (definition == null) continue;
                 online.sendSystemMessage(Component.translatable("research.ashen_frontier.unlocked",
                         Component.translatable(definition.name())));
             }

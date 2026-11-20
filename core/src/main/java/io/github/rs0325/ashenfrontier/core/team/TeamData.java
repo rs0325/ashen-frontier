@@ -87,19 +87,25 @@ public final class TeamData extends SavedData {
 
     public boolean invite(UUID actor, UUID target) {
         Team team = teamFor(actor).orElse(null);
-        if (team == null || !team.members().contains(actor) || memberships.containsKey(target)) return false;
+        if (team == null || team.members().contains(target) || !canJoin(target)) return false;
         if (team.invites().add(target)) setDirty();
         return true;
     }
 
+    /** 所属を移して旧個人チームを削除する。研究進捗の削除はResearchManager.acceptTeamが行う。 */
     public boolean accept(UUID player) {
         Team team = teams.values().stream().filter(t -> t.invites().contains(player)).findFirst().orElse(null);
-        if (team == null || memberships.containsKey(player)) return false;
+        if (team == null || !canJoin(player)) return false;
+        teamFor(player).ifPresent(previous -> teams.remove(previous.id()));
         team.invites().remove(player);
         team.members().add(player);
         memberships.put(player, team.id());
         setDirty();
         return true;
+    }
+
+    private boolean canJoin(UUID player) {
+        return teamFor(player).map(team -> team.members().size() == 1).orElse(true);
     }
 
     /** 脱退者の個人チームを作り、空になった旧チームIDを返す。 */

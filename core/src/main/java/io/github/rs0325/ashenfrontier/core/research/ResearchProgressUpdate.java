@@ -6,12 +6,13 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** チームに追加された研究進捗だけをクライアントへ送る。 */
+/** チームの研究進捗を全量または差分でクライアントへ送る。 */
 public record ResearchProgressUpdate(String teamId, List<String> conditions, List<String> unlocked,
                                      List<String> knowledge, boolean replace)
         implements CustomPacketPayload {
@@ -36,7 +37,7 @@ public record ResearchProgressUpdate(String teamId, List<String> conditions, Lis
     }
     @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
 
-    public static void register(net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent event) {
+    public static void register(RegisterPayloadHandlersEvent event) {
         event.registrar("1").playToClient(TYPE, STREAM_CODEC, ResearchProgressUpdate::handle);
     }
     private static void handle(ResearchProgressUpdate packet, IPayloadContext context) {
