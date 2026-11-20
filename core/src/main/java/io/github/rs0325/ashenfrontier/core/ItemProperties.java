@@ -2,6 +2,7 @@ package io.github.rs0325.ashenfrontier.core;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.github.rs0325.ashenfrontier.core.time.GameTime;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -11,7 +12,6 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -23,12 +23,11 @@ public final class ItemProperties {
     public static final double CONTAMINATION_STEP = 0.01;
     public static final double ACTIVITY_STEP_BQ = 0.1;
     public static final long TIME_STEP_TICKS = 20;
-    public static final double ROT_STEP_TICKS = 20.0;
+    public static final double ROT_STEP_SECONDS = 600.0;
     public static final double ROT_REFERENCE_K = 293.15;
     public static final double ROT_Q10 = 2.0;
 
     private static final double HEAT_CONDUCTANCE_W_K = 1.0;
-    private static final double TICK_SECONDS = 0.05;
     private static final Map<String, Double> HALF_LIFE_SECONDS = new HashMap<>();
 
     public static final DeferredRegister.DataComponents COMPONENTS = DeferredRegister.createDataComponents(AshenFrontierCore.MOD_ID);
@@ -51,7 +50,7 @@ public final class ItemProperties {
         double heatCapacity = material.get().massKg() * material.get().specificHeatJKgK().get();
         double timeConstantSeconds = heatCapacity / HEAT_CONDUCTANCE_W_K;
         return Optional.of(ItemPropertyMath.cool(temperature.get().kelvin(), ambientK,
-                (gameTime - temperature.get().gameTime()) * TICK_SECONDS, timeConstantSeconds));
+                GameTime.gameSeconds(gameTime - temperature.get().gameTime()), timeConstantSeconds));
     }
 
     public static Optional<Double> writeCurrentTemperature(ItemStack stack, long gameTime, double ambientK) {
@@ -68,7 +67,7 @@ public final class ItemProperties {
         return Optional.ofNullable(stack.get(RADIOACTIVITY.get())).flatMap(radioactivity -> {
             Double halfLifeSeconds = HALF_LIFE_SECONDS.get(radioactivity.nuclide());
             return halfLifeSeconds == null ? Optional.empty() : Optional.of(ItemPropertyMath.activity(
-                    radioactivity.becquerels(), (gameTime - radioactivity.gameTime()) * TICK_SECONDS, halfLifeSeconds));
+                    radioactivity.becquerels(), GameTime.gameSeconds(gameTime - radioactivity.gameTime()), halfLifeSeconds));
         });
     }
 
@@ -77,28 +76,28 @@ public final class ItemProperties {
             Double halfLifeSeconds = HALF_LIFE_SECONDS.get(current.nuclide());
             if (halfLifeSeconds == null) return Optional.empty();
             double becquerels = ItemPropertyMath.activity(current.becquerels(),
-                    (gameTime - current.gameTime()) * TICK_SECONDS, halfLifeSeconds);
+                    GameTime.gameSeconds(gameTime - current.gameTime()), halfLifeSeconds);
             long recordedAt = ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS);
             double recordedBq = ItemPropertyMath.activity(current.becquerels(),
-                    (recordedAt - current.gameTime()) * TICK_SECONDS, halfLifeSeconds);
+                    GameTime.gameSeconds(recordedAt - current.gameTime()), halfLifeSeconds);
             stack.set(RADIOACTIVITY.get(), new Radioactivity(current.nuclide(), recordedBq, recordedAt));
             return Optional.of(becquerels);
         });
     }
 
-    /** 最後に確定した保存温度以降の腐敗進行量を基準温度換算tickで返す。 */
+    /** 最後に確定した保存温度以降の腐敗進行量を基準温度換算ゲーム内秒で返す。 */
     public static Optional<Double> currentRotProgress(ItemStack stack, long gameTime, double storageTemperatureK) {
-        return Optional.ofNullable(stack.get(ROT.get())).map(rot -> ItemPropertyMath.rotProgress(rot.referenceTicks(),
-                gameTime - rot.lastCalculatedAt(), storageTemperatureK, ROT_REFERENCE_K, ROT_Q10));
+        return Optional.ofNullable(stack.get(ROT.get())).map(rot -> ItemPropertyMath.rotProgress(rot.referenceSeconds(),
+                GameTime.gameSeconds(gameTime - rot.lastCalculatedAt()), storageTemperatureK, ROT_REFERENCE_K, ROT_Q10));
     }
 
     /** 保存温度を切り替える直前に、変更前温度で腐敗量を確定して書き戻す。 */
     public static Optional<Double> writeRotAtTemperature(ItemStack stack, long gameTime, double storageTemperatureK) {
-        return currentRotProgress(stack, gameTime, storageTemperatureK).map(referenceTicks -> {
+        return currentRotProgress(stack, gameTime, storageTemperatureK).map(referenceSeconds -> {
             Rot previous = stack.get(ROT);
             long recordedAt = ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS);
-            stack.set(ROT.get(), new Rot(previous.createdAt(), recordedAt, referenceTicks));
-            return referenceTicks;
+            stack.set(ROT.get(), new Rot(previous.createdAt(), recordedAt, referenceSeconds));
+            return referenceSeconds;
         });
     }
 
@@ -163,18 +162,18 @@ public final class ItemProperties {
         }
     }
 
-    public record Rot(long createdAt, long lastCalculatedAt, double referenceTicks) {
+    public record Rot(long createdAt, long lastCalculatedAt, double referenceSeconds) {
         public static final Codec<Rot> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.LONG.fieldOf("created_at").forGetter(Rot::createdAt),
                 Codec.LONG.fieldOf("last_calculated_at").forGetter(Rot::lastCalculatedAt),
-                Codec.DOUBLE.fieldOf("reference_ticks").forGetter(Rot::referenceTicks)).apply(i, Rot::new));
+                Codec.DOUBLE.fieldOf("reference_seconds").forGetter(Rot::referenceSeconds)).apply(i, Rot::new));
         public static final StreamCodec<RegistryFriendlyByteBuf, Rot> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_LONG, Rot::createdAt, ByteBufCodecs.VAR_LONG, Rot::lastCalculatedAt,
-                ByteBufCodecs.DOUBLE, Rot::referenceTicks, Rot::new);
+                ByteBufCodecs.DOUBLE, Rot::referenceSeconds, Rot::new);
         public Rot {
             createdAt = ItemPropertyMath.floorTime(createdAt, TIME_STEP_TICKS);
             lastCalculatedAt = ItemPropertyMath.floorTime(lastCalculatedAt, TIME_STEP_TICKS);
-            referenceTicks = ItemPropertyMath.roundUp(referenceTicks, ROT_STEP_TICKS);
+            referenceSeconds = ItemPropertyMath.roundUp(referenceSeconds, ROT_STEP_SECONDS);
         }
     }
 

@@ -322,7 +322,8 @@ public class CoreGameTests {
 
     @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void delayedPropertiesAdvance(GameTestHelper helper) {
-        ItemProperties.registerHalfLife("test:short_lived", 1.0);
+        ItemProperties.registerHalfLife("test:short_lived", 72.0);
+        ItemProperties.registerHalfLife("test:day_lived", 86_400.0);
         if (ItemProperties.currentTemperature(new ItemStack(Items.AIR), 20, 300).isPresent()) {
             helper.fail("Temperature was calculated without material specific heat");
             return;
@@ -347,13 +348,21 @@ public class CoreGameTests {
             helper.fail("Delayed temperature, activity, or rot calculation was incorrect");
             return;
         }
+        ItemStack dayLived = new ItemStack(Items.STONE);
+        dayLived.set(ItemProperties.RADIOACTIVITY,
+                new ItemProperties.Radioactivity("test:day_lived", 100, 0));
+        if (ItemProperties.currentActivity(dayLived, 24_000).orElseThrow() != 50.0) {
+            helper.fail("A one-day half-life did not decay by half in 24,000 ticks");
+            return;
+        }
 
         ItemProperties.writeCurrentTemperature(stack, 200, 300).orElseThrow();
         ItemProperties.writeCurrentActivity(stack, 20).orElseThrow();
         ItemProperties.writeRotAtTemperature(stack, 20, 303.15).orElseThrow();
         if (stack.get(ItemProperties.TEMPERATURE).gameTime() != 200
                 || stack.get(ItemProperties.RADIOACTIVITY).gameTime() != 20
-                || stack.get(ItemProperties.ROT).lastCalculatedAt() != 20) {
+                || stack.get(ItemProperties.ROT).lastCalculatedAt() != 20
+                || stack.get(ItemProperties.ROT).referenceSeconds() != ItemProperties.ROT_STEP_SECONDS) {
             helper.fail("Current values were not committed to their components");
             return;
         }
