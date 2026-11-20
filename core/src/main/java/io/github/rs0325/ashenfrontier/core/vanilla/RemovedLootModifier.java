@@ -19,7 +19,7 @@ public final class RemovedLootModifier extends LootModifier {
     @Override
     protected ObjectArrayList<ItemStack> doApply(ObjectArrayList<ItemStack> generatedLoot,
                                                   LootContext context) {
-        generatedLoot.removeIf(stack -> stack.is(RemovedItems.TAG));
+        generatedLoot.removeIf(RemovedItems::isRemoved);
         return generatedLoot;
     }
 
