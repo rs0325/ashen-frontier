@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.rs0325.ashenfrontier.core.UnitDisplay;
 import io.github.rs0325.ashenfrontier.core.Units;
-import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
+import io.github.rs0325.ashenfrontier.core.research.ResearchDefinitionsUpdate;
 import io.github.rs0325.ashenfrontier.core.research.ResearchProgressUpdate;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -67,9 +67,7 @@ public record RecipeConditions(Optional<Range> temperatureK, Optional<Range> pre
                 stack.getHoverName())));
         facility.ifPresent(id -> lines.add(Component.translatable("recipe.ashen_frontier.facility", id.toString())));
         research.ifPresent(id -> {
-            var definition = ResearchManager.tree().definitions().get(id.toString());
-            Component name = definition == null ? Component.literal(id.toString())
-                    : Component.translatable(definition.name());
+            Component name = ResearchDefinitionsUpdate.clientName(id);
             boolean unlocked = ResearchProgressUpdate.isClientUnlocked(id);
             lines.add(Component.translatable(unlocked ? "recipe.ashen_frontier.research"
                     : "recipe.ashen_frontier.research_locked", name));

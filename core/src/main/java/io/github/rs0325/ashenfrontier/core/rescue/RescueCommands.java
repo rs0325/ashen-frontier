@@ -41,7 +41,7 @@ public final class RescueCommands {
         TeamData.Team team = data.ensurePersonalTeam(target);
         ResearchProgress progress = ResearchProgress.get(source.getServer());
         boolean changed = progress.recalculate(team.id(), ResearchManager.tree());
-        ResearchManager.sync(target);
+        ResearchManager.syncTeam(source.getServer(), team);
         log(source, target, "repair team=" + team.id() + " researchChanged=" + changed);
         source.sendSuccess(() -> Component.translatable(
                 "command.ashen_frontier.rescue.repaired", target.getGameProfile().getName()), true);

@@ -49,7 +49,7 @@ public final class TeamCommands {
                 })))
                 .then(Commands.literal("accept").executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
-                    if (!TeamData.get(ctx.getSource().getServer()).accept(player.getUUID())) {
+                    if (!ResearchManager.acceptTeam(ctx.getSource().getServer(), player.getUUID())) {
                         ctx.getSource().sendFailure(Component.translatable("command.ashen_frontier.team.no_invite"));
                         return 0;
                     }
