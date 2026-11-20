@@ -34,13 +34,20 @@ public final class CompatibilityClientEvents {
     }
 
     private static void showWarning() {
-        SystemToast.add(Minecraft.getInstance().getToasts(),
+        SystemToast.multiline(Minecraft.getInstance(),
                 SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
                 Component.translatable("compatibility.ashen_frontier.title"), warning());
     }
 
     private static Component warning() {
+        var summary = Component.literal(
+                ModCompatibility.displayedMods(ClientCompatibilityState.unsupported));
+        int omitted = ModCompatibility.omittedCount(ClientCompatibilityState.unsupported);
+        if (omitted > 0) {
+            summary.append(Component.literal(", ").append(
+                    Component.translatable("compatibility.ashen_frontier.more", omitted)));
+        }
         return Component.translatable("compatibility.ashen_frontier.warning",
-                String.join(", ", ClientCompatibilityState.unsupported));
+                summary);
     }
 }
