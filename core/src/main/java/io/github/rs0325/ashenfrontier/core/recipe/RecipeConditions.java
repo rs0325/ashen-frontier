@@ -6,6 +6,7 @@ import io.github.rs0325.ashenfrontier.core.UnitDisplay;
 import io.github.rs0325.ashenfrontier.core.Units;
 import io.github.rs0325.ashenfrontier.core.research.ResearchDefinitionsUpdate;
 import io.github.rs0325.ashenfrontier.core.research.ResearchProgressUpdate;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -65,7 +66,14 @@ public record RecipeConditions(Optional<Range> temperatureK, Optional<Range> pre
                 Units.format(value, "J"))));
         catalyst.ifPresent(stack -> lines.add(Component.translatable("recipe.ashen_frontier.catalyst",
                 stack.getHoverName())));
-        facility.ifPresent(id -> lines.add(Component.translatable("recipe.ashen_frontier.facility", id.toString())));
+        facility.ifPresent(id -> {
+            var block = BuiltInRegistries.BLOCK.getOptional(id);
+            Component name = block.<Component>map(value -> value.getName())
+                    .orElseGet(() -> BuiltInRegistries.ITEM.getOptional(id)
+                            .map(value -> value.getName(value.getDefaultInstance()))
+                            .orElseGet(() -> Component.literal(id.toString())));
+            lines.add(Component.translatable("recipe.ashen_frontier.facility", name));
+        });
         research.ifPresent(id -> {
             Component name = ResearchDefinitionsUpdate.clientName(id);
             boolean unlocked = ResearchProgressUpdate.isClientUnlocked(id);
