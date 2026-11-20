@@ -4,6 +4,7 @@ import com.mojang.serialization.JsonOps;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.authlib.GameProfile;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import io.netty.buffer.Unpooled;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -35,10 +36,137 @@ import io.github.rs0325.ashenfrontier.core.terminal.TerminalModules;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.minecraft.world.item.crafting.Ingredient;
+import io.github.rs0325.ashenfrontier.core.vanilla.RemovedItems;
+import io.github.rs0325.ashenfrontier.core.vanilla.VanillaWorldEvents;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.BaseFireBlock;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.portal.PortalShape;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.LootTable;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @GameTestHolder(AshenFrontierCore.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class CoreGameTests {
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 40)
+    public static void netherPortalDoesNotForm(GameTestHelper helper) {
+        for (int x = 0; x <= 3; x++) {
+            helper.setBlock(new BlockPos(x, 0, 0), Blocks.OBSIDIAN);
+            helper.setBlock(new BlockPos(x, 4, 0), Blocks.OBSIDIAN);
+        }
+        for (int y = 1; y <= 3; y++) {
+            helper.setBlock(new BlockPos(0, y, 0), Blocks.OBSIDIAN);
+            helper.setBlock(new BlockPos(3, y, 0), Blocks.OBSIDIAN);
+        }
+        BlockPos fire = new BlockPos(1, 1, 0);
+        helper.setBlock(fire, BaseFireBlock.getState(helper.getLevel(), helper.absolutePos(fire)));
+        PortalShape.findEmptyPortalShape(helper.getLevel(), helper.absolutePos(fire), Direction.Axis.X)
+                .ifPresent(PortalShape::createPortalBlocks);
+        helper.runAfterDelay(5, () -> {
+            for (int x = 1; x <= 2; x++) {
+                for (int y = 1; y <= 3; y++) {
+                    if (helper.getBlockState(new BlockPos(x, y, 0)).is(Blocks.NETHER_PORTAL)) {
+                        helper.fail("Nether portal block formed inside the obsidian frame");
+                        return;
+                    }
+                }
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    public static void vanillaRemovalRecipesAndTag(GameTestHelper helper) {
+        var recipes = helper.getLevel().getRecipeManager();
+        for (String id : List.of("minecraft:hopper", "minecraft:iron_pickaxe",
+                "minecraft:bucket", "minecraft:iron_ingot")) {
+            if (recipes.byKey(ResourceLocation.parse(id)).isPresent()) {
+                helper.fail("Removed recipe is still loaded: " + id + "; matching IDs="
+                        + recipes.getRecipes().stream().map(holder -> holder.id().toString())
+                                .filter(recipeId -> recipeId.contains("hopper")).toList());
+                return;
+            }
+        }
+        if (recipes.byKey(ResourceLocation.parse("minecraft:stone_bricks")).isEmpty()) {
+            helper.fail("Building block recipe was removed");
+            return;
+        }
+        var removedItems = helper.getLevel().registryAccess()
+                .registryOrThrow(Registries.ITEM)
+                .getTag(RemovedItems.TAG).orElseThrow();
+        var recipeDisabledItems = helper.getLevel().registryAccess()
+                .registryOrThrow(Registries.ITEM)
+                .getTag(RemovedItems.RECIPE_DISABLED).orElseThrow();
+        if (!removedItems.contains(Items.HOPPER.builtInRegistryHolder())
+                || !removedItems.contains(Items.SCULK_SENSOR.builtInRegistryHolder())
+                || !removedItems.contains(Items.ENDER_PEARL.builtInRegistryHolder())
+                || !removedItems.contains(Items.VILLAGER_SPAWN_EGG.builtInRegistryHolder())
+                || removedItems.contains(Items.STONE_BRICKS.builtInRegistryHolder())
+                || removedItems.contains(Items.IRON_PICKAXE.builtInRegistryHolder())
+                || removedItems.contains(Items.BUCKET.builtInRegistryHolder())
+                || removedItems.contains(Items.IRON_INGOT.builtInRegistryHolder())
+                || !recipeDisabledItems.contains(Items.IRON_PICKAXE.builtInRegistryHolder())
+                || !recipeDisabledItems.contains(Items.BUCKET.builtInRegistryHolder())
+                || !recipeDisabledItems.contains(Items.IRON_INGOT.builtInRegistryHolder())) {
+            helper.fail("Removed item tag does not match its listed categories");
+            return;
+        }
+        var villages = helper.getLevel().registryAccess().registryOrThrow(Registries.STRUCTURE_SET)
+                .get(ResourceLocation.withDefaultNamespace("villages"));
+        if (villages == null || !villages.structures().isEmpty()) {
+            helper.fail("Vanilla village structure set is not empty");
+            return;
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 40)
+    public static void removedLootModifierFiltersTaggedItems(GameTestHelper helper) throws IOException {
+        ResourceLocation id = AshenFrontierCore.id("removed_item_test");
+        var resource = helper.getLevel().getServer().getResourceManager()
+                .getResource(ResourceLocation.fromNamespaceAndPath(AshenFrontierCore.MOD_ID,
+                        "loot_table/removed_item_test.json"));
+        if (resource.isEmpty()) {
+            helper.fail("GameTest loot table fixture was not loaded");
+            return;
+        }
+        RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE,
+                helper.getLevel().registryAccess());
+        LootTable lootTable;
+        try (var reader = resource.orElseThrow().openAsReader()) {
+            var decoded = LootTable.DIRECT_CODEC.parse(ops, JsonParser.parseReader(reader));
+            lootTable = decoded.resultOrPartial(error -> helper.fail("Could not decode loot table: " + error))
+                    .orElse(null);
+        }
+        if (lootTable == null) return;
+        lootTable.setLootTableId(id);
+        var params = new LootParams.Builder(helper.getLevel()).create(LootContextParamSets.EMPTY);
+        ObjectArrayList<ItemStack> loot = lootTable.getRandomItems(params, 1L);
+        if (loot.size() != 1 || loot.stream().anyMatch(stack -> stack.is(Items.HOPPER))
+                || loot.stream().noneMatch(stack -> stack.is(Items.IRON_PICKAXE))) {
+            helper.fail("Global loot modifier did not remove tagged loot: " + loot);
+            return;
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    public static void vanillaNaturalSpawnTypesAreBlocked(GameTestHelper helper) {
+        if (!VanillaWorldEvents.shouldCancelSpawn(MobSpawnType.NATURAL)
+                || !VanillaWorldEvents.shouldCancelSpawn(MobSpawnType.CHUNK_GENERATION)
+                || !VanillaWorldEvents.shouldCancelSpawn(MobSpawnType.PATROL)
+                || VanillaWorldEvents.shouldCancelSpawn(MobSpawnType.SPAWNER)) {
+            helper.fail("Natural spawn event policy is incorrect");
+            return;
+        }
+        helper.succeed();
+    }
+
     @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
     public static void terminalModulesPersistAndCanBeInstalled(GameTestHelper helper) {
         var player = FakePlayerFactory.get(helper.getLevel(),

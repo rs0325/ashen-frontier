@@ -26,6 +26,7 @@ import io.github.rs0325.ashenfrontier.core.terminal.TerminalAttachments;
 import io.github.rs0325.ashenfrontier.core.terminal.TerminalModules;
 import io.github.rs0325.ashenfrontier.core.terminal.TerminalModuleAction;
 import net.minecraft.world.item.Items;
+import io.github.rs0325.ashenfrontier.core.vanilla.RemovedLootModifiers;
 
 @Mod(AshenFrontierCore.MOD_ID)
 public final class AshenFrontierCore {
@@ -35,6 +36,7 @@ public final class AshenFrontierCore {
 
     public AshenFrontierCore(IEventBus modEventBus, ModContainer modContainer) {
         CoreConfig.register(modContainer);
+        RemovedLootModifiers.register(modEventBus);
         MaterialData.register(modEventBus);
         ItemProperties.register(modEventBus);
         modEventBus.addListener(MaterialDataProvider::gatherData);

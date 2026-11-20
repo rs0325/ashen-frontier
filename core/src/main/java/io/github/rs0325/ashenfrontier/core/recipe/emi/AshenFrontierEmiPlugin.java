@@ -10,6 +10,7 @@ import dev.emi.emi.api.stack.EmiStack;
 import dev.emi.emi.api.widget.WidgetHolder;
 import io.github.rs0325.ashenfrontier.core.recipe.CommonRecipe;
 import io.github.rs0325.ashenfrontier.core.recipe.RecipeTypeRegistry;
+import io.github.rs0325.ashenfrontier.core.vanilla.RemovedItems;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
@@ -21,6 +22,7 @@ import java.util.List;
 public final class AshenFrontierEmiPlugin implements EmiPlugin {
     @Override
     public void register(EmiRegistry registry) {
+        registry.removeEmiStacks(stack -> stack.getItemStack().is(RemovedItems.TAG));
         RecipeTypeRegistry.registeredTypes().forEach((id, type) -> {
             EmiRecipeCategory category = new EmiRecipeCategory(id, EmiStack.of(Items.FURNACE));
             registry.addCategory(category);

@@ -3,11 +3,14 @@ package io.github.rs0325.ashenfrontier.core.recipe.jei;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import io.github.rs0325.ashenfrontier.core.recipe.CommonRecipe;
 import io.github.rs0325.ashenfrontier.core.recipe.RecipeTypeRegistry;
+import io.github.rs0325.ashenfrontier.core.vanilla.RemovedItems;
+import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
+import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 
@@ -21,6 +24,12 @@ public final class AshenFrontierJeiPlugin implements IModPlugin {
     @Override
     public ResourceLocation getPluginUid() {
         return AshenFrontierCore.id("jei_plugin");
+    }
+
+    @Override
+    public void onRuntimeAvailable(IJeiRuntime runtime) {
+        runtime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK,
+                RemovedItems.stacks());
     }
 
     @Override
