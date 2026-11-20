@@ -1,5 +1,7 @@
 package io.github.rs0325.ashenfrontier.core;
 
+import io.github.rs0325.ashenfrontier.core.time.GameTime;
+
 public final class ItemPropertyMath {
     private ItemPropertyMath() {}
 
@@ -11,8 +13,9 @@ public final class ItemPropertyMath {
         return initialBq * Math.pow(0.5, elapsedSeconds / halfLifeSeconds);
     }
 
-    public static double rotProgress(double referenceTicks, long elapsedTicks, double temperatureK, double referenceK, double q10) {
-        return referenceTicks + elapsedTicks * Math.pow(q10, (temperatureK - referenceK) / 10.0);
+    public static double rotProgress(double referenceSeconds, double elapsedGameSeconds, double temperatureK, double referenceK, double q10) {
+        return referenceSeconds + elapsedGameSeconds
+                * Math.pow(q10, (temperatureK - referenceK) / 10.0);
     }
 
     public static double roundDown(double value, double step) { return Math.floor(value / step) * step; }
