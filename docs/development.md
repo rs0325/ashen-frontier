@@ -15,6 +15,8 @@
 - **ModDevGradle**（`net.neoforged:moddev-gradle`）: NeoForge公式の開発プラグイン。
 - **Stonecutter 0.10**: 条件コメントでバージョン差分を書くプリプロセッサ。ブランチ機能で複数Modを同じバージョン集合に揃える。Gradle自体をJava 25以上で動かす必要がある。
 - **Gradle 9.8.1**: `gradle/gradle-daemon-jvm.properties`で実行用JDK 25を、Javaツールチェーンでコンパイル用JDK 21を、foojayで自動取得する。
+- **JUnit 5**: Minecraftクラスに依存しない計算や共通ロジックをJUnit Platformで検証する。全モジュールの`test`が`build`に含まれる。
+- **GameTest**: NeoForgeの`gameTestServer`を使い、`gameTest`タスクで各モジュールのGameTestを実行する。
 
 ModDevGradleとStonecutterを組み合わせた公式例はないため、共通設定は`build-logic`の規約プラグインで自作した。
 
@@ -47,6 +49,10 @@ Gradleのプロジェクトは`:<モジュール>:<Minecraftバージョン>`（
 ```
 
 ```powershell
+.\gradlew.bat gameTest
+```
+
+```powershell
 .\gradlew.bat :example:1.21.1:runClient
 ```
 
@@ -65,4 +71,8 @@ Gradleのプロジェクトは`:<モジュール>:<Minecraftバージョン>`（
 ## 未決定事項
 
 - 機能Modの分け方（`modules/example`は配線検証用の仮モジュール）
-- Mavenへの公開とCI
+- Mavenへの公開
+
+## GameTest構造物
+
+構造物テンプレートは、対象Modの`src/main/resources/data/<mod_id>/structure/`に置き、GameTestクラス名（小文字）を先頭に付けたテンプレート名で配置する。クラス名の接頭辞を付けない場合は`@PrefixGameTestTemplate(false)`を付け、テンプレート名と名前空間を`@GameTest`で指定する。
