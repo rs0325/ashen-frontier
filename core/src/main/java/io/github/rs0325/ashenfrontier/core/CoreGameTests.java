@@ -17,11 +17,16 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import io.github.rs0325.ashenfrontier.core.team.TeamData;
 import io.github.rs0325.ashenfrontier.core.research.ResearchProgress;
 import io.github.rs0325.ashenfrontier.core.research.ResearchTree;
 import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
+import io.github.rs0325.ashenfrontier.core.recipe.RecipeTypeRegistry;
+import io.github.rs0325.ashenfrontier.core.recipe.RecipeConditions;
+import io.github.rs0325.ashenfrontier.core.recipe.CommonRecipe;
+import net.minecraft.world.item.crafting.Ingredient;
 
 @GameTestHolder(AshenFrontierCore.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -207,12 +212,93 @@ public class CoreGameTests {
         helper.succeed();
     }
 
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    public static void recipeLoadsAndConditionsRoundTrip(GameTestHelper helper) {
+        ResourceLocation type = ResourceLocation.parse("ashen_frontier:game_test");
+        var recipes = helper.getLevel().getRecipeManager().getAllRecipesFor(RecipeTypeRegistry.type(type));
+        var holder = recipes.stream().findFirst().orElse(null);
+        CommonRecipe recipe = holder == null ? null : holder.value();
+        if (recipe == null || recipe.inputs().size() != 1 || recipe.outputs().size() != 1) {
+            helper.fail("GameTest recipe datapack was not loaded");
+            return;
+        }
+        var ops = RegistryOps.create(JsonOps.INSTANCE, helper.getLevel().registryAccess());
+        var serializer = RecipeTypeRegistry.serializer(type);
+        JsonElement encoded = serializer.codec().codec().encodeStart(ops, recipe).getOrThrow();
+        CommonRecipe decoded = (CommonRecipe) serializer.codec().codec().parse(ops, encoded).getOrThrow();
+        if (!sameIngredients(decoded.inputs(), recipe.inputs())
+                || !sameStacks(decoded.outputs(), recipe.outputs())
+                || !sameConditions(decoded.conditions(), recipe.conditions())) {
+            helper.fail("Recipe codec round trip changed the recipe");
+            return;
+        }
+        RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(),
+                helper.getLevel().registryAccess());
+        serializer.streamCodec().encode(buffer, recipe);
+        buffer.readerIndex(0);
+        CommonRecipe streamed = serializer.streamCodec().decode(buffer);
+        buffer.release();
+        if (!sameIngredients(streamed.inputs(), recipe.inputs())
+                || !sameStacks(streamed.outputs(), recipe.outputs())
+                || !sameConditions(streamed.conditions(), recipe.conditions())) {
+            helper.fail("Recipe stream codec round trip changed the recipe");
+            return;
+        }
+        RecipeConditions conditions = recipe.conditions();
+        var player = FakePlayerFactory.get(helper.getLevel(),
+                new GameProfile(UUID.randomUUID(), "recipe-research-test"));
+        ResourceLocation research = ResourceLocation.parse("ashen_frontier:game_test_survey");
+        ResourceLocation conditionType = ResourceLocation.parse("ashen_frontier:game_test");
+        ResourceLocation document = ResourceLocation.parse("ashen_frontier:game_test_document");
+        ResearchManager.registerConditionType(conditionType, (reporter, condition) -> condition.equals("surveyed"));
+        boolean initiallyUnlocked = ResearchManager.isUnlocked(player, research);
+        ResearchManager.reportKnowledge(player, document);
+        ResearchManager.report(player, conditionType, "surveyed");
+        boolean unlocked = ResearchManager.isUnlocked(player, research);
+        if (initiallyUnlocked
+                || !conditions.matches(1000, 100000, 5, 2500, true, true, unlocked)
+                || conditions.matches(1000, 100000, 5, 2500, true, true, initiallyUnlocked)
+                || conditions.matches(800, 100000, 5, 2500, true, true, true)) {
+            helper.fail("Recipe conditions did not account for research and process limits");
+            return;
+        }
+        helper.succeed();
+    }
+
     private static <T> boolean streamRoundTrips(StreamCodec<? super RegistryFriendlyByteBuf, T> codec,
                                                 RegistryFriendlyByteBuf buffer, T value) {
         buffer.clear();
         codec.encode(buffer, value);
         buffer.readerIndex(0);
         return value.equals(codec.decode(buffer));
+    }
+
+    private static boolean sameStacks(List<ItemStack> first, List<ItemStack> second) {
+        if (first.size() != second.size()) return false;
+        for (int i = 0; i < first.size(); i++) {
+            if (!ItemStack.isSameItemSameComponents(first.get(i), second.get(i))) return false;
+        }
+        return true;
+    }
+
+    private static boolean sameIngredients(List<Ingredient> first, List<Ingredient> second) {
+        if (first.size() != second.size()) return false;
+        for (int i = 0; i < first.size(); i++) {
+            if (!sameStacks(List.of(first.get(i).getItems()), List.of(second.get(i).getItems()))) return false;
+        }
+        return true;
+    }
+
+    private static boolean sameConditions(RecipeConditions first, RecipeConditions second) {
+        return first.temperatureK().equals(second.temperatureK())
+                && first.pressurePa().equals(second.pressurePa())
+                && first.durationSeconds().equals(second.durationSeconds())
+                && first.energyJoules().equals(second.energyJoules())
+                && first.catalyst().isPresent() == second.catalyst().isPresent()
+                && (first.catalyst().isEmpty() || ItemStack.isSameItemSameComponents(
+                        first.catalyst().orElseThrow(), second.catalyst().orElseThrow()))
+                && first.facility().equals(second.facility())
+                && first.research().equals(second.research());
     }
 
 }

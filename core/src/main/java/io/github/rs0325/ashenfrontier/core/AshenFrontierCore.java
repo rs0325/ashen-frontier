@@ -17,6 +17,7 @@ import io.github.rs0325.ashenfrontier.core.team.TeamCommands;
 import io.github.rs0325.ashenfrontier.core.team.TeamData;
 import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
 import net.neoforged.neoforge.common.NeoForge;
+import io.github.rs0325.ashenfrontier.core.recipe.RecipeTypeRegistry;
 
 @Mod(AshenFrontierCore.MOD_ID)
 public final class AshenFrontierCore {
@@ -32,6 +33,9 @@ public final class AshenFrontierCore {
         modEventBus.addListener(AshenFrontierCore::addGameTestDataPack);
         TeamData.register();
         ResearchManager.register(modEventBus);
+        if (gameTestEnabled() || Boolean.getBoolean("ashen_frontier.testRecipes")) {
+            RecipeTypeRegistry.register(modEventBus, id("game_test"));
+        }
         NeoForge.EVENT_BUS.addListener(TeamCommands::register);
     }
 
@@ -41,13 +45,17 @@ public final class AshenFrontierCore {
     }
 
     private static void addGameTestDataPack(AddPackFindersEvent event) {
-        boolean gameTestEnabled = Arrays.stream(System.getProperty("neoforge.enabledGameTestNamespaces", "").split(","))
-                .map(String::trim)
-                .anyMatch(MOD_ID::equals);
-        if (event.getPackType() == PackType.SERVER_DATA && gameTestEnabled) {
+        boolean testDataEnabled = gameTestEnabled() || Boolean.getBoolean("ashen_frontier.testRecipes");
+        if (event.getPackType() == PackType.SERVER_DATA && testDataEnabled) {
             event.addPackFinders(ResourceLocation.fromNamespaceAndPath(MOD_ID, "data/ashen_frontier_core/datapacks/gametest"),
                     PackType.SERVER_DATA, Component.literal("Ashen Frontier GameTest"),
                     PackSource.BUILT_IN, true, Pack.Position.TOP);
         }
+    }
+
+    private static boolean gameTestEnabled() {
+        return Arrays.stream(System.getProperty("neoforge.enabledGameTestNamespaces", "").split(","))
+                .map(String::trim)
+                .anyMatch(MOD_ID::equals);
     }
 }
