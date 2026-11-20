@@ -30,11 +30,55 @@ import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
 import io.github.rs0325.ashenfrontier.core.recipe.RecipeTypeRegistry;
 import io.github.rs0325.ashenfrontier.core.recipe.RecipeConditions;
 import io.github.rs0325.ashenfrontier.core.recipe.CommonRecipe;
+import io.github.rs0325.ashenfrontier.core.terminal.TerminalAttachments;
+import io.github.rs0325.ashenfrontier.core.terminal.TerminalModules;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.minecraft.world.item.crafting.Ingredient;
 
 @GameTestHolder(AshenFrontierCore.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class CoreGameTests {
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    public static void terminalModulesPersistAndCanBeInstalled(GameTestHelper helper) {
+        var player = FakePlayerFactory.get(helper.getLevel(),
+                new GameProfile(UUID.randomUUID(), "terminal-module-test"));
+        ResourceLocation moduleId = AshenFrontierCore.id("game_test_module");
+        ResourceLocation display = AshenFrontierCore.id("test");
+        player.getInventory().add(new ItemStack(Items.COMPASS));
+        if (!TerminalModules.insert(player, moduleId)
+                || !TerminalModules.isDisplayEnabled(player, display)
+                || !player.getInventory().isEmpty()) {
+            helper.fail("Terminal module insertion did not consume the item and enable its display");
+            return;
+        }
+        CompoundTag savedPlayer = new CompoundTag();
+        player.saveWithoutId(savedPlayer);
+        var restored = FakePlayerFactory.get(helper.getLevel(),
+                new GameProfile(UUID.randomUUID(), "terminal-module-restored"));
+        restored.load(savedPlayer);
+        if (!restored.getData(TerminalAttachments.MODULES)
+                .equals(player.getData(TerminalAttachments.MODULES))) {
+            helper.fail("Terminal module attachment did not round trip through player save data");
+            return;
+        }
+        var respawned = FakePlayerFactory.get(helper.getLevel(),
+                new GameProfile(UUID.randomUUID(), "terminal-module-respawned"));
+        NeoForge.EVENT_BUS.post(new PlayerEvent.Clone(respawned, player, true));
+        if (!respawned.getData(TerminalAttachments.MODULES)
+                .equals(player.getData(TerminalAttachments.MODULES))) {
+            helper.fail("Terminal module attachment was not copied on death");
+            return;
+        }
+        if (!TerminalModules.remove(player, moduleId)
+                || TerminalModules.isDisplayEnabled(player, display)
+                || player.getInventory().countItem(Items.COMPASS) != 1) {
+            helper.fail("Terminal module removal did not return the item and disable its display");
+            return;
+        }
+        helper.succeed();
+    }
+
     @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
     public static void coreGameTestRuns(GameTestHelper helper) {
         helper.succeed();

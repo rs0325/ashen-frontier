@@ -13,6 +13,7 @@ import net.neoforged.neoforge.event.AddPackFindersEvent;
 import org.slf4j.Logger;
 
 import java.util.Arrays;
+import java.util.Set;
 import io.github.rs0325.ashenfrontier.core.team.TeamCommands;
 import io.github.rs0325.ashenfrontier.core.team.TeamData;
 import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
@@ -21,6 +22,10 @@ import io.github.rs0325.ashenfrontier.core.recipe.RecipeTypeRegistry;
 import io.github.rs0325.ashenfrontier.core.compat.CompatibilityChecker;
 import io.github.rs0325.ashenfrontier.core.rescue.RescueCommands;
 import io.github.rs0325.ashenfrontier.core.config.CoreConfig;
+import io.github.rs0325.ashenfrontier.core.terminal.TerminalAttachments;
+import io.github.rs0325.ashenfrontier.core.terminal.TerminalModules;
+import io.github.rs0325.ashenfrontier.core.terminal.TerminalModuleAction;
+import net.minecraft.world.item.Items;
 
 @Mod(AshenFrontierCore.MOD_ID)
 public final class AshenFrontierCore {
@@ -42,6 +47,11 @@ public final class AshenFrontierCore {
         NeoForge.EVENT_BUS.addListener(TeamCommands::register);
         NeoForge.EVENT_BUS.addListener(RescueCommands::register);
         CompatibilityChecker.register();
+        TerminalAttachments.register(modEventBus);
+        modEventBus.addListener(TerminalModuleAction::register);
+        if (gameTestEnabled()) {
+            TerminalModules.register(id("game_test_module"), Items.COMPASS, Set.of(id("test")));
+        }
     }
 
     /** Ashen Frontier全Mod共通の名前空間でリソースIDを作る。 */
