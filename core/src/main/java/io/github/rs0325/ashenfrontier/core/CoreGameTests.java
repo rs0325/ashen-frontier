@@ -1,6 +1,7 @@
 package io.github.rs0325.ashenfrontier.core;
 
 import com.mojang.serialization.JsonOps;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.authlib.GameProfile;
 import com.google.gson.JsonElement;
 import io.netty.buffer.Unpooled;
@@ -19,6 +20,9 @@ import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import io.github.rs0325.ashenfrontier.core.team.TeamData;
 import io.github.rs0325.ashenfrontier.core.research.ResearchProgress;
 import io.github.rs0325.ashenfrontier.core.research.ResearchTree;
@@ -33,6 +37,60 @@ import net.minecraft.world.item.crafting.Ingredient;
 public class CoreGameTests {
     @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
     public static void coreGameTestRuns(GameTestHelper helper) {
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    public static void rescueCommandsRepairMoveAndLog(GameTestHelper helper) throws CommandSyntaxException {
+        var server = helper.getLevel().getServer();
+        var player = FakePlayerFactory.get(helper.getLevel(),
+                new GameProfile(UUID.randomUUID(), "rescue-test"));
+        var source = player.createCommandSourceStack().withPermission(2);
+        Path log = server.getServerDirectory().resolve("ashen-frontier-rescue.log");
+        long previousEntries;
+        try {
+            previousEntries = Files.exists(log) ? Files.readAllLines(log).stream()
+                    .filter(line -> line.contains("target=rescue-test")).count() : 0;
+        } catch (IOException exception) {
+            helper.fail("Could not read rescue command log before test: " + exception.getMessage());
+            return;
+        }
+        int repairResult = server.getCommands().getDispatcher().execute(
+                "ashenfrontier rescue repair @s", source);
+        TeamData.Team team = TeamData.get(server).teamFor(player.getUUID()).orElse(null);
+        if (repairResult != 1 || team == null) {
+            helper.fail("Rescue repair did not create the target's personal team");
+            return;
+        }
+        ResearchProgress progress = ResearchProgress.get(server);
+        progress.unlock(team.id(), "ashen_frontier:stale_test_unlock");
+        server.getCommands().getDispatcher().execute("ashenfrontier rescue repair @s", source);
+        if (progress.isUnlocked(team.id(), "ashen_frontier:stale_test_unlock")) {
+            helper.fail("Rescue repair did not remove an inconsistent research unlock");
+            return;
+        }
+        int moveResult = server.getCommands().getDispatcher().execute(
+                "ashenfrontier rescue move @s 3 80 -2", source);
+        if (moveResult != 1) {
+            helper.fail("Rescue move command failed");
+            return;
+        }
+        if (player.blockPosition().getX() != 3 || player.blockPosition().getY() != 80
+                || player.blockPosition().getZ() != -2) {
+            helper.fail("Rescue move did not move the target to the specified block: " + player.blockPosition());
+            return;
+        }
+        try {
+            long entries = Files.readAllLines(log).stream()
+                    .filter(line -> line.contains("target=rescue-test")).count();
+            if (entries - previousEntries != 3) {
+                helper.fail("Rescue execution log did not append one line per command");
+                return;
+            }
+        } catch (IOException exception) {
+            helper.fail("Could not read rescue command log: " + exception.getMessage());
+            return;
+        }
         helper.succeed();
     }
 

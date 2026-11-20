@@ -90,6 +90,22 @@ public final class ResearchProgress extends SavedData {
         }
         return List.copyOf(newlyUnlocked);
     }
+    public boolean recalculate(String team, ResearchTree.Resolution tree) {
+        Set<String> expected = new HashSet<>();
+        for (String id : tree.order()) {
+            ResearchTree.Definition definition = tree.definitions().get(id);
+            if (definition.prerequisites().stream().allMatch(expected::contains)
+                    && definition.conditions().stream()
+                    .allMatch(c -> hasCondition(team, c.type() + ":" + c.id()))) {
+                expected.add(id);
+            }
+        }
+        Set<String> current = unlocked.getOrDefault(team, Set.of());
+        if (current.equals(expected)) return false;
+        unlocked.put(team, expected);
+        setDirty();
+        return true;
+    }
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         return (CompoundTag) CODEC.encodeStart(NbtOps.INSTANCE, this).getOrThrow();
     }
