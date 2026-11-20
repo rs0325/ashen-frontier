@@ -5,6 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -15,6 +16,7 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 
+import java.util.Arrays;
 import java.util.List;
 
 /** 入力・複数出力・共通条件を持つ加工レシピ。 */
@@ -33,7 +35,7 @@ public record CommonRecipe(ResourceLocation typeId, List<Ingredient> inputs, Lis
         ).apply(instance, (inputs, outputs, conditions) ->
                 new CommonRecipe(typeId, inputs, outputs, conditions)));
         StreamCodec<RegistryFriendlyByteBuf, CommonRecipe> streamCodec =
-                net.minecraft.network.codec.ByteBufCodecs.fromCodecWithRegistries(codec.codec());
+                ByteBufCodecs.fromCodecWithRegistries(codec.codec());
         return new RecipeSerializer<>() {
             @Override
             public MapCodec<CommonRecipe> codec() {
@@ -50,19 +52,25 @@ public record CommonRecipe(ResourceLocation typeId, List<Ingredient> inputs, Lis
     @Override
     public boolean matches(RecipeInput input, Level level) {
         if (input.size() != inputs.size()) return false;
-        boolean[] matched = new boolean[inputs.size()];
+        int[] matchedSlots = new int[inputs.size()];
+        Arrays.fill(matchedSlots, -1);
         for (int slot = 0; slot < input.size(); slot++) {
-            boolean found = false;
-            for (int index = 0; index < inputs.size(); index++) {
-                if (!matched[index] && inputs.get(index).test(input.getItem(slot))) {
-                    matched[index] = true;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) return false;
+            if (!matchSlot(slot, input, matchedSlots, new boolean[inputs.size()])) return false;
         }
         return true;
+    }
+
+    private boolean matchSlot(int slot, RecipeInput input, int[] matchedSlots, boolean[] visited) {
+        for (int ingredient = 0; ingredient < inputs.size(); ingredient++) {
+            if (visited[ingredient] || !inputs.get(ingredient).test(input.getItem(slot))) continue;
+            visited[ingredient] = true;
+            if (matchedSlots[ingredient] == -1
+                    || matchSlot(matchedSlots[ingredient], input, matchedSlots, visited)) {
+                matchedSlots[ingredient] = slot;
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
