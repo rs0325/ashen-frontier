@@ -29,11 +29,11 @@ public final class CompatibilityChecker {
     }
 
     private static void playerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
+        if (event.getEntity() instanceof ServerPlayer player && player.getServer().isDedicatedServer()) {
             Set<String> unsupported = check(CoreConfig.serverAllowedMods());
             if (!unsupported.isEmpty()) {
                 player.sendSystemMessage(Component.translatable(
-                        "compatibility.ashen_frontier.warning", String.join(", ", unsupported)));
+                        "compatibility.ashen_frontier.warning", warningSummary(unsupported)));
             }
         }
     }
@@ -41,5 +41,15 @@ public final class CompatibilityChecker {
     static Set<String> check(List<String> configuredAllowed) {
         return ModCompatibility.unsupported(ModList.get().getMods().stream()
                 .map(IModInfo::getModId).toList(), configuredAllowed);
+    }
+
+    private static Component warningSummary(Set<String> unsupported) {
+        var summary = Component.literal(ModCompatibility.displayedMods(unsupported));
+        int omitted = ModCompatibility.omittedCount(unsupported);
+        if (omitted > 0) {
+            summary.append(Component.literal(", ").append(
+                    Component.translatable("compatibility.ashen_frontier.more", omitted)));
+        }
+        return summary;
     }
 }
