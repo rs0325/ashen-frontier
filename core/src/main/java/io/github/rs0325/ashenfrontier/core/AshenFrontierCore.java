@@ -23,6 +23,7 @@ public final class AshenFrontierCore {
     public AshenFrontierCore(IEventBus modEventBus, ModContainer modContainer) {
         UnitsConfig.register(modContainer);
         MaterialData.register(modEventBus);
+        ItemProperties.register(modEventBus);
         modEventBus.addListener(MaterialDataProvider::gatherData);
         modEventBus.addListener(AshenFrontierCore::addGameTestDataPack);
     }
