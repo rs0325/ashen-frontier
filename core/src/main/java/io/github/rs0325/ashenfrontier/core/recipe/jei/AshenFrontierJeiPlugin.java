@@ -29,7 +29,9 @@ public final class AshenFrontierJeiPlugin implements IModPlugin {
     @Override
     public void onRuntimeAvailable(IJeiRuntime runtime) {
         runtime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK,
-                RemovedItems.stacks());
+                runtime.getIngredientManager().getAllIngredients(VanillaTypes.ITEM_STACK).stream()
+                        .filter(RemovedItems::isRemoved)
+                        .toList());
     }
 
     @Override

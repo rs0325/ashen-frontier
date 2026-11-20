@@ -24,8 +24,8 @@ public final class RemovedRecipes {
     private static void removeTaggedRecipes(MinecraftServer server) {
         var manager = server.getRecipeManager();
         manager.replaceRecipes(manager.getRecipes().stream()
-                .filter(holder -> !holder.value().getResultItem(server.registryAccess())
-                        .is(RemovedItems.TAG)
+                .filter(holder -> !RemovedItems.isRemoved(holder.value()
+                        .getResultItem(server.registryAccess()))
                         && !holder.value().getResultItem(server.registryAccess())
                                 .is(RemovedItems.RECIPE_DISABLED))
                 .toList());

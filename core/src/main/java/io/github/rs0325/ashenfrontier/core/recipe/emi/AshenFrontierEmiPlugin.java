@@ -22,7 +22,7 @@ import java.util.List;
 public final class AshenFrontierEmiPlugin implements EmiPlugin {
     @Override
     public void register(EmiRegistry registry) {
-        registry.removeEmiStacks(stack -> stack.getItemStack().is(RemovedItems.TAG));
+        registry.removeEmiStacks(stack -> RemovedItems.isRemoved(stack.getItemStack()));
         RecipeTypeRegistry.registeredTypes().forEach((id, type) -> {
             EmiRecipeCategory category = new EmiRecipeCategory(id, EmiStack.of(Items.FURNACE));
             registry.addCategory(category);
