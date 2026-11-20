@@ -11,8 +11,10 @@ import dev.emi.emi.api.widget.WidgetHolder;
 import io.github.rs0325.ashenfrontier.core.recipe.CommonRecipe;
 import io.github.rs0325.ashenfrontier.core.recipe.RecipeTypeRegistry;
 import io.github.rs0325.ashenfrontier.core.vanilla.RemovedItems;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeHolder;
 
@@ -24,7 +26,12 @@ public final class AshenFrontierEmiPlugin implements EmiPlugin {
     public void register(EmiRegistry registry) {
         registry.removeEmiStacks(stack -> RemovedItems.isRemoved(stack.getItemStack()));
         RecipeTypeRegistry.registeredTypes().forEach((id, type) -> {
-            EmiRecipeCategory category = new EmiRecipeCategory(id, EmiStack.of(Items.FURNACE));
+            EmiRecipeCategory category = new EmiRecipeCategory(id, EmiStack.of(Items.FURNACE)) {
+                @Override
+                public Component getName() {
+                    return Component.translatable("recipe_type." + id.getNamespace() + "." + id.getPath());
+                }
+            };
             registry.addCategory(category);
             for (RecipeHolder<CommonRecipe> holder : registry.getRecipeManager().getAllRecipesFor(type.get())) {
                 registry.addRecipe(new CommonEmiRecipe(category, holder));
@@ -61,7 +68,14 @@ public final class AshenFrontierEmiPlugin implements EmiPlugin {
 
         @Override
         public int getDisplayHeight() {
-            return 120;
+            return Math.max(120, 48 + displayLines().size() * 10);
+        }
+
+        private List<FormattedCharSequence> displayLines() {
+            var font = Minecraft.getInstance().font;
+            return holder.value().conditions().displayLines().stream()
+                    .flatMap(line -> font.split(line, 180).stream())
+                    .toList();
         }
 
         @Override
@@ -73,7 +87,7 @@ public final class AshenFrontierEmiPlugin implements EmiPlugin {
                 widgets.addSlot(EmiStack.of(holder.value().outputs().get(i)), 112 + i % 3 * 20, i / 3 * 20)
                         .recipeContext(this);
             }
-            List<Component> lines = holder.value().conditions().displayLines();
+            List<FormattedCharSequence> lines = displayLines();
             for (int i = 0; i < lines.size(); i++) {
                 widgets.addText(lines.get(i), 0, 44 + i * 10, 0x404040, false);
             }
