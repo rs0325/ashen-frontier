@@ -7,6 +7,11 @@ plugins {
     id("net.neoforged.moddev")
 }
 
+repositories {
+    maven("https://maven.blamejared.com")
+    maven("https://repo.sleeping.town")
+}
+
 val minecraftVersion = project.name
 val module = parent!!.name
 val modId = "ashen_frontier_$module"
@@ -42,7 +47,11 @@ neoForge {
         mappingsVersion = mc.getProperty("parchment_mappings_version")
     }
     runs {
-        register("client") { client() }
+        register("client") {
+            client()
+            systemProperty("ashen_frontier.testRecipes",
+                providers.gradleProperty("recipeTestFixture").orElse("false").get())
+        }
         register("server") {
             server()
             programArgument("--nogui")
@@ -64,6 +73,14 @@ neoForge {
     mods {
         register(modId) { sourceSet(sourceSets.main.get()) }
     }
+}
+
+val hasGameTests = moduleDir.resolve("src/main/java").walkTopDown()
+    .filter { it.isFile && it.extension == "java" }
+    .any { "@GameTest" in it.readText() }
+
+tasks.named("runGameTestServer") {
+    enabled = hasGameTests
 }
 
 tasks.register("gameTest") {

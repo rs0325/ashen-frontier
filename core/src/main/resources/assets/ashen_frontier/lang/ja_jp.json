@@ -11,5 +11,14 @@
   "unit.ashen_frontier.kelvin": "K",
   "unit.ashen_frontier.celsius": "℃",
   "unit.ashen_frontier.pascal": "Pa",
-  "unit.ashen_frontier.bar": "bar"
+  "unit.ashen_frontier.bar": "bar",
+  "recipe.ashen_frontier.temperature": "温度: %s～%s",
+  "recipe.ashen_frontier.pressure": "圧力: %s～%s",
+  "recipe.ashen_frontier.duration": "時間: %s",
+  "recipe.ashen_frontier.energy": "エネルギー: %s",
+  "recipe.ashen_frontier.catalyst": "触媒: %s",
+  "recipe.ashen_frontier.facility": "必要設備: %s",
+  "recipe.ashen_frontier.research": "研究: %s",
+  "recipe.ashen_frontier.research_locked": "未解放: %s",
+  "recipe_type.ashen_frontier.game_test": "GameTest加工"
 }

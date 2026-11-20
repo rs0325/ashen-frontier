@@ -1,0 +1,16 @@
+{
+  "type": "ashen_frontier:game_test",
+  "inputs": [{ "item": "minecraft:iron_ingot" }],
+  "outputs": [
+    { "id": "minecraft:iron_nugget", "count": 9 }
+  ],
+  "conditions": {
+    "temperature_k": { "min": 900.0, "max": 1100.0 },
+    "pressure_pa": { "min": 90000.0, "max": 110000.0 },
+    "duration_seconds": 5.0,
+    "energy_joules": 2500.0,
+    "catalyst": { "id": "minecraft:coal", "count": 1 },
+    "facility": "ashen_frontier:game_test_furnace",
+    "research": "ashen_frontier:game_test_survey"
+  }
+}

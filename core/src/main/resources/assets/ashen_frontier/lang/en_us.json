@@ -11,5 +11,14 @@
   "unit.ashen_frontier.kelvin": "K",
   "unit.ashen_frontier.celsius": "°C",
   "unit.ashen_frontier.pascal": "Pa",
-  "unit.ashen_frontier.bar": "bar"
+  "unit.ashen_frontier.bar": "bar",
+  "recipe.ashen_frontier.temperature": "Temperature: %s–%s",
+  "recipe.ashen_frontier.pressure": "Pressure: %s–%s",
+  "recipe.ashen_frontier.duration": "Time: %s",
+  "recipe.ashen_frontier.energy": "Energy: %s",
+  "recipe.ashen_frontier.catalyst": "Catalyst: %s",
+  "recipe.ashen_frontier.facility": "Facility: %s",
+  "recipe.ashen_frontier.research": "Research: %s",
+  "recipe.ashen_frontier.research_locked": "Locked: %s",
+  "recipe_type.ashen_frontier.game_test": "GameTest processing"
 }
