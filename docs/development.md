@@ -1,0 +1,68 @@
+# 開発環境設計
+
+## 方針
+
+| 項目 | 決定 |
+|---|---|
+| リポジトリ | モノレポ。`main`はリリース、`develop`は開発版 |
+| Mod分割 | 共通基盤`core`と機能Modに分け、それぞれ独立jarで配布する。機能Modは`core`へ必須依存する |
+| 対象ローダー | NeoForgeのみ。ローダー抽象化層は作らない |
+| 複数バージョン | Stonecutterで1つのソースから各Minecraftバージョンを生成する。初期対象は1.21.1 |
+| バージョン番号 | 全Mod同一番号でまとめてリリースする（`<mod_version>+mc<Minecraftバージョン>`） |
+
+## 採用ツール
+
+- **ModDevGradle**（`net.neoforged:moddev-gradle`）: NeoForge公式の開発プラグイン。
+- **Stonecutter 0.10**: 条件コメントでバージョン差分を書くプリプロセッサ。ブランチ機能で複数Modを同じバージョン集合に揃える。Gradle自体をJava 25以上で動かす必要がある。
+- **Gradle 9.8.1**: `gradle/gradle-daemon-jvm.properties`で実行用JDK 25を、Javaツールチェーンでコンパイル用JDK 21を、foojayで自動取得する。
+
+ModDevGradleとStonecutterを組み合わせた公式例はないため、共通設定は`build-logic`の規約プラグインで自作した。
+
+## 構成
+
+```
+settings.gradle.kts           Stonecutterへのモジュール・バージョン登録
+stonecutter.gradle.kts        作業中バージョン（active）
+gradle.properties             Mod共通の値（mod_version、group、作者、ライセンス）
+gradle/versions/<mc>.properties  Minecraftバージョンごとの依存バージョン
+build-logic/                  規約プラグイン ashenfrontier.mod
+core/                         ashen_frontier_core
+modules/<name>/               ashen_frontier_<name>
+```
+
+Gradleのプロジェクトは`:<モジュール>:<Minecraftバージョン>`（例: `:core:1.21.1`）になる。ソースは各モジュール直下の`src/`に置き、`versions/<mc>/`はビルド出力と実行ディレクトリだけを持つ。
+
+規約プラグインは版プロジェクト名をMinecraftバージョン、親プロジェクト名をモジュール名として扱い、次を設定する。
+
+- Mod IDは`ashen_frontier_<モジュール>`、groupは`<mod_group>.<モジュール>`
+- NeoForge・Parchment・Javaのバージョンを`gradle/versions/<mc>.properties`から読み込む
+- `client`・`server`の実行構成
+- `core`以外は同じバージョンの`core`へ依存させ、実行構成へ`core`も読み込む
+- `META-INF/neoforge.mods.toml`の`${...}`を展開する
+
+## 作業手順
+
+```powershell
+.\gradlew.bat build
+```
+
+```powershell
+.\gradlew.bat :example:1.21.1:runClient
+```
+
+### 機能Modの追加
+
+1. `settings.gradle.kts`の`featureModules`へ名前を追加する。
+2. `modules/<name>/build.gradle.kts`で`id("ashenfrontier.mod")`を適用する。
+3. `modules/<name>/src/main/resources/META-INF/neoforge.mods.toml`を`modules/example`に倣って作成する。
+
+### Minecraftバージョンの追加
+
+1. `gradle/versions/<mc>.properties`を作成する。
+2. `settings.gradle.kts`の`minecraftVersions`へ追加する。
+3. バージョン差分は`//? if >=1.21.2 {`などの条件コメントで書く。作業バージョンの切替はStonecutterのタスク`Set active project to <mc>`で行い、コミット前に`Reset active project`で基準バージョンへ戻す。
+
+## 未決定事項
+
+- 機能Modの分け方（`modules/example`は配線検証用の仮モジュール）
+- Mavenへの公開とCI

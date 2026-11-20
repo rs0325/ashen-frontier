@@ -1,0 +1,12 @@
+.gradle/
+.kotlin/
+build/
+run/
+out/
+bin/
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.claude/settings.local.json
