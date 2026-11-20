@@ -1,4 +1,13 @@
 {
+  "command.ashen_frontier.team.created": "Created your team.",
+  "command.ashen_frontier.team.invited": "You have been invited to a team.",
+  "command.ashen_frontier.team.invite_sent": "Invitation sent.",
+  "command.ashen_frontier.team.none": "You are not in a team.",
+  "command.ashen_frontier.team.already_member": "You are already in a team.",
+  "command.ashen_frontier.team.no_invite": "You have no pending team invitation.",
+  "command.ashen_frontier.team.joined": "You joined the team.",
+  "command.ashen_frontier.team.left": "You left the team.",
+  "research.ashen_frontier.unlocked": "Research unlocked: %s",
   "unit.ashen_frontier.kelvin": "K",
   "unit.ashen_frontier.celsius": "°C",
   "unit.ashen_frontier.pascal": "Pa",
