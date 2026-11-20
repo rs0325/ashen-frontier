@@ -34,6 +34,7 @@
   "terminal.ashen_frontier.tab.status": "Status",
   "terminal.ashen_frontier.tab.research": "Research",
   "terminal.ashen_frontier.tab.modules": "Modules",
+  "terminal.ashen_frontier.research.empty": "No research is available.",
   "terminal.ashen_frontier.insert": "Insert",
   "terminal.ashen_frontier.remove": "Remove",
   "terminal.ashen_frontier.status.empty": "No status displays are installed.",

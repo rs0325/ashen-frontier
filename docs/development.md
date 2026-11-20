@@ -56,6 +56,14 @@ Gradleのプロジェクトは`:<モジュール>:<Minecraftバージョン>`（
 .\gradlew.bat :example:1.21.1:runClient
 ```
 
+テスト用の研究・レシピデータを有効にするには、`-PrecipeTestFixture=true`を付けてクライアントまたはサーバーを起動する。専用サーバーの例:
+
+```powershell
+.\gradlew.bat -PrecipeTestFixture=true :core:1.21.1:runServer
+```
+
+開発サーバーで`/reload`などの管理者コマンドを使うには、サーバーのコンソールで実行するか、`/op <名前>`でプレイヤーに権限を与える。
+
 ### 機能Modの追加
 
 1. `settings.gradle.kts`の`featureModules`へ名前を追加する。
