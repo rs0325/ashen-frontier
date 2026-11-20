@@ -279,12 +279,12 @@ public class CoreGameTests {
     @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void itemPropertiesStack(GameTestHelper helper) {
         ItemStack first = new ItemStack(Items.STONE);
-        first.set(ItemProperties.TEMPERATURE, new ItemProperties.Temperature(500, 100));
-        first.set(ItemProperties.WEAR, new ItemProperties.Wear(4, 10));
-        first.set(ItemProperties.COMPOSITION, new ItemProperties.Composition(Map.of("iron", 0.9)));
-        first.set(ItemProperties.CONTAMINATION, new ItemProperties.Contamination(Map.of("lead", 0.1)));
-        first.set(ItemProperties.RADIOACTIVITY, new ItemProperties.Radioactivity("test:short_lived", 10, 100));
-        first.set(ItemProperties.ROT, new ItemProperties.Rot(100, 100, 0));
+        first.set(ItemProperties.TEMPERATURE, ItemProperties.Temperature.of(504.9, 119));
+        first.set(ItemProperties.WEAR, ItemProperties.Wear.of(4.9, 10.9));
+        first.set(ItemProperties.COMPOSITION, ItemProperties.Composition.of(Map.of("iron", 0.292)));
+        first.set(ItemProperties.CONTAMINATION, ItemProperties.Contamination.of(Map.of("lead", 0.061)));
+        first.set(ItemProperties.RADIOACTIVITY, ItemProperties.Radioactivity.of("test:short_lived", 10.19, 119));
+        first.set(ItemProperties.ROT, ItemProperties.Rot.of(119, 119, 601));
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, helper.getLevel().registryAccess());
         ItemStack loaded = ItemStack.CODEC.parse(ops, ItemStack.CODEC.encodeStart(ops, first).getOrThrow()).getOrThrow();
         ItemStack second = loaded.copy();
@@ -306,15 +306,48 @@ public class CoreGameTests {
         }
         buffer.release();
 
-        second.set(ItemProperties.TEMPERATURE, new ItemProperties.Temperature(505, 100));
+        second.set(ItemProperties.TEMPERATURE, ItemProperties.Temperature.of(505, 100));
         if (ItemStack.isSameItemSameComponents(first, second)) {
             helper.fail("Different temperature buckets stacked");
             return;
         }
         ItemStack sameBucket = first.copy();
-        sameBucket.set(ItemProperties.TEMPERATURE, new ItemProperties.Temperature(504, 119));
+        sameBucket.set(ItemProperties.TEMPERATURE, ItemProperties.Temperature.of(504, 119));
         if (!ItemStack.isSameItemSameComponents(first, sameBucket)) {
             helper.fail("Values in the same temperature bucket did not stack");
+            return;
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
+    public static void itemPropertyStackPersistenceRoundTrips(GameTestHelper helper) {
+        ItemStack stack = new ItemStack(Items.STONE);
+        stack.set(ItemProperties.TEMPERATURE, ItemProperties.Temperature.of(504.9, 119));
+        stack.set(ItemProperties.WEAR, ItemProperties.Wear.of(4.9, 10.9));
+        stack.set(ItemProperties.COMPOSITION, ItemProperties.Composition.of(Map.of("iron", 0.292)));
+        stack.set(ItemProperties.CONTAMINATION, ItemProperties.Contamination.of(Map.of("lead", 0.061)));
+        stack.set(ItemProperties.RADIOACTIVITY, ItemProperties.Radioactivity.of("test:boundary", 10.19, 119));
+        stack.set(ItemProperties.ROT, ItemProperties.Rot.of(119, 119, 601));
+        RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, helper.getLevel().registryAccess());
+        ItemStack expected = stack.copy();
+        for (int i = 0; i < 5; i++) {
+            JsonElement saved = ItemStack.CODEC.encodeStart(ops, stack).getOrThrow();
+            stack = ItemStack.CODEC.parse(ops, saved).getOrThrow();
+        }
+        if (!ItemStack.isSameItemSameComponents(expected, stack)
+                || stack.get(ItemProperties.COMPOSITION).massFractions().get("iron") != 0.29
+                || stack.get(ItemProperties.CONTAMINATION).amounts().get("lead") != 0.07) {
+            helper.fail("ItemStack persistence changed rounded component values");
+            return;
+        }
+        ItemStack rotStack = new ItemStack(Items.STONE);
+        rotStack.set(ItemProperties.ROT, ItemProperties.Rot.of(0, 0, 0));
+        ItemProperties.writeRotAtTemperature(rotStack, 19, 303.15);
+        ItemProperties.Rot firstCommit = rotStack.get(ItemProperties.ROT);
+        ItemProperties.writeRotAtTemperature(rotStack, 19, 303.15);
+        if (!firstCommit.equals(rotStack.get(ItemProperties.ROT))) {
+            helper.fail("Committing rot twice at the same time changed its value");
             return;
         }
         helper.succeed();
@@ -331,15 +364,15 @@ public class CoreGameTests {
         ItemStack stack = new ItemStack(Items.STONE);
         ItemStack unregistered = new ItemStack(Items.STONE);
         unregistered.set(ItemProperties.RADIOACTIVITY,
-                new ItemProperties.Radioactivity("test:unregistered", 100, 0));
+                ItemProperties.Radioactivity.of("test:unregistered", 100, 0));
         if (ItemProperties.currentActivity(unregistered, 20).isPresent()
                 || ItemProperties.writeCurrentActivity(unregistered, 20).isPresent()) {
             helper.fail("Unregistered nuclide was unexpectedly evaluated");
             return;
         }
-        stack.set(ItemProperties.TEMPERATURE, new ItemProperties.Temperature(400, 0));
-        stack.set(ItemProperties.RADIOACTIVITY, new ItemProperties.Radioactivity("test:short_lived", 100, 0));
-        stack.set(ItemProperties.ROT, new ItemProperties.Rot(0, 0, 0));
+        stack.set(ItemProperties.TEMPERATURE, ItemProperties.Temperature.of(400, 0));
+        stack.set(ItemProperties.RADIOACTIVITY, ItemProperties.Radioactivity.of("test:short_lived", 100, 0));
+        stack.set(ItemProperties.ROT, ItemProperties.Rot.of(0, 0, 0));
 
         double currentTemperature = ItemProperties.currentTemperature(stack, 200, 300).orElseThrow();
         double currentActivity = ItemProperties.currentActivity(stack, 20).orElseThrow();
@@ -350,7 +383,7 @@ public class CoreGameTests {
         }
         ItemStack dayLived = new ItemStack(Items.STONE);
         dayLived.set(ItemProperties.RADIOACTIVITY,
-                new ItemProperties.Radioactivity("test:day_lived", 100, 0));
+                ItemProperties.Radioactivity.of("test:day_lived", 100, 0));
         if (ItemProperties.currentActivity(dayLived, 24_000).orElseThrow() != 50.0) {
             helper.fail("A one-day half-life did not decay by half in 24,000 ticks");
             return;
@@ -506,10 +539,15 @@ public class CoreGameTests {
 
     private static <T> boolean streamRoundTrips(StreamCodec<? super RegistryFriendlyByteBuf, T> codec,
                                                 RegistryFriendlyByteBuf buffer, T value) {
-        buffer.clear();
-        codec.encode(buffer, value);
-        buffer.readerIndex(0);
-        return value.equals(codec.decode(buffer));
+        for (int i = 0; i < 5; i++) {
+            codec.encode(buffer, value);
+            buffer.readerIndex(0);
+            T decoded = codec.decode(buffer);
+            if (!value.equals(decoded)) return false;
+            value = decoded;
+            buffer.clear();
+        }
+        return true;
     }
 
     private static boolean sameStacks(List<ItemStack> first, List<ItemStack> second) {

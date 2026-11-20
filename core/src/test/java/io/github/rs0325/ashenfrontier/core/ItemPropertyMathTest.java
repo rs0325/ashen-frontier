@@ -30,4 +30,13 @@ class ItemPropertyMathTest {
         assertEquals(120, ItemPropertyMath.floorTime(120, 20));
         assertEquals(40, ItemPropertyMath.roundUp(21, 20), 1e-9);
     }
+
+    @Test void rotProgressQuantizationIsIdempotentAtTheSameRecordedTime() {
+        double committed = ItemPropertyMath.roundUp(ItemPropertyMath.rotProgress(0, 0, 303.15,
+                ItemProperties.ROT_REFERENCE_K, ItemProperties.ROT_Q10), ItemProperties.ROT_STEP_SECONDS);
+        double repeated = ItemPropertyMath.roundUp(ItemPropertyMath.rotProgress(committed, 0, 303.15,
+                ItemProperties.ROT_REFERENCE_K, ItemProperties.ROT_Q10), ItemProperties.ROT_STEP_SECONDS);
+        assertEquals(committed, repeated);
+    }
+
 }
