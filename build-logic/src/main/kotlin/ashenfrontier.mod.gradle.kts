@@ -22,6 +22,13 @@ base.archivesName = modId
 java.toolchain.languageVersion = JavaLanguageVersion.of(mc.getProperty("java_version"))
 tasks.withType<JavaCompile>().configureEach { options.encoding = "UTF-8" }
 
+dependencies {
+    testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test { useJUnitPlatform() }
+
 neoForge {
     version = mc.getProperty("neoforge_version")
     parchment {
@@ -34,10 +41,18 @@ neoForge {
             server()
             programArgument("--nogui")
         }
+        register("gameTestServer") {
+            type = "gameTestServer"
+            systemProperty("neoforge.enabledGameTestNamespaces", modId)
+        }
     }
     mods {
         register(modId) { sourceSet(sourceSets.main.get()) }
     }
+}
+
+tasks.register("gameTest") {
+    dependsOn("runGameTestServer")
 }
 
 // 機能Modはすべて同じMinecraftバージョンのcoreへ依存する。
