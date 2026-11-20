@@ -92,6 +92,9 @@ public final class TerminalScreen extends Screen {
                 graphics.drawString(font, Component.translatable("terminal.ashen_frontier.modules.empty"),
                         left, top, 0xFFFFFF);
             }
+        } else if (tab == 1 && shownResearch.isEmpty()) {
+            graphics.drawString(font, Component.translatable("terminal.ashen_frontier.research.empty"),
+                    left, top, 0xFFFFFF);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
     }

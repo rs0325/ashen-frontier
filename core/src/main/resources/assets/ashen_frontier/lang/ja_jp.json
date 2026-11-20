@@ -35,6 +35,7 @@
   "terminal.ashen_frontier.tab.status": "状態",
   "terminal.ashen_frontier.tab.research": "研究",
   "terminal.ashen_frontier.tab.modules": "拡張",
+  "terminal.ashen_frontier.research.empty": "研究がありません。",
   "terminal.ashen_frontier.insert": "差し込む",
   "terminal.ashen_frontier.remove": "取り外す",
   "terminal.ashen_frontier.status.empty": "状態表示の拡張モジュールがありません。",
