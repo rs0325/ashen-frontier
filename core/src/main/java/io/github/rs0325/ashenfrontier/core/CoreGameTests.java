@@ -80,7 +80,7 @@ public class CoreGameTests {
         });
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void vanillaRemovalRecipesAndTag(GameTestHelper helper) {
         var recipes = helper.getLevel().getRecipeManager();
         for (String id : List.of("minecraft:hopper", "minecraft:iron_pickaxe",
@@ -155,7 +155,7 @@ public class CoreGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void vanillaNaturalSpawnTypesAreBlocked(GameTestHelper helper) {
         if (!VanillaWorldEvents.shouldCancelSpawn(MobSpawnType.NATURAL)
                 || !VanillaWorldEvents.shouldCancelSpawn(MobSpawnType.CHUNK_GENERATION)
@@ -167,7 +167,7 @@ public class CoreGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void terminalModulesPersistAndCanBeInstalled(GameTestHelper helper) {
         var player = FakePlayerFactory.get(helper.getLevel(),
                 new GameProfile(UUID.randomUUID(), "terminal-module-test"));
@@ -207,12 +207,12 @@ public class CoreGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void coreGameTestRuns(GameTestHelper helper) {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void rescueCommandsRepairMoveAndLog(GameTestHelper helper) throws CommandSyntaxException {
         var server = helper.getLevel().getServer();
         var player = FakePlayerFactory.get(helper.getLevel(),
@@ -266,7 +266,7 @@ public class CoreGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void materialDataLoads(GameTestHelper helper) {
         MaterialData material = MaterialData.get(Items.STONE).orElseThrow();
         if (material.massKg() != 1.0) {
@@ -276,7 +276,7 @@ public class CoreGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void itemPropertiesStack(GameTestHelper helper) {
         ItemStack first = new ItemStack(Items.STONE);
         first.set(ItemProperties.TEMPERATURE, new ItemProperties.Temperature(500, 100));
@@ -320,7 +320,7 @@ public class CoreGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void delayedPropertiesAdvance(GameTestHelper helper) {
         ItemProperties.registerHalfLife("test:short_lived", 1.0);
         if (ItemProperties.currentTemperature(new ItemStack(Items.AIR), 20, 300).isPresent()) {
@@ -360,7 +360,7 @@ public class CoreGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void teamOperationsPersist(GameTestHelper helper) {
         TeamData data = TeamData.get(helper.getLevel().getServer());
         UUID owner = UUID.randomUUID();
@@ -404,7 +404,7 @@ public class CoreGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void researchConditionUnlocksForTeam(GameTestHelper helper) {
         TeamData data = TeamData.get(helper.getLevel().getServer());
         var player = FakePlayerFactory.get(helper.getLevel(),
@@ -442,7 +442,7 @@ public class CoreGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 100)
     public static void recipeLoadsAndConditionsRoundTrip(GameTestHelper helper) {
         ResourceLocation type = ResourceLocation.parse("ashen_frontier:game_test");
         var recipes = helper.getLevel().getRecipeManager().getAllRecipesFor(RecipeTypeRegistry.type(type));
