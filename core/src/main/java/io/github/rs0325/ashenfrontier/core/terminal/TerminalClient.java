@@ -9,12 +9,14 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import org.lwjgl.glfw.GLFW;
 
 @EventBusSubscriber(modid = AshenFrontierCore.MOD_ID, value = Dist.CLIENT)
 public final class TerminalClient {
     public static final KeyMapping OPEN = new KeyMapping("key.ashen_frontier.terminal",
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, "key.categories.ashen_frontier");
+            KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R,
+            "key.categories.ashen_frontier");
 
     private TerminalClient() {}
 
