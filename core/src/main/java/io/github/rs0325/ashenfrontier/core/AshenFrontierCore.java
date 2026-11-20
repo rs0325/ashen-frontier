@@ -18,6 +18,9 @@ import io.github.rs0325.ashenfrontier.core.team.TeamData;
 import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
 import net.neoforged.neoforge.common.NeoForge;
 import io.github.rs0325.ashenfrontier.core.recipe.RecipeTypeRegistry;
+import io.github.rs0325.ashenfrontier.core.compat.CompatibilityChecker;
+import io.github.rs0325.ashenfrontier.core.rescue.RescueCommands;
+import io.github.rs0325.ashenfrontier.core.config.CoreConfig;
 
 @Mod(AshenFrontierCore.MOD_ID)
 public final class AshenFrontierCore {
@@ -26,7 +29,7 @@ public final class AshenFrontierCore {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public AshenFrontierCore(IEventBus modEventBus, ModContainer modContainer) {
-        UnitsConfig.register(modContainer);
+        CoreConfig.register(modContainer);
         MaterialData.register(modEventBus);
         ItemProperties.register(modEventBus);
         modEventBus.addListener(MaterialDataProvider::gatherData);
@@ -37,6 +40,8 @@ public final class AshenFrontierCore {
             RecipeTypeRegistry.register(modEventBus, id("game_test"));
         }
         NeoForge.EVENT_BUS.addListener(TeamCommands::register);
+        NeoForge.EVENT_BUS.addListener(RescueCommands::register);
+        CompatibilityChecker.register();
     }
 
     /** Ashen Frontier全Mod共通の名前空間でリソースIDを作る。 */

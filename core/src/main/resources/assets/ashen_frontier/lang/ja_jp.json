@@ -20,5 +20,12 @@
   "recipe.ashen_frontier.facility": "必要設備: %s",
   "recipe.ashen_frontier.research": "研究: %s",
   "recipe.ashen_frontier.research_locked": "未解放: %s",
-  "recipe_type.ashen_frontier.game_test": "GameTest加工"
+  "recipe_type.ashen_frontier.game_test": "GameTest加工",
+  "compatibility.ashen_frontier.warning": "未対応のModを検出しました: %s。ゲームは続行しますが、予期しない動作が起きる可能性があります。",
+  "command.ashen_frontier.rescue.repaired": "%s のチームと研究データを修復しました。",
+  "command.ashen_frontier.rescue.teleported": "%s を指定位置へ移動しました。",
+  "compatibility.ashen_frontier.title": "未対応のModを検出",
+  "config.ashen_frontier_core.compatibility.allowedMods": "追加で許可するMod ID",
+  "config.ashen_frontier_core.units.temperatureKelvin": "温度をケルビンで表示する",
+  "config.ashen_frontier_core.units.pressurePascal": "圧力をパスカルで表示する"
 }
