@@ -21,6 +21,12 @@ base.archivesName = modId
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(mc.getProperty("java_version"))
 tasks.withType<JavaCompile>().configureEach { options.encoding = "UTF-8" }
+val moduleDir = projectDir.parentFile.parentFile
+val generatedResources = moduleDir.resolve("src/generated/resources")
+sourceSets.main {
+    resources.srcDir(generatedResources)
+    resources.exclude(".cache/**")
+}
 
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
@@ -44,6 +50,15 @@ neoForge {
         register("gameTestServer") {
             type = "gameTestServer"
             systemProperty("neoforge.enabledGameTestNamespaces", modId)
+        }
+        register("data") {
+            data()
+            programArguments.addAll(
+                "--mod", modId,
+                "--all",
+                "--output", generatedResources.absolutePath,
+                "--existing", moduleDir.resolve("src/main/resources").absolutePath,
+            )
         }
     }
     mods {
