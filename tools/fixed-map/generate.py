@@ -8,6 +8,7 @@ import math
 import shutil
 import sys
 import tempfile
+from write_underground import document as underground_document
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +21,7 @@ MAP_RESOURCES = Path("modules/world/src/main/resources/data/ashen_frontier/fixed
 OUTPUT = ROOT / MAP_RESOURCES / "earth_001"
 SIZE = 2048
 LAYERS = ("height", "region", "water", "soil", "geology", "coast_river")
-RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json")
+RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json", "underground.json")
 TOOL_VERSION = "1.2.0"
 
 
@@ -382,8 +383,11 @@ def generate_assets(input_dir, output):
                          "drainage_land_cells": int(np.count_nonzero(parent[land]>=0))}}
     write_json(output / "index.json", index)
     write_json(output / "geology_profiles.json",dict(geology_definition,map_version=config["map_version"]))
+    underground = underground_document()
+    underground.update(map_version=config["map_version"], fixed_seed=config["fixed_seed"])
+    write_json(output / "underground.json", underground)
     inputs = {p.relative_to(input_dir).as_posix(): sha(p) for p in sorted(input_dir.iterdir()) if p.is_file()}
-    tool_files = {f"tools/fixed-map/{p}": sha(TOOL/p) for p in ["generate.py", "extract_mask.py", "requirements.txt"]}
+    tool_files = {f"tools/fixed-map/{p}": sha(TOOL/p) for p in ["generate.py", "extract_mask.py", "requirements.txt", "write_underground.py"]}
     manifest = {"map_version": config["map_version"], "format_version": config["format_version"],
                 "fixed_seed": config["fixed_seed"], "width": 32768, "depth": 32768,
                 "min_y": -64, "height": 384, "raster_width": SIZE, "raster_depth": SIZE,

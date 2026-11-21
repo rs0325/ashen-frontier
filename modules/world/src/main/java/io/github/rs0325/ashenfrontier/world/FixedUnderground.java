@@ -1,0 +1,155 @@
+package io.github.rs0325.ashenfrontier.world;
+
+import io.github.rs0325.ashenfrontier.core.catalog.NatureCatalog;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.state.BlockState;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/** 固定鉱床と歩行可能な階段状経路。交差するチャンクの候補だけを列へ渡す。 */
+public final class FixedUnderground {
+    record Body(UndergroundLayout.Deposit data, int y, BlockState host, BlockState ore) {
+        boolean contains(int x, int y, int z, int margin) {
+            double dx = (x - data.x()) / (double) (data.radii().get(0) + margin);
+            double dy = (y - this.y) / (double) (data.radii().get(1) + margin);
+            double dz = (z - data.z()) / (double) (data.radii().get(2) + margin);
+            return switch (data.shape()) {
+                case "ellipsoid" -> dx * dx + dy * dy + dz * dz <= 1;
+                case "layer" -> dx * dx + dz * dz <= 1 && Math.abs(dy) <= 1;
+                case "vein" -> dx * dx + dy * dy <= 1 && Math.abs(dz) <= 1;
+                default -> throw new IllegalStateException("未定義の鉱床形状: " + data.shape());
+            };
+        }
+    }
+
+    record Passage(String id, int ax, int az, int ay, int bx, int bz, int by, int width, int height) {
+        int floor(int x, int z) {
+            double dx = bx - ax, dz = bz - az, length = dx * dx + dz * dz;
+            double t = length == 0 ? 0 : ((x - ax) * dx + (z - az) * dz) / length;
+            if (t < 0 || t > 1) return Integer.MIN_VALUE;
+            if (Math.abs(x - ax - t * dx) > width || Math.abs(z - az - t * dz) > width) return Integer.MIN_VALUE;
+            return (int) Math.floor(ay + t * (by - ay));
+        }
+    }
+
+    record Cell(List<Body> bodies, List<Passage> passages) {}
+    private static final Cell EMPTY = new Cell(List.of(), List.of());
+    private final Map<Long, Cell> cells;
+    private final List<Body> bodies;
+    private final List<Passage> passages;
+
+    FixedUnderground(MapVersion version, FixedTerrain terrain) {
+        var layout = UndergroundLayout.read(version);
+        if (layout.fixed_seed() != terrain.map().seed()) throw new IllegalStateException("地下の固定シードが一致しません");
+        var bodies = new ArrayList<Body>();
+        var passages = new ArrayList<Passage>();
+        for (var data : layout.deposits()) {
+            if (!Boolean.TRUE.equals(data.vanilla())) {
+                var entry = NatureCatalog.require(data.block());
+                if (entry.host() != null && !id(entry.host()).equals(id(data.host()))) {
+                    throw new IllegalStateException("鉱床の母岩がカタログと一致しません: " + data.id());
+                }
+            }
+            int y = terrain.surfaceY(data.x(), data.z()) - data.depth();
+            var host = block(id(data.host()));
+            var column = terrain.column(data.x(), data.z());
+            while (y > -63 && !column.state(y).equals(column.rockState(y))) y--;
+            if (!data.lens()) {
+                int nearest = Integer.MIN_VALUE, distance = Integer.MAX_VALUE;
+                for (int candidate = -63; candidate <= column.surfaceY() - 3; candidate++) {
+                    if (column.state(candidate).equals(host) && Math.abs(candidate - y) < distance) {
+                        nearest = candidate;
+                        distance = Math.abs(candidate - y);
+                    }
+                }
+                if (nearest == Integer.MIN_VALUE) throw new IllegalStateException("鉱床の母岩が地層にありません: " + data.id());
+                y = nearest;
+            }
+            var body = new Body(data, y, host, block(id(data.block())));
+            bodies.add(body);
+            if (!data.id().startsWith("oil_") && !Boolean.TRUE.equals(data.vanilla())) {
+                int distance = Math.max(96, data.depth() + 24);
+                int x = data.x() - distance;
+                passages.add(new Passage(data.id(), x, data.z(), terrain.surfaceY(x, data.z()),
+                        data.x(), data.z(), y, 1, 3));
+            }
+        }
+        for (var space : layout.spaces()) {
+            int floor = terrain.surfaceY(space.x(), space.z()) - space.depth();
+            int entryX = space.x() - Integer.signum(space.end_x() - space.x()) * (space.depth() + 16);
+            passages.add(new Passage(space.id() + "_entry", entryX, space.z(),
+                    terrain.surfaceY(entryX, space.z()),
+                    space.x(), space.z(), floor, space.width(), space.height()));
+            passages.add(new Passage(space.id(), space.x(), space.z(), floor,
+                    space.end_x(), space.end_z(), floor, space.width(), space.height()));
+        }
+        this.bodies = List.copyOf(bodies);
+        this.passages = List.copyOf(passages);
+        Map<Long, List<Body>> bodyCells = new HashMap<>();
+        Map<Long, List<Passage>> passageCells = new HashMap<>();
+        for (var body : bodies) {
+            int rx = body.data.radii().get(0) + 3, rz = body.data.radii().get(2) + 3;
+            index(bodyCells, body, body.data.x() - rx, body.data.z() - rz, body.data.x() + rx, body.data.z() + rz);
+        }
+        for (var passage : passages) {
+            index(passageCells, passage, Math.min(passage.ax, passage.bx) - passage.width,
+                    Math.min(passage.az, passage.bz) - passage.width, Math.max(passage.ax, passage.bx) + passage.width,
+                    Math.max(passage.az, passage.bz) + passage.width);
+        }
+        var cells = new HashMap<Long, Cell>();
+        for (var key : bodyCells.keySet()) cells.put(key, new Cell(List.copyOf(bodyCells.get(key)), List.of()));
+        for (var key : passageCells.keySet()) cells.put(key,
+                new Cell(cells.getOrDefault(key, EMPTY).bodies, List.copyOf(passageCells.get(key))));
+        this.cells = Map.copyOf(cells);
+    }
+
+    private static <T> void index(Map<Long, List<T>> cells, T value, int x0, int z0, int x1, int z1) {
+        for (int x = x0 >> 4; x <= x1 >> 4; x++) for (int z = z0 >> 4; z <= z1 >> 4; z++) {
+            cells.computeIfAbsent(key(x, z), ignored -> new ArrayList<>()).add(value);
+        }
+    }
+
+    static String id(String path) {
+        if (path.contains(":")) return path;
+        return switch (path) {
+            case "granite", "andesite", "sandstone" -> "minecraft:" + path;
+            default -> "ashen_frontier:" + path;
+        };
+    }
+
+    private static BlockState block(String id) {
+        var key = ResourceLocation.parse(id);
+        if (!BuiltInRegistries.BLOCK.containsKey(key)) throw new IllegalStateException("地下の未登録ブロック: " + id);
+        return BuiltInRegistries.BLOCK.get(key).defaultBlockState();
+    }
+
+    private static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xffffffffL); }
+    Cell cell(int x, int z) { return cells.getOrDefault(key(x >> 4, z >> 4), EMPTY); }
+    List<Body> bodies() { return bodies; }
+    List<Passage> passages() { return passages; }
+
+    static BlockState rock(Cell cell, int x, int y, int z, BlockState original) {
+        for (var body : cell.bodies) {
+            if (body.data.lens() && body.contains(x, y, z, 3)) return body.host;
+        }
+        return original;
+    }
+
+    static BlockState state(Cell cell, int x, int y, int z, BlockState host) {
+        for (var body : cell.bodies) {
+            if (host.equals(body.host) && body.contains(x, y, z, 0)) return body.ore;
+        }
+        return host;
+    }
+
+    static boolean carved(Cell cell, int x, int y, int z) {
+        for (var passage : cell.passages) {
+            int floor = passage.floor(x, z);
+            if (floor != Integer.MIN_VALUE && y > floor && y <= floor + passage.height) return true;
+        }
+        return false;
+    }
+}

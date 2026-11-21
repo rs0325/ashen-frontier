@@ -1,0 +1,738 @@
+{
+  "map_version": "earth_001",
+  "format_version": 1,
+  "fixed_seed": 520026,
+  "salt": "underground_001",
+  "deposits": [
+    {
+      "id": "mining_iron",
+      "block": "quartzite_hematite_ore",
+      "host": "quartzite",
+      "x": -10250,
+      "z": -10700,
+      "depth": 62,
+      "radii": [
+        18,
+        5,
+        12
+      ],
+      "shape": "ellipsoid",
+      "required": true,
+      "lens": false,
+      "vanilla": null
+    },
+    {
+      "id": "mining_copper",
+      "block": "granite_chalcopyrite_ore",
+      "host": "minecraft:granite",
+      "x": -9750,
+      "z": -10764,
+      "depth": 9,
+      "radii": [
+        16,
+        5,
+        10
+      ],
+      "shape": "ellipsoid",
+      "required": true,
+      "lens": false,
+      "vanilla": null
+    },
+    {
+      "id": "mining_coal",
+      "block": "bituminous_coal",
+      "host": "shale",
+      "x": -10500,
+      "z": -10500,
+      "depth": 12,
+      "radii": [
+        22,
+        3,
+        14
+      ],
+      "shape": "layer",
+      "required": true,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "mining_tin",
+      "block": "granite_cassiterite_ore",
+      "host": "minecraft:granite",
+      "x": -10000,
+      "z": -11000,
+      "depth": 10,
+      "radii": [
+        16,
+        4,
+        6
+      ],
+      "shape": "vein",
+      "required": true,
+      "lens": false,
+      "vanilla": null
+    },
+    {
+      "id": "mining_limestone",
+      "block": "limestone",
+      "host": "limestone",
+      "x": -10300,
+      "z": -10450,
+      "depth": 10,
+      "radii": [
+        18,
+        5,
+        12
+      ],
+      "shape": "layer",
+      "required": true,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "agriculture_clay",
+      "block": "clay_sediment",
+      "host": "clay_sediment",
+      "x": -5300,
+      "z": -8500,
+      "depth": 4,
+      "radii": [
+        18,
+        2,
+        14
+      ],
+      "shape": "layer",
+      "required": true,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "arid_nitrate",
+      "block": "clay_sediment_nitrate_ore",
+      "host": "clay_sediment",
+      "x": -12600,
+      "z": -5400,
+      "depth": 4,
+      "radii": [
+        20,
+        2,
+        14
+      ],
+      "shape": "layer",
+      "required": true,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "coastal_silica",
+      "block": "sandstone_quartz_ore",
+      "host": "minecraft:sandstone",
+      "x": -4200,
+      "z": -3800,
+      "depth": 10,
+      "radii": [
+        18,
+        4,
+        12
+      ],
+      "shape": "layer",
+      "required": true,
+      "lens": false,
+      "vanilla": null
+    },
+    {
+      "id": "sulfur_fumarole",
+      "block": "andesite_sulfur_ore",
+      "host": "minecraft:andesite",
+      "x": -10800,
+      "z": -10900,
+      "depth": 7,
+      "radii": [
+        5,
+        2,
+        5
+      ],
+      "shape": "ellipsoid",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "sulfur_pyrite",
+      "block": "granite_pyrite_ore",
+      "host": "minecraft:granite",
+      "x": -9600,
+      "z": -11100,
+      "depth": 12,
+      "radii": [
+        5,
+        3,
+        5
+      ],
+      "shape": "ellipsoid",
+      "required": false,
+      "lens": false,
+      "vanilla": null
+    },
+    {
+      "id": "magnetite",
+      "block": "limestone_magnetite_ore",
+      "host": "limestone",
+      "x": -11400,
+      "z": -11300,
+      "depth": 32,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "lead",
+      "block": "limestone_galena_ore",
+      "host": "limestone",
+      "x": -11220,
+      "z": -11300,
+      "depth": 32,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "zinc",
+      "block": "limestone_sphalerite_ore",
+      "host": "limestone",
+      "x": -11040,
+      "z": -11300,
+      "depth": 35,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "nickel",
+      "block": "peridotite_pentlandite_ore",
+      "host": "peridotite",
+      "x": -10860,
+      "z": -11300,
+      "depth": 70,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "aluminium",
+      "block": "limestone_bauxite_ore",
+      "host": "limestone",
+      "x": -11400,
+      "z": -11480,
+      "depth": 25,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "titanium",
+      "block": "sandstone_rutile_ore",
+      "host": "minecraft:sandstone",
+      "x": -11220,
+      "z": -11480,
+      "depth": 16,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "chromium",
+      "block": "peridotite_chromite_ore",
+      "host": "peridotite",
+      "x": -11040,
+      "z": -11480,
+      "depth": 72,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "manganese",
+      "block": "limestone_pyrolusite_ore",
+      "host": "limestone",
+      "x": -10860,
+      "z": -11480,
+      "depth": 30,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "molybdenum",
+      "block": "granite_molybdenite_ore",
+      "host": "minecraft:granite",
+      "x": -11400,
+      "z": -11660,
+      "depth": 12,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "tungsten",
+      "block": "limestone_scheelite_ore",
+      "host": "limestone",
+      "x": -11220,
+      "z": -11660,
+      "depth": 35,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "uranium",
+      "block": "granite_uraninite_ore",
+      "host": "minecraft:granite",
+      "x": -11040,
+      "z": -11660,
+      "depth": 18,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "phosphate",
+      "block": "limestone_apatite_ore",
+      "host": "limestone",
+      "x": -10860,
+      "z": -11660,
+      "depth": 28,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "graphite",
+      "block": "gneiss_graphite_ore",
+      "host": "gneiss",
+      "x": -11400,
+      "z": -11840,
+      "depth": 45,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "lithium",
+      "block": "granite_spodumene_ore",
+      "host": "minecraft:granite",
+      "x": -11220,
+      "z": -11840,
+      "depth": 15,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "cobalt",
+      "block": "quartzite_cobaltite_ore",
+      "host": "quartzite",
+      "x": -11040,
+      "z": -11840,
+      "depth": 65,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "rare_earth",
+      "block": "sandstone_monazite_ore",
+      "host": "minecraft:sandstone",
+      "x": -10860,
+      "z": -11840,
+      "depth": 15,
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "shape": "vein",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "peat",
+      "block": "peat",
+      "host": "shale",
+      "x": -10900,
+      "z": -10100,
+      "depth": 12,
+      "radii": [
+        12,
+        2,
+        8
+      ],
+      "shape": "layer",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "lignite",
+      "block": "lignite",
+      "host": "shale",
+      "x": -11060,
+      "z": -10100,
+      "depth": 12,
+      "radii": [
+        12,
+        2,
+        8
+      ],
+      "shape": "layer",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "anthracite",
+      "block": "anthracite",
+      "host": "shale",
+      "x": -11220,
+      "z": -10100,
+      "depth": 12,
+      "radii": [
+        12,
+        2,
+        8
+      ],
+      "shape": "layer",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "oil_light_low_sulfur",
+      "block": "light_low_sulfur_crude_oil",
+      "host": "minecraft:sandstone",
+      "x": -6400,
+      "z": -5500,
+      "depth": 110,
+      "radii": [
+        7,
+        2,
+        6
+      ],
+      "shape": "layer",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "oil_light_high_sulfur",
+      "block": "light_high_sulfur_crude_oil",
+      "host": "minecraft:sandstone",
+      "x": -6240,
+      "z": -5500,
+      "depth": 110,
+      "radii": [
+        7,
+        2,
+        6
+      ],
+      "shape": "layer",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "oil_heavy_low_sulfur",
+      "block": "heavy_low_sulfur_crude_oil",
+      "host": "minecraft:sandstone",
+      "x": -6080,
+      "z": -5500,
+      "depth": 110,
+      "radii": [
+        7,
+        2,
+        6
+      ],
+      "shape": "layer",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "oil_heavy_high_sulfur",
+      "block": "heavy_high_sulfur_crude_oil",
+      "host": "minecraft:sandstone",
+      "x": -5920,
+      "z": -5500,
+      "depth": 110,
+      "radii": [
+        7,
+        2,
+        6
+      ],
+      "shape": "layer",
+      "required": false,
+      "lens": true,
+      "vanilla": null
+    },
+    {
+      "id": "vanilla_iron",
+      "block": "minecraft:iron_ore",
+      "host": "minecraft:granite",
+      "x": -9300,
+      "z": -11400,
+      "depth": 20,
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "shape": "ellipsoid",
+      "required": false,
+      "lens": false,
+      "vanilla": true
+    },
+    {
+      "id": "vanilla_copper",
+      "block": "minecraft:copper_ore",
+      "host": "minecraft:granite",
+      "x": -9200,
+      "z": -11400,
+      "depth": 20,
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "shape": "ellipsoid",
+      "required": false,
+      "lens": false,
+      "vanilla": true
+    },
+    {
+      "id": "vanilla_gold",
+      "block": "minecraft:gold_ore",
+      "host": "minecraft:granite",
+      "x": -9100,
+      "z": -11400,
+      "depth": 20,
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "shape": "ellipsoid",
+      "required": false,
+      "lens": false,
+      "vanilla": true
+    },
+    {
+      "id": "vanilla_redstone",
+      "block": "minecraft:redstone_ore",
+      "host": "minecraft:granite",
+      "x": -9000,
+      "z": -11400,
+      "depth": 20,
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "shape": "ellipsoid",
+      "required": false,
+      "lens": false,
+      "vanilla": true
+    },
+    {
+      "id": "vanilla_lapis",
+      "block": "minecraft:lapis_ore",
+      "host": "minecraft:granite",
+      "x": -8900,
+      "z": -11400,
+      "depth": 20,
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "shape": "ellipsoid",
+      "required": false,
+      "lens": false,
+      "vanilla": true
+    },
+    {
+      "id": "vanilla_diamond",
+      "block": "minecraft:diamond_ore",
+      "host": "minecraft:granite",
+      "x": -8800,
+      "z": -11400,
+      "depth": 20,
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "shape": "ellipsoid",
+      "required": false,
+      "lens": false,
+      "vanilla": true
+    },
+    {
+      "id": "vanilla_emerald",
+      "block": "minecraft:emerald_ore",
+      "host": "minecraft:granite",
+      "x": -8700,
+      "z": -11400,
+      "depth": 20,
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "shape": "ellipsoid",
+      "required": false,
+      "lens": false,
+      "vanilla": true
+    }
+  ],
+  "spaces": [
+    {
+      "id": "city_metro",
+      "kind": "metro",
+      "facility": "spawn",
+      "x": -8340,
+      "z": -8000,
+      "end_x": -8040,
+      "end_z": -8000,
+      "depth": 28,
+      "width": 3,
+      "height": 5
+    },
+    {
+      "id": "mining_gallery",
+      "kind": "mine",
+      "facility": "mining",
+      "x": -10160,
+      "z": -10650,
+      "end_x": -10400,
+      "end_z": -10650,
+      "depth": 34,
+      "width": 2,
+      "height": 3
+    },
+    {
+      "id": "industry_utility",
+      "kind": "utility",
+      "facility": "industry",
+      "x": -6160,
+      "z": -5000,
+      "end_x": -6460,
+      "end_z": -5000,
+      "depth": 16,
+      "width": 1,
+      "height": 3
+    },
+    {
+      "id": "fixed_cave",
+      "kind": "cave",
+      "facility": "mining",
+      "x": -10800,
+      "z": -11600,
+      "end_x": -11100,
+      "end_z": -11600,
+      "depth": 60,
+      "width": 4,
+      "height": 6
+    }
+  ]
+}

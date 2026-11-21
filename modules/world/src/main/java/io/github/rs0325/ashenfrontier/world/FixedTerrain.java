@@ -18,6 +18,7 @@ public final class FixedTerrain {
     private final Profile[] profiles = new Profile[6];
     private final BlockState[] soils = new BlockState[6];
     private final BlockState[] waters = new BlockState[9];
+    private final FixedUnderground underground;
 
     public FixedTerrain(MapVersion version) {
         map = FixedMapData.require(version);
@@ -48,6 +49,7 @@ public final class FixedTerrain {
                 "contaminated_water", "toxic_water", "polluted_seawater"};
         for (int i = 0; i < soilIds.length; i++) soils[i + 1] = block("ashen_frontier:" + soilIds[i]);
         for (int i = 0; i < waterIds.length; i++) waters[i + 1] = block("ashen_frontier:" + waterIds[i]);
+        underground = new FixedUnderground(version, this);
     }
 
     private static double component(JsonObject object, String name, int i) {
@@ -61,6 +63,7 @@ public final class FixedTerrain {
     }
 
     public FixedMapData map() { return map; }
+    FixedUnderground underground() { return underground; }
 
     /** 地表の固体最上部Y。範囲外は−65。水面・建築余地を含む上限は地形に含めない。 */
     public int surfaceY(int x, int z) {
@@ -132,7 +135,7 @@ public final class FixedTerrain {
 
     /** 列ごとに地層境界を一度計算する。列は呼出し元専有で、全Yの照会に再利用できる。 */
     public Column column(int x, int z) {
-        if (!MapCoordinates.contains(x, z)) return new Column(-65, Integer.MIN_VALUE, null, null, new int[0], null, 0, false);
+        if (!MapCoordinates.contains(x, z)) return new Column(-65, Integer.MIN_VALUE, null, null, new int[0], null, 0, false, x, z, null);
         int surface = surfaceY(x, z);
         var profile = profiles[map.category(3, x, z)];
         double displacement = (x - profile.ax) * profile.gx + (z - profile.az) * profile.gz;
@@ -151,7 +154,9 @@ public final class FixedTerrain {
         int ice = iceDepth(x, z, surface);
         int biome = biomeIndex(map, x, z, surface);
         boolean snow = (map.waterMask(x, z) & 14) == 0 && (ice > 0 || biome == 7 || biome == 9 || biome == 11);
-        return new Column(surface, map.waterSurface(x, z), soils[soil], waters[quality], boundaries, profile, ice, snow);
+        var cell = underground != null && !map.isProtected(x, z) && map.region(x, z) >= 1 && map.region(x, z) <= 7
+                ? underground.cell(x, z) : null;
+        return new Column(surface, map.waterSurface(x, z), soils[soil], waters[quality], boundaries, profile, ice, snow, x, z, cell);
     }
 
     /** 固体地表・水面と母岩を持つ不変の列。stateは生成範囲外で空気を返す。 */
@@ -162,8 +167,11 @@ public final class FixedTerrain {
         private final Profile profile;
         private final int ice;
         private final boolean snow;
+        private final int x, z;
+        private final FixedUnderground.Cell underground;
 
-        private Column(int surface, int waterY, BlockState soil, BlockState water, int[] boundaries, Profile profile, int ice, boolean snow) {
+        private Column(int surface, int waterY, BlockState soil, BlockState water, int[] boundaries, Profile profile,
+                       int ice, boolean snow, int x, int z, FixedUnderground.Cell underground) {
             this.surface = surface;
             this.waterY = waterY;
             this.soil = soil;
@@ -172,6 +180,9 @@ public final class FixedTerrain {
             this.profile = profile;
             this.ice = ice;
             this.snow = snow;
+            this.x = x;
+            this.z = z;
+            this.underground = underground;
         }
 
         public int surfaceY() { return surface; }
@@ -181,10 +192,12 @@ public final class FixedTerrain {
             if (profile == null || y < -64 || y > topY()) return Blocks.AIR.defaultBlockState();
             if (y == -64) return Blocks.BEDROCK.defaultBlockState();
             if (y > surface) return water;
+            if (underground != null && FixedUnderground.carved(underground, x, y, z)) return Blocks.AIR.defaultBlockState();
             if (snow && y == surface) return Blocks.SNOW_BLOCK.defaultBlockState();
             if (y >= surface - ice && y < surface) return (surface - y >= 4 ? Blocks.BLUE_ICE : Blocks.PACKED_ICE).defaultBlockState();
             if (soil != null && y > surface - 3) return soil;
-            return rockState(y);
+            var rock = rockState(y);
+            return underground == null ? rock : FixedUnderground.state(underground, x, y, z, rock);
         }
 
         /** 土壌・水・雪氷を重ねる前の母岩。Eの母岩条件に使い、範囲外と地表より上は空気、底は岩盤を返す。 */
@@ -192,9 +205,10 @@ public final class FixedTerrain {
             if (profile == null || y < -64 || y > surface) return Blocks.AIR.defaultBlockState();
             if (y == -64) return Blocks.BEDROCK.defaultBlockState();
             for (int i = 0; i < boundaries.length; i++) {
-                if (y > boundaries[i]) return profile.layers.get(i).rock;
+                if (y > boundaries[i]) return underground == null ? profile.layers.get(i).rock
+                        : FixedUnderground.rock(underground, x, y, z, profile.layers.get(i).rock);
             }
-            return profile.basement;
+            return underground == null ? profile.basement : FixedUnderground.rock(underground, x, y, z, profile.basement);
         }
     }
 }
