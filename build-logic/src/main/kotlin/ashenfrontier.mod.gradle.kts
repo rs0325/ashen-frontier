@@ -56,7 +56,6 @@ neoForge {
             server()
             systemProperty("ashen_frontier.testRecipes",
                 providers.gradleProperty("recipeTestFixture").orElse("false").get())
-            programArgument("--nogui")
         }
         register("gameTestServer") {
             type = "gameTestServer"
