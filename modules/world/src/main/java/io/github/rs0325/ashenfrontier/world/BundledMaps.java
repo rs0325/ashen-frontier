@@ -30,7 +30,7 @@ public final class BundledMaps {
         }
         var files = manifest.getAsJsonObject("files");
         if (!files.keySet().containsAll(Set.of("height.png", "region.png", "water.png", "soil.png",
-                "geology.png", "coast_river.png", "index.json", "geology_profiles.json"))) {
+                "geology.png", "coast_river.png", "index.json", "geology_profiles.json", "underground.json"))) {
             throw new IllegalStateException("固定マップ版 " + version.mapVersion() + ": 必須レイヤー・索引が不足しています");
         }
         for (var entry : files.entrySet()) {

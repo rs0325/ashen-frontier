@@ -23,9 +23,10 @@
     "numpy": "2.2.6",
     "pillow": "11.2.1",
     "files": {
-      "tools/fixed-map/generate.py": "e356e4b8daee115434712800a8e7874a0d058b781033d20184601954c0505c1a",
+      "tools/fixed-map/generate.py": "12c4f292e771698c171dc5c80af42eea966433a9d12a149662fbeb7c8c1816c0",
       "tools/fixed-map/extract_mask.py": "be06ce81562d53d6c1394b81f42b03d9aab0d2c402e5324e4928628aa553feb8",
-      "tools/fixed-map/requirements.txt": "d25160758f6f0511b40d2788a949c86bb887869cba64c738e650e7d44fde471d"
+      "tools/fixed-map/requirements.txt": "d25160758f6f0511b40d2788a949c86bb887869cba64c738e650e7d44fde471d",
+      "tools/fixed-map/write_underground.py": "62783c7217e8c53a9813c10182d9cbc542fa2b12a5255501ed0a5b6e54999da9"
     }
   },
   "files": {
@@ -36,6 +37,7 @@
     "geology.png": "c97b82164aadc089b39c93a01cefabc7ca70604a4769d0c28cc2e69fecbf2074",
     "coast_river.png": "332eeae1b2beea5750d8c862c8e50ffbadf013442db3537973c20917e5361d7f",
     "index.json": "6be58122cc85e45bcc01ce7e1d0f33678dc868c128a60ef97ab02a01568f429e",
-    "geology_profiles.json": "19f00288295029ab32e217b092af328fc5bf2df09a850eebc4ccc1f0ec1bd11a"
+    "geology_profiles.json": "19f00288295029ab32e217b092af328fc5bf2df09a850eebc4ccc1f0ec1bd11a",
+    "underground.json": "3240dda60023894244d07bfaaa9773ac842fc3297a552559edb9309104dacd11"
   }
 }
