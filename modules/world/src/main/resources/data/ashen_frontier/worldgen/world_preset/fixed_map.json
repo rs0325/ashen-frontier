@@ -5,9 +5,9 @@
       "generator": {
         "type": "ashen_frontier:fixed_map",
         "map": {
-          "map_version": "prototype_001",
+          "map_version": "earth_001",
           "format_version": 1,
-          "manifest_hash": "6c36b4a4f20bae800ada3facf9de8e3b698810e11304bcf88ed911626158672b"
+          "manifest_hash": "e0ba84c8c3026d7d4b2bcc6dcc45494ff6e4d4b6a51b37003d7f3fa05f6316ae"
         },
         "biome_source": {
           "biome": "minecraft:the_void"

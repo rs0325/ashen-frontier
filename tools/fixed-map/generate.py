@@ -1,0 +1,479 @@
+"""固定マップの整数ラスター・索引・manifestを生成する。実行時のゲームには依存しない。"""
+
+import argparse
+import hashlib
+import heapq
+import json
+import math
+import shutil
+import sys
+import tempfile
+from pathlib import Path
+
+import numpy as np
+import PIL
+from PIL import Image, ImageDraw, ImageFilter
+
+TOOL = Path(__file__).resolve().parent
+ROOT = TOOL.parents[1]
+MAP_RESOURCES = Path("modules/world/src/main/resources/data/ashen_frontier/fixed_map")
+OUTPUT = ROOT / MAP_RESOURCES / "earth_001"
+SIZE = 2048
+LAYERS = ("height", "region", "water", "soil", "geology", "coast_river")
+RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json")
+TOOL_VERSION = "1.2.0"
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def write_json(path, value):
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
+def pixel(point):
+    return tuple((v + 16384) // 16 for v in point)
+
+
+def raster_line(points, width):
+    image = Image.new("L", (SIZE, SIZE))
+    ImageDraw.Draw(image).line([pixel(p) for p in points], fill=255, width=width)
+    return np.array(image) != 0
+
+
+def neighbors(mask):
+    padded = np.pad(mask, 1)
+    return (padded[:-2, 1:-1] | padded[2:, 1:-1] |
+            padded[1:-1, :-2] | padded[1:-1, 2:])
+
+
+def curved_points(points, seed, amplitude=0, spacing=16):
+    """制約点を通る滑らかな曲線。蛇行は端点と接線を保つ固定シードの変位とする。"""
+    rng = np.random.Generator(np.random.PCG64(seed))
+    values = np.array(points, dtype=float)
+    result = []
+    for i in range(len(values)-1):
+        a, b = values[max(0,i-1)], values[i]
+        c, d = values[i+1], values[min(len(values)-1,i+2)]
+        length = np.linalg.norm(c-b)
+        count = max(2,math.ceil(length/spacing))
+        phase = rng.uniform(0,2*math.pi)
+        normal = np.array([-(c-b)[1],(c-b)[0]]) / max(length,1)
+        for t in np.linspace(0,1,count,endpoint=False):
+            p = .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t)
+            p += normal*amplitude*math.sin(2*math.pi*t+phase)*math.sin(math.pi*t)**2
+            point = np.rint(p).astype(int).tolist()
+            if not result or point != result[-1]:
+                result.append(point)
+    result.append(list(points[-1]))
+    return result
+
+
+def terrain_route(waypoints, height, nw):
+    """64ブロック格子のA*で海と大きな高度差を避け、保護幅内で角を丸める。"""
+    safe = nw.copy()
+    for _ in range(3):
+        safe &= ~neighbors(~safe)
+    step = 4
+    allowed = safe[::step,::step]
+    elevations = height[::step,::step]
+    h,w = allowed.shape
+    result = []
+    for start,end in zip(waypoints,waypoints[1:]):
+        sx,sy = pixel(start)
+        ex,ey = pixel(end)
+        source,target = (sy//step,sx//step),(ey//step,ex//step)
+        if not allowed[source] or not allowed[target]:
+            raise ValueError(f"経路端点の陸地幅が不足しています: {start}, {end}")
+        queue = [(0.,source)]
+        costs = {source:0.}
+        parent = {}
+        while queue:
+            _,current = heapq.heappop(queue)
+            if current == target:
+                break
+            y,x = current
+            for dy,dx in [(-1,0),(0,-1),(0,1),(1,0),(-1,-1),(-1,1),(1,-1),(1,1)]:
+                a,b = y+dy,x+dx
+                if not (0 <= a < h and 0 <= b < w and allowed[a,b]):
+                    continue
+                if dy and dx and not (allowed[y,b] and allowed[a,x]):
+                    continue
+                cost = costs[current]+math.hypot(dy,dx)+abs(int(elevations[a,b])-int(elevations[y,x]))*.18
+                node = (a,b)
+                if cost < costs.get(node,math.inf):
+                    costs[node] = cost
+                    parent[node] = current
+                    heapq.heappush(queue,(cost+math.dist(node,target),node))
+        if target not in costs:
+            raise ValueError(f"陸上経路を結べません: {start}, {end}")
+        path = [target]
+        while path[-1] != source:
+            path.append(parent[path[-1]])
+        path.reverse()
+        raw = [list(start)]+[[x*64-16384,y*64-16384] for y,x in path[1:-1]]+[list(end)]
+        # 隣り合う安全セルの内部に収まる二次曲線で角を丸める。
+        rounded = [raw[0]]
+        for a,b,c in zip(raw,raw[1:],raw[2:]):
+            p = (np.array(a)+b)/2
+            q = (np.array(c)+b)/2
+            for t in [0.,.25,.5,.75,1.]:
+                rounded.append(np.rint((1-t)**2*p+2*t*(1-t)*np.array(b)+t*t*q).astype(int).tolist())
+        rounded.append(raw[-1])
+        result.extend(rounded if not result else rounded[1:])
+    if np.any(raster_line(result,5) & ~nw):
+        raise ValueError("丸めた経路が海へ出ています")
+    return result
+
+
+def drainage(height, land):
+    """海岸からpriority floodで窪地を埋め、同高面でも海へ向かう木と集水面積を得る。"""
+    h, w = height.shape
+    seen = ~land.copy()
+    coast = land & neighbors(~land)
+    queue = []
+    parent = np.full((h, w), -1, np.int32)
+    for y, x in zip(*np.nonzero(coast)):
+        seen[y, x] = True
+        heapq.heappush(queue, (int(height[y, x]), int(y*w+x)))
+        for a, b in ((y-1,x), (y+1,x), (y,x-1), (y,x+1)):
+            if 0 <= a < h and 0 <= b < w and not land[a, b]:
+                parent[y, x] = a*w+b
+                break
+    order = []
+    while queue:
+        level, pos = heapq.heappop(queue)
+        order.append(pos)
+        y, x = divmod(pos, w)
+        for a, b in ((y-1,x), (y+1,x), (y,x-1), (y,x+1)):
+            if 0 <= a < h and 0 <= b < w and not seen[a, b]:
+                seen[a, b] = True
+                parent[a, b] = pos
+                value = max(level, int(height[a, b]))
+                height[a, b] = value
+                heapq.heappush(queue, (value, a*w+b))
+    if not seen.all():
+        raise ValueError("海へ排水できない陸地があります")
+    area = land.astype(np.int32).ravel()
+    flat_parent = parent.ravel()
+    for pos in reversed(order):
+        target = flat_parent[pos]
+        if target >= 0:
+            area[target] += area[pos]
+    return parent, area.reshape((h, w))
+
+
+def noise(seed):
+    rng = np.random.Generator(np.random.PCG64(seed))
+    result = np.zeros((SIZE, SIZE), np.float32)
+    for n, amplitude in [(8, 22), (32, 12), (128, 4)]:
+        grid = rng.integers(0, 256, (n, n), dtype=np.uint8)
+        result += (np.array(Image.fromarray(grid).resize((SIZE, SIZE), Image.Resampling.BILINEAR), dtype=np.float32)/255-.5)*amplitude
+    return result
+
+
+def load_inputs(input_dir):
+    config = json.loads((input_dir / "layout.json").read_text(encoding="utf-8"))
+    labels = np.array(Image.open(input_dir / "land.png"))
+    if labels.shape != (SIZE, SIZE) or labels.dtype != np.uint8 or not np.isin(labels, range(5)).all():
+        raise ValueError("陸海入力は2048²・8bit・値0〜4が必要です")
+    return config, labels
+
+
+def validate_geology(definition):
+    """カタログで確認済みの岩石参照と、地層の正の厚さ範囲を検査する。"""
+    rocks = set(definition["catalog"]["rock_ids"]) | {"minecraft:stone", "minecraft:granite", "minecraft:sandstone"}
+    for profile in definition["profiles"].values():
+        if not profile["layers_top_to_bottom"] or profile["basement"] not in rocks:
+            raise ValueError("地質プロファイルの地層・基盤岩が不正です")
+        for layer in profile["layers_top_to_bottom"]:
+            low, high = layer["thickness_blocks"]
+            if layer["rock"] not in rocks or not 1 <= low <= high:
+                raise ValueError(f"地層の母岩・厚さ範囲が不正です: {layer['id']}")
+
+
+def generate(input_dir, output):
+    """検査済みの資産一式を置き換える。生成中・通常の置換失敗では旧出力を保持する。"""
+    input_dir, output = Path(input_dir).resolve(), Path(output).resolve()
+    if output.exists() and any(not p.is_file() or p.name not in (*RESOURCE_FILES,"manifest.json") for p in output.iterdir()):
+        raise ValueError("出力先に生成資産以外のファイルがあります")
+    output.parent.mkdir(parents=True,exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{output.name}-",dir=output.parent))
+    previous = staging/"previous"
+    published = False
+    try:
+        layers,index = generate_assets(input_dir,staging/"map")
+        validate(staging/"map",index["map_version"])
+        if output.exists():
+            output.rename(previous)
+        try:
+            (staging/"map").rename(output)
+        except OSError:
+            if previous.exists():
+                previous.rename(output)
+            raise
+        published = True
+        return layers,index
+    finally:
+        # 復旧まで失敗した場合は旧出力を含む一時ディレクトリを保全する。
+        if published or not previous.exists():
+            shutil.rmtree(staging)
+
+
+def generate_assets(input_dir, output):
+    config, labels = load_inputs(input_dir)
+    geology_definition = json.loads((input_dir/"geology.json").read_text(encoding="utf-8"))
+    validate_geology(geology_definition)
+    land = labels > 0
+    nw = labels == 1
+    z, x = np.mgrid[:SIZE, :SIZE]
+    bx, bz = x*16-16384, z*16-16384
+    print("標高ノイズ → 山脈 → 海岸", flush=True)
+    height = np.where(land, 90 + noise(config["fixed_seed"]), 40).astype(np.float32)
+    mountain = config["mountain"]
+    distance_squared = np.full(land.shape, np.inf, np.float32)
+    for a, b in zip(mountain["points"], mountain["points"][1:]):
+        vx, vz = b[0]-a[0], b[1]-a[1]
+        t = np.clip(((bx-a[0])*vx+(bz-a[1])*vz)/(vx*vx+vz*vz),0,1)
+        distance_squared = np.minimum(distance_squared,(bx-a[0]-t*vx)**2+(bz-a[1]-t*vz)**2)
+    height += np.exp(-distance_squared/(2*mountain["radius_blocks"]**2)) * (mountain["peak_y"]-90) * nw
+    coast = land & neighbors(~land)
+    # 海岸の平滑な遷移。元の陸海輪郭は変えない。
+    shore = np.array(Image.fromarray((~land).astype("uint8")*255).filter(ImageFilter.GaussianBlur(5)), dtype=np.float32)/255
+    height = np.where(land, 64 + (height-64)*(1-shore), height)
+    height[coast] = 64
+    print("窪地処理と流路", flush=True)
+    river = config["river"]
+    river_mask = np.zeros(land.shape, bool)
+    surface = np.full(land.shape, 63, np.int16)
+    points = curved_points(river["points"], config["fixed_seed"]+101, river["meander_blocks"])
+    lengths = [math.dist(a,b) for a,b in zip(points,points[1:])]
+    total = sum(lengths)
+    distance = 0
+    profile = []
+    radius = max(1, river["width_blocks"]//32)
+    for a, b, length in zip(points, points[1:], lengths):
+        steps = max(abs(pixel(a)[0]-pixel(b)[0]), abs(pixel(a)[1]-pixel(b)[1]))
+        for i in range(steps+1):
+            t = i / max(steps,1)
+            p = [round(v+(u-v)*t) for v,u in zip(a,b)]
+            px, py = pixel(p)
+            level = round(110-47*(distance+length*t)/total)
+            profile.append([px,py,level])
+            river_mask[max(0,py-radius):py+radius+1,max(0,px-radius):px+radius+1] = True
+            surface[max(0,py-radius):py+radius+1,max(0,px-radius):px+radius+1] = level
+        distance += length
+    valley_image = Image.new("L",(SIZE,SIZE))
+    ImageDraw.Draw(valley_image).line([pixel(p) for p in points],fill=255,width=25)
+    valley = np.array(valley_image.filter(ImageFilter.GaussianBlur(10)),dtype=np.float32)/255
+    valley_y = np.interp(bz[:,0],[p[1] for p in river["points"]],np.linspace(110,63,len(river["points"])))[:,None]+6
+    height = np.where(land,height*(1-valley)+np.minimum(height,valley_y)*valley,height)
+    height[river_mask & land] = surface[river_mask & land]-2
+    # 施設と歩行経路は流路を避けて整地し、最後の排水解析にも反映する。
+    for facility in config["facilities"]:
+        px, py = pixel(facility["xz"])
+        if not nw[py,px]:
+            raise ValueError(f"施設が北西大陸外です: {facility['id']} {facility['xz']}")
+        r = facility["protection_radius"]
+        distance_to_anchor = np.sqrt((bx-facility["xz"][0])**2+(bz-facility["xz"][1])**2)
+        footprint = distance_to_anchor <= r
+        if np.any(footprint & (~land | river_mask)):
+            raise ValueError(f"施設の保護域が水域と重なります: {facility['id']}")
+        blend = np.clip((r+128-distance_to_anchor)/128,0,1)
+        height = np.where(land & ~river_mask, height*(1-blend)+facility["surface_y"]*blend,height)
+    height = np.rint(height).astype(np.int16)
+    parent, accumulation = drainage(height, land)
+    print("地質 → 土壌・水域 → 施設・経路", flush=True)
+    base_region = np.full(land.shape,255,np.uint8)
+    for polygon in config["region_polygons"]:
+        image = Image.new("L", (SIZE, SIZE))
+        ImageDraw.Draw(image).polygon([pixel(p) for p in polygon["points"]], fill=1)
+        base_region[np.array(image)>0] = polygon["id"]
+    boundary = config["region_boundaries"]
+    terrain = np.array(Image.fromarray(np.clip(height,0,255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(18)),dtype=np.float32)
+    ridge_z = np.interp(bx[0],[p[0] for p in mountain["points"]],[p[1] for p in mountain["points"]])
+    offset_z = (np.mean(ridge_z)-ridge_z)[None,:]+noise(config["fixed_seed"]+73)*boundary["north_south_noise_scale"]+(terrain-90)*boundary["elevation_z_scale"]
+    offset_x = noise(config["fixed_seed"]+74)*boundary["east_west_noise_scale"]+(terrain-90)*boundary["elevation_x_scale"]+180*np.sin(bz/1800)
+    sample_x = np.clip(np.rint(x+offset_x/16).astype(int),0,SIZE-1)
+    sample_z = np.clip(np.rint(z+offset_z/16).astype(int),0,SIZE-1)
+    region = np.where(land,255,0).astype(np.uint8)
+    region[nw] = base_region[sample_z[nw],sample_x[nw]]
+    river_z = [p[1] for p in river["points"]]
+    river_x = [p[0] for p in river["points"]]
+    farm_divide = np.interp(bz[:,0],river_z,river_x)[:,None]-boundary["agriculture_river_offset"]
+    temperate = np.isin(region,[1,2])
+    region[temperate & (bx < farm_divide)] = 1
+    region[temperate & (bx >= farm_divide)] = 2
+    divide_points = boundary["southern_divide"]
+    divide = np.interp(bz[:,0],[p[1] for p in divide_points],[p[0] for p in divide_points])[:,None]+(terrain-90)*10+noise(config["fixed_seed"]+75)*8
+    southern = np.isin(region,[4,5,6])
+    region[southern & (bx < divide)] = 4
+    region[southern & (bx >= divide)] = 5
+    near_sea = ~land.copy()
+    for _ in range(boundary["coastal_distance_blocks"]//16):
+        near_sea |= neighbors(near_sea)
+    region[southern & (bx >= divide+2500) & (bz+offset_z > -6144) & near_sea] = 6
+    geology = np.where(land,1,0).astype(np.uint8)
+    geology[region==3] = 3
+    geology[np.isin(region,[1,2,5])] = 2
+    geology[region==4] = 4
+    geology[region==6] = 5
+    for deposit in config["deposits"]:
+        px, py = pixel(deposit["xz"])
+        if not nw[py,px] or geology[py,px] != deposit["geology_profile"]:
+            raise ValueError(f"鉱床アンカーと地質プロファイルが一致しません: {deposit['id']}")
+    soil = np.zeros(land.shape, np.uint8)
+    for rid, value in [(1,2),(2,3),(3,2),(4,3),(5,4),(6,5),(7,2)]:
+        soil[region==rid] = value
+    water = np.where(land,0,8).astype(np.uint8)
+    water[river_mask & land] = 4
+    water[river_mask & np.isin(region,[5,6])] = 6
+    flags = coast.astype(np.uint8) | np.where(~land,8,0).astype(np.uint8)
+    flags[river_mask & land] |= 2
+    height[~land] = 40
+    routes = []
+    for route in config["routes"]:
+        route_points = terrain_route(route["points"],height,nw)
+        routes.append(dict(route,points=route_points,length_blocks=sum(math.dist(a,b) for a,b in zip(route_points,route_points[1:]))))
+    layers = dict(height=(height+64).astype(np.uint16), region=region, water=water,
+                  soil=soil, geology=geology, coast_river=flags)
+    output.mkdir(parents=True, exist_ok=True)
+    for name, data in layers.items():
+        Image.fromarray(data).save(output / f"{name}.png", compress_level=9)
+    counts = np.bincount(labels.ravel(), minlength=5)[1:]
+    ratios = (counts/counts.sum()).tolist()
+    spawn = config["facilities"][0]["xz"]
+    facilities = []
+    for facility in config["facilities"]:
+        px, py = pixel(facility["xz"])
+        facilities.append(dict(facility, distance_blocks=math.dist(spawn,facility["xz"]),
+                               actual_surface_y=int(height[py,px])))
+    spans = []
+    wet = (water>0) & land
+    for y in range(SIZE):
+        row = np.flatnonzero(wet[y])
+        if not len(row):
+            continue
+        start = previous = int(row[0])
+        for p in [*row[1:], -1]:
+            p = int(p)
+            if p != previous+1 or surface[y,p] != surface[y,start]:
+                spans.append([y,start,previous+1,int(surface[y,start])])
+                start = p
+            previous = p
+    tables = {
+        "region": config["regions"],
+        "soil": {"0": ["露岩・未割当て", "Bare or unassigned"], "1": ["肥沃", "Fertile"], "2": ["貧栄養", "Poor"], "3": ["劣化", "Degraded"], "4": ["汚染", "Contaminated"], "5": ["有毒", "Toxic"]},
+        "water": {str(i): name for i,name in enumerate(["dry", "ultrapure_water", "pure_water", "clean_water", "raw_water", "turbid_water", "contaminated_water", "toxic_water", "polluted_seawater"])},
+        "geology": {"0": "ocean", "1": "unclassified_land", "2": "plain_profile", "3": "mountain_profile", "4": "arid_profile", "5": "coastal_profile"},
+        "coast_river_bits": {"1": "land_coast", "2": "river", "4": "lake", "8": "ocean"}}
+    index = {"map_version": config["map_version"], "format_version": 1,
+             "geology_profile_version": geology_definition["profile_version"],
+             "coordinate_system": {"origin_xz": [-16384,-16384], "blocks_per_pixel": 16, "sample": "northwest_corner", "north": "-Z", "height_offset": -64, "latitude": "-80 * z / 16384"},
+             "tables": tables, "water_bodies": [{"id": "ocean", "surface_y": 63, "quality": 8, "membership_bit": 8},
+                 {"id": river["id"], "membership_bit": 2, "surface_spans_y_x0_x1ex_y": spans, "centerline_pixel_x_y_surface": profile}],
+             "facilities": facilities, "routes": routes,
+             "deposits": config["deposits"], "deferred": config["deferred"],
+             "metrics": {"land_pixels": counts.tolist(), "land_area_ratios": ratios,
+                         "area_ratio_reference": config["area_ratio_reference"], "area_ratio_tolerance": config["area_ratio_tolerance"],
+                         "area_ratio_within_reference": bool(np.all(np.abs(np.array(ratios)-config["area_ratio_reference"]) <= config["area_ratio_tolerance"])),
+                         "max_catchment_pixels": int(accumulation[land].max()),
+                         "drainage_land_cells": int(np.count_nonzero(parent[land]>=0))}}
+    write_json(output / "index.json", index)
+    write_json(output / "geology_profiles.json",dict(geology_definition,map_version=config["map_version"]))
+    inputs = {p.relative_to(input_dir).as_posix(): sha(p) for p in sorted(input_dir.iterdir()) if p.is_file()}
+    tool_files = {f"tools/fixed-map/{p}": sha(TOOL/p) for p in ["generate.py", "extract_mask.py", "requirements.txt"]}
+    manifest = {"map_version": config["map_version"], "format_version": config["format_version"],
+                "fixed_seed": config["fixed_seed"], "width": 32768, "depth": 32768,
+                "min_y": -64, "height": 384, "raster_width": SIZE, "raster_depth": SIZE,
+                "catalog_version": config["catalog_version"], "inputs": inputs,
+                "geology_profile_version": geology_definition["profile_version"],
+                "tool": {"version": TOOL_VERSION, "python": "3.12", "numpy": np.__version__, "pillow": PIL.__version__, "files": tool_files},
+                "files": {name: sha(output/name) for name in RESOURCE_FILES}}
+    write_json(output / "manifest.json", manifest)
+    print(json.dumps(index["metrics"], ensure_ascii=False), flush=True)
+    return layers, index
+
+
+def preview(layers, index, path):
+    palette = np.zeros((256,3), np.uint8)
+    for i, color in {0:(15,43,62),1:(143,153,100),2:(146,170,72),3:(151,125,100),4:(199,160,107),5:(118,133,132),6:(96,135,168),7:(186,211,225),255:(120,120,120)}.items():
+        palette[i] = color
+    elevation = layers["height"].astype(np.float32)
+    dz, dx = np.gradient(elevation)
+    shade = np.clip(.90+(-dx-dz)*.05,.55,1.2)
+    rgb = np.clip(palette[layers["region"]]*shade[:,:,None],0,255).astype(np.uint8)
+    rgb[layers["coast_river"] & 2 != 0] = [55,157,220]
+    image = Image.fromarray(rgb)
+    draw = ImageDraw.Draw(image)
+    for route in index["routes"]:
+        draw.line([pixel(p) for p in route["points"]], fill=(240,170,85) if route["kind"]=="rail_remains" else (195,195,195), width=3)
+    for facility in index["facilities"]:
+        x,y = pixel(facility["xz"])
+        draw.ellipse((x-6,y-6,x+6,y+6),fill=(255,50,50) if facility["id"]=="spawn" else (255,255,255))
+        draw.text((x+10,y),facility["id"],fill="white")
+    for latitude in [-60,-40,-20,0,20,40,60,80]:
+        y = round((-latitude*16384/80+16384)/16)
+        draw.line((0,y,SIZE,y),fill=(110,160,180),width=1)
+        draw.text((5,y+3),f"{latitude:+} deg",fill="white")
+    path.parent.mkdir(parents=True,exist_ok=True)
+    image.save(path)
+
+
+def validate(output, expected_version):
+    """指定版に対し、資産の完全性・型と地質プロファイルの参照を検査する。"""
+    manifest = json.loads((output/"manifest.json").read_text(encoding="utf-8"))
+    if manifest["map_version"] != expected_version or manifest["format_version"] != 1:
+        raise ValueError("マップ版・形式が一致しません")
+    required = set(RESOURCE_FILES)
+    if not required <= manifest["files"].keys():
+        raise ValueError("レイヤーが不足しています")
+    for name, digest in manifest["files"].items():
+        if not (output/name).is_file() or sha(output/name) != digest:
+            raise ValueError(f"不足・ハッシュ不一致: {name}")
+    for name in LAYERS:
+        expected_mode = "I;16" if name=="height" else "L"
+        with Image.open(output/f"{name}.png") as image:
+            if image.size != (SIZE,SIZE) or image.mode != expected_mode:
+                raise ValueError(f"寸法・型が不正です: {name}")
+    definition = json.loads((output/"geology_profiles.json").read_text(encoding="utf-8"))
+    if definition["map_version"] != expected_version or definition["format_version"] != 1 or definition["profile_version"] != manifest["geology_profile_version"]:
+        raise ValueError("地質プロファイルの版・形式が一致しません")
+    validate_geology(definition)
+    with Image.open(output/"geology.png") as image:
+        if not set(np.unique(np.array(image))) <= {int(key) for key in definition["profiles"]}:
+            raise ValueError("地質図が未定義のプロファイルを参照しています")
+    return manifest
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input",type=Path,default=TOOL/"input")
+    parser.add_argument("--output",type=Path,help="省略時は入力map_versionの同梱ディレクトリ")
+    parser.add_argument("--preview",type=Path)
+    parser.add_argument("--validate",action="store_true")
+    parser.add_argument("--update-preset",action="store_true",help="同梱プリセットを生成した版とmanifestハッシュへ更新する")
+    args = parser.parse_args(argv)
+    if sys.version_info[:2] != (3,12):
+        parser.error("再現環境はPython 3.12です")
+    args.input = args.input.resolve()
+    config = json.loads((args.input/"layout.json").read_text(encoding="utf-8"))
+    output = args.output.resolve() if args.output else ROOT/MAP_RESOURCES/config["map_version"]
+    if args.validate:
+        validate(output,config["map_version"])
+    else:
+        layers,index = generate(args.input,output)
+        if args.preview:
+            preview(layers,index,args.preview)
+        if args.update_preset:
+            preset_path = ROOT/"modules/world/src/main/resources/data/ashen_frontier/worldgen/world_preset/fixed_map.json"
+            preset = json.loads(preset_path.read_text(encoding="utf-8"))
+            preset["dimensions"]["minecraft:overworld"]["generator"]["map"] = {
+                "map_version": index["map_version"], "format_version": 1,
+                "manifest_hash": sha(output/"manifest.json")}
+            write_json(preset_path,preset)
+
+
+if __name__ == "__main__":
+    main()

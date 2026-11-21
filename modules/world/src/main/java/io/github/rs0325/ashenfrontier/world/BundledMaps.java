@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Set;
 
 /** クラスパスに同梱した版だけを解決する。ワールドやデータパックから資産を上書きしない。 */
 public final class BundledMaps {
@@ -24,7 +25,12 @@ public final class BundledMaps {
                 || version.formatVersion() != 1 || !hash(bytes).equals(version.manifestHash())) {
             throw new IllegalStateException("固定マップ版 " + version.mapVersion() + ": manifestの版・形式・ハッシュが一致しません");
         }
-        for (var entry : manifest.getAsJsonObject("files").entrySet()) {
+        var files = manifest.getAsJsonObject("files");
+        if (!files.keySet().containsAll(Set.of("height.png", "region.png", "water.png", "soil.png",
+                "geology.png", "coast_river.png", "index.json", "geology_profiles.json"))) {
+            throw new IllegalStateException("固定マップ版 " + version.mapVersion() + ": 必須レイヤー・索引が不足しています");
+        }
+        for (var entry : files.entrySet()) {
             if (!hash(read(root + entry.getKey(), version.mapVersion())).equals(entry.getValue().getAsString())) {
                 throw new IllegalStateException("固定マップ版 " + version.mapVersion() + ": 資産ハッシュ不一致 " + entry.getKey());
             }

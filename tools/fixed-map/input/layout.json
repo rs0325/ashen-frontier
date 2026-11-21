@@ -1,0 +1,65 @@
+{
+  "map_version": "earth_001",
+  "format_version": 1,
+  "fixed_seed": 520026,
+  "catalog_version": "profiles_001",
+  "regions": {
+    "0": {"en_us": "Ocean", "ja_jp": "海"},
+    "1": {"en_us": "Initial survival", "ja_jp": "初期生存地域"},
+    "2": {"en_us": "Former agriculture", "ja_jp": "旧農業地帯"},
+    "3": {"en_us": "Mining", "ja_jp": "鉱業地帯"},
+    "4": {"en_us": "Inland arid", "ja_jp": "内陸乾燥地域"},
+    "5": {"en_us": "Industry", "ja_jp": "工業地帯"},
+    "6": {"en_us": "Coastal industry", "ja_jp": "沿岸工業地帯"},
+    "7": {"en_us": "Northern cold research", "ja_jp": "寒冷研究地域（北）"},
+    "255": {"en_us": "Unassigned land", "ja_jp": "未割当て陸地"}
+  },
+  "region_polygons": [
+    {"id": 7, "points": [[-16384,-16384],[16384,-16384],[16384,-13312],[-16384,-13312]]},
+    {"id": 3, "points": [[-16384,-13312],[16384,-13312],[16384,-10240],[-16384,-10240]]},
+    {"id": 1, "points": [[-16384,-10240],[-6000,-10240],[-6000,-7168],[-16384,-7168]]},
+    {"id": 2, "points": [[-6000,-10240],[16384,-10240],[16384,-7168],[-6000,-7168]]},
+    {"id": 4, "points": [[-16384,-7168],[-8500,-7168],[-8500,16384],[-16384,16384]]},
+    {"id": 5, "points": [[-8500,-7168],[16384,-7168],[16384,16384],[-8500,16384]]},
+    {"id": 6, "points": [[-5000,-6144],[16384,-6144],[16384,16384],[-5000,16384]]}
+  ],
+  "region_boundaries": {
+    "north_south_noise_scale": 12,
+    "east_west_noise_scale": 16,
+    "elevation_z_scale": 2,
+    "elevation_x_scale": 10,
+    "agriculture_river_offset": 900,
+    "southern_divide": [[-10000,-7168],[-9600,-6800],[-9000,-6000],[-8200,-5200],[-7900,-4000],[-7600,-2662]],
+    "coastal_distance_blocks": 640
+  },
+  "mountain": {"points": [[-14000,-11776],[-10000,-11900],[-6000,-11800],[-2000,-12200],[3000,-11776]], "radius_blocks": 1100, "peak_y": 235},
+  "river": {"id": "northwest_main", "points": [[-4000,-12100],[-4500,-10600],[-4900,-9500],[-5000,-8200],[-4700,-7200],[-4500,-6400],[-4300,-5500],[-3500,-5000]], "width_blocks": 80, "meander_blocks": 180},
+  "facilities": [
+    {"id": "spawn", "region": 1, "xz": [-8500,-8192], "surface_y": 100, "floor_y": 80, "protection_radius": 96, "distance_range": [0,0]},
+    {"id": "agriculture", "region": 2, "xz": [-5500,-8192], "surface_y": 100, "protection_radius": 96, "distance_range": [0,3000]},
+    {"id": "mining", "region": 3, "xz": [-10000,-10650], "surface_y": 170, "protection_radius": 96, "distance_range": [2000,3000]},
+    {"id": "arid", "region": 4, "xz": [-12400,-5300], "surface_y": 100, "protection_radius": 96, "distance_range": [4000,6000]},
+    {"id": "industry", "region": 5, "xz": [-6000,-5000], "surface_y": 100, "protection_radius": 96, "distance_range": [4000,6000]},
+    {"id": "coastal_industry", "region": 6, "xz": [-4000,-3700], "surface_y": 90, "protection_radius": 96, "distance_range": [6000,8000]},
+    {"id": "cold_north", "region": 7, "xz": [-4000,-14100], "surface_y": 130, "protection_radius": 96, "distance_range": [5000,8000]}
+  ],
+  "routes": [
+    {"id": "old_rail", "kind": "rail_remains", "points": [[-10000,-10650],[-8500,-8192],[-5500,-8192],[-6000,-5000],[-4000,-3700]], "protection_radius": 32},
+    {"id": "arid_path", "kind": "footpath", "points": [[-8500,-8192],[-12400,-5300]], "protection_radius": 16},
+    {"id": "north_path", "kind": "footpath", "points": [[-10000,-10650],[-4000,-14100]], "protection_radius": 16}
+  ],
+  "deposits": [
+    {"id": "mining_iron", "resource": "iron", "xz": [-10250,-10700], "geology_profile": 3, "radius_blocks": 64, "stage": "anchor_only"},
+    {"id": "mining_copper", "resource": "copper", "xz": [-9750,-10700], "geology_profile": 3, "radius_blocks": 64, "stage": "anchor_only"},
+    {"id": "mining_coal", "resource": "coal", "xz": [-10500,-10500], "geology_profile": 3, "radius_blocks": 64, "stage": "anchor_only"},
+    {"id": "mining_tin", "resource": "tin", "xz": [-10000,-11000], "geology_profile": 3, "radius_blocks": 64, "stage": "anchor_only"},
+    {"id": "mining_limestone", "resource": "limestone", "xz": [-10300,-10450], "geology_profile": 3, "radius_blocks": 64, "stage": "anchor_only"},
+    {"id": "agriculture_clay", "resource": "clay", "xz": [-5300,-8500], "geology_profile": 2, "radius_blocks": 64, "stage": "anchor_only"},
+    {"id": "arid_nitrate", "resource": "nitrate", "xz": [-12600,-5400], "geology_profile": 4, "radius_blocks": 64, "stage": "anchor_only"},
+    {"id": "coastal_silica", "resource": "silica_sand", "xz": [-4200,-3800], "geology_profile": 5, "radius_blocks": 64, "stage": "anchor_only"}
+  ],
+  "adjacent_regions": [[1,2],[1,3],[1,4],[2,3],[2,5],[3,7],[4,5],[5,6]],
+  "area_ratio_reference": [0.3477096842512735,0.21775555846048303,0.32916239794331137,0.1053723593449321],
+  "area_ratio_tolerance": 0.01,
+  "deferred": ["geothermal", "space_development", "cold_south", "east_regions", "south_regions", "island_regions", "sulfur_source", "mineral_deposit_details"]
+}

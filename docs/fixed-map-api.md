@@ -21,7 +21,17 @@ overworldの`level.getChunkSource().getGenerator()`が`FixedMapChunkGenerator`�
 
 `BundledMaps.require(MapVersion)`は、クラスパスの`data/ashen_frontier/fixed_map/<map_version>/manifest.json`と資産を照合する。ハッシュはファイルの生バイト列のSHA-256、小文字hex。manifestの`files`は、同じ版ディレクトリからの相対ファイル名とSHA-256の対応。対応形式は1。版が未同梱、形式・ハッシュの不一致、資産の不足・破損では版名を含む例外で停止する。データパックで同梱資産を上書きしない。
 
-現在同梱する`prototype_001`は仮データで、固定シード0、幅・奥行32768、高さ384、最低Y=−64、仮カタログ版を持つ。配置図ファイルはまだない。Cはmanifestの`files`へ実資産を追加し、manifest変更後にプリセットの`manifest_hash`を更新する。この試作版を使ったワールドは再生成対象。旧形式への移行・既存ワールドの自動更新は行わない。
+現在同梱する`earth_001`は固定シード520026、幅・奥行32768、高さ384、最低Y=−64の配置図。6層の2048² PNG、`index.json`、`geology_profiles.json`を持つ。`BundledMaps.require`はmanifestから必須6層・索引・地質定義の項目が脱落した場合も拒否する。入力・整数対応表・サンプリング・保護域・再生成方法は[制作ツールの契約](../tools/fixed-map/README.md)に記載する。`catalog_version=profiles_001`は整数対応表の版でありcoreの配置カタログ版ではない。
+
+地域図の0は海、1〜7は承認済み地域、255は未割当て陸地。北西大陸本体は全画素を割り当て、南端は西の乾燥地域と東の工業・沿岸工業地帯を延長する。東・南大陸と離れた島嶼には地域を割り当てない。面積比は参考図の輪郭の実測値（北西34.77%、東21.78%、南32.92%、島嶼10.54%）を正とし、凡例の値は使わない。承認済みマスクからの変化を±1ポイントと三大陸の連結で退行検査する。設計12の面積比の記述は別Issueで更新する。
+
+未リリースの`prototype_001`は置き換えたため、その版で作ったワールドは再生成対象。旧形式への移行・既存ワールドの自動更新は行わない。
+
+## 地質と帯水層
+
+`geology.png`の値は同じ版ディレクトリの`geology_profiles.json`の`profiles`を参照する。地質定義の`map_version`・`format_version`を配置図と一致させ、`profile_version`をmanifest/索引の`geology_profile_version`へ記録する。現在の版は`geology_001`。地層は上から順に、母岩Block ID、厚さ範囲、基盤岩、傾斜、断層を定義する。母岩は#50で登録済みの岩石IDかバニラ石材のみ。Dがこの定義から地層を生成し、変位の計算・座標・単位は制作ツールの契約に従う。鉱床の登録ID・母岩・形状・埋蔵量はE（#54）が確定する。
+
+512四方の64×64セルの帯水層と、容量kg・初期量kg・涵養パラメータはF（#55）が担当する。Fが配置図の`map_version`に紐付く版付き資産として追加し、manifestとプリセットのハッシュを同期する予定。Cでは帯水層の値を生成しない。
 
 ## SavedDataとの照合
 
@@ -35,6 +45,6 @@ overworldの`level.getChunkSource().getGenerator()`が`FixedMapChunkGenerator`�
 
 初期ボーダーは中心0、幅32768。仮地形はY=−64に岩盤、Y=−63〜63に石。範囲外は空チャンク。`getBaseHeight`・`getBaseColumn`・実チャンクは同じサンプラーを使う。バニラの構造物・装飾・初期Mob生成は実行しない。
 
-Bはcoreの登録、Cは配置図とmanifest、Dはこの生成器・BiomeSourceの地形と分布を実装する。地域・水域・地質・帯水層などの未実装APIを先に追加しない。初期シェルター座標や本来の地形の完成を、この仮地形で代替しない。
+Bはcoreの登録、Cは配置図とmanifest、Dはこの生成器・BiomeSourceの地形と分布を実装する。地域・水域・地質・帯水層などの未実装Java APIを先に追加しない。配置図上のspawnはX=−8500、Z=−8192、地表Y=100、床Y=80。ゲーム内への適用とシェルター実体の配置は後続で行い、この仮地形で完成を代替しない。
 
 自然物の配置ID、母岩と鉱物、土壌・水・燃料の品質、回収先はcoreの`catalog/nature.json`を参照する。登録済みAPIと単位、B2/G/D/Eへの引継ぎは[自然物の登録と制作契約](nature-catalog.md)に従う。配置図の仮カタログ版の更新はCの担当とし、Bからmanifestや配置図資産は変更しない。
