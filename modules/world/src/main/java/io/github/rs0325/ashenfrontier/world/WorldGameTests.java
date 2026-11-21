@@ -328,4 +328,33 @@ public final class WorldGameTests {
         helper.assertTrue(rejected, "SavedDataと生成器の不一致を拒否");
         helper.succeed();
     }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierWorld.MOD_ID)
+    public static void worldBorderSpawnAndAtmosphere(GameTestHelper helper) {
+        var level = helper.getLevel();
+        AshenFrontierWorld.configureFixedMap(level, generator(helper));
+        level.setDefaultSpawnPos(new BlockPos(MapCoordinates.MAX, 100, 0), 0);
+        helper.assertTrue(level.getLevelData().getSpawnPos().getX() == MapCoordinates.MAX,
+                "ボーダー設定後に範囲外の保存スポーンを検査対象へ設定");
+        AshenFrontierWorld.configureFixedMap(level, generator(helper));
+        var border = helper.getLevel().getWorldBorder();
+        helper.assertTrue(border.getCenterX() == 0 && border.getCenterZ() == 0, "ボーダー中心が原点");
+        helper.assertTrue(border.getSize() == MapCoordinates.MAX - MapCoordinates.MIN, "ボーダー幅が32768");
+        var spawn = helper.getLevel().getSharedSpawnPos();
+        helper.assertTrue(MapCoordinates.contains(spawn.getX(), spawn.getZ()), "共有スポーンが固定マップ内");
+        helper.assertTrue(border.isWithinBounds(spawn), "共有スポーンがワールドボーダー内");
+        var data = level.getLevelData();
+        helper.assertTrue(data.getSpawnPos().equals(new BlockPos(-8500, 100, -8192)),
+                "保存スポーンそのものを初期地点へ戻す");
+        level.setDefaultSpawnPos(new BlockPos(-8000, 110, -8000), 30);
+        AshenFrontierWorld.configureFixedMap(level, generator(helper));
+        helper.assertTrue(data.getSpawnPos().equals(new BlockPos(-8000, 110, -8000)) && data.getSpawnAngle() == 30,
+                "範囲内の保存スポーンは変更しない");
+        helper.assertTrue(BiomeAtmosphere.values().size() == 12, "12バイオーム分の大気データを読込");
+        helper.assertTrue(BiomeAtmosphere.values().get(AshenFrontierCore.id("polluted_ocean")).density() > 0.7,
+                "汚染された海に濃い霧を設定");
+        helper.assertTrue(BiomeAtmosphere.values().get(AshenFrontierCore.id("alpine_wastes")).density() < 0.2,
+                "高山を清浄な例外に設定");
+        helper.succeed();
+    }
 }

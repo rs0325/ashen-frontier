@@ -3,6 +3,7 @@ package io.github.rs0325.ashenfrontier.world;
 import com.mojang.serialization.MapCodec;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.level.ServerLevel;
@@ -34,6 +35,7 @@ public final class AshenFrontierWorld {
         BIOME_SOURCES.register("fixed_map", () -> FixedMapBiomeSource.CODEC);
         GENERATORS.register(bus);
         BIOME_SOURCES.register(bus);
+        BiomeAtmosphere.register(bus);
         NeoForge.EVENT_BUS.addListener(AshenFrontierWorld::beforeStart);
         NeoForge.EVENT_BUS.addListener(AshenFrontierWorld::loadLevel);
         NeoForge.EVENT_BUS.addListener(AshenFrontierWorld::starting);
@@ -63,8 +65,16 @@ public final class AshenFrontierWorld {
 
     private static void starting(ServerStartingEvent event) {
         var level = event.getServer().overworld();
-        if (!(level.getChunkSource().getGenerator() instanceof FixedMapChunkGenerator)) return;
+        configureFixedMap(level, level.getChunkSource().getGenerator());
+    }
+
+    static void configureFixedMap(ServerLevel level, ChunkGenerator generator) {
+        if (!(generator instanceof FixedMapChunkGenerator)) return;
         level.getWorldBorder().setCenter(0, 0);
         level.getWorldBorder().setSize(MapCoordinates.MAX - MapCoordinates.MIN);
+        var spawn = level.getLevelData().getSpawnPos();
+        if (!MapCoordinates.contains(spawn.getX(), spawn.getZ())) {
+            level.setDefaultSpawnPos(new BlockPos(-8500, 100, -8192), 0);
+        }
     }
 }
