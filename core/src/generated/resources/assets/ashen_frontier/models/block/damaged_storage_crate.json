@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "ashen_frontier:block/damaged_storage_crate",
+    "side": "ashen_frontier:block/damaged_storage_crate_side",
+    "top": "ashen_frontier:block/damaged_storage_crate_top"
+  }
+}

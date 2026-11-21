@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "ashen_frontier:block/shielding_slab"
+    },
+    "type=double": {
+      "model": "ashen_frontier:block/shielding_floor"
+    },
+    "type=top": {
+      "model": "ashen_frontier:block/shielding_slab_top"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "ashen_frontier:corroded_steel_door",
+    "ashen_frontier:shielding_door",
+    "ashen_frontier:composite_door"
+  ]
+}

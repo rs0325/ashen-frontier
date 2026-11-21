@@ -1,4 +1,7 @@
 {
   "replace": false,
-  "values": []
+  "values": [
+    "ashen_frontier:stone_hammer",
+    "ashen_frontier:simple_wrench"
+  ]
 }

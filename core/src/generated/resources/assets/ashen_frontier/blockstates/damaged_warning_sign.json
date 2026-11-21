@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/damaged_warning_sign",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/damaged_warning_sign"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/damaged_warning_sign",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/damaged_warning_sign",
+      "y": 270
+    }
+  }
+}

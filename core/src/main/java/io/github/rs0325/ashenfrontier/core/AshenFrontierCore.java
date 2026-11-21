@@ -31,6 +31,9 @@ import io.github.rs0325.ashenfrontier.core.catalog.FuelData;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureDataProvider;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicProperties;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicContent;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicModels;
 
 @Mod(AshenFrontierCore.MOD_ID)
 public final class AshenFrontierCore {
@@ -45,9 +48,12 @@ public final class AshenFrontierCore {
         ItemProperties.register(modEventBus);
         NatureProperties.register(modEventBus);
         NatureContent.register(modEventBus);
+        RelicProperties.register(modEventBus);
+        RelicContent.register(modEventBus);
         MiningRules.register();
         FuelData.register(modEventBus);
         modEventBus.addListener(NatureDataProvider::gatherData);
+        modEventBus.addListener(RelicModels::gatherData);
         modEventBus.addListener(MaterialDataProvider::gatherData);
         modEventBus.addListener(AshenFrontierCore::addGameTestDataPack);
         TeamData.register();

@@ -38,6 +38,52 @@ public final class NatureDataProvider implements DataProvider {
         JsonArray pickaxe = new JsonArray();
         JsonArray soft = new JsonArray();
         JsonArray axe = new JsonArray();
+        JsonArray simple = new JsonArray();
+        JsonArray simpleTools = new JsonArray();
+        Map<String, JsonArray> shapes = Map.of("fence", new JsonArray(), "door", new JsonArray(),
+                "stairs", new JsonArray(), "slab", new JsonArray());
+        for (var entry : RelicCatalog.entries()) {
+            String id = entry.id();
+            String key = (entry.block() ? "block." : "item.") + "ashen_frontier." + id;
+            english.addProperty(key, entry.en());
+            japanese.addProperty(key, entry.ja());
+            if (entry.behavior().equals("simple_tool")) simpleTools.add("ashen_frontier:" + id);
+            if (!entry.block()) continue;
+            shapes.forEach((shape, values) -> {
+                if (id.endsWith("_" + shape)) values.add("ashen_frontier:" + id);
+            });
+            (entry.kind().equals("equipment") ? simple : pickaxe).add("ashen_frontier:" + id);
+            String recovery = "ashen_frontier:" + entry.recovery();
+            String condition = entry.kind().equals("equipment")
+                    ? ",{\"condition\":\"minecraft:match_tool\",\"predicate\":{\"items\":\"#ashen_frontier:simple_tools\"}}" : "";
+            if (id.endsWith("_door")) condition += ",{\"condition\":\"minecraft:block_state_property\",\"block\":\"ashen_frontier:"
+                    + id + "\",\"properties\":{\"half\":\"lower\"}}";
+            String functions = id.endsWith("_slab")
+                    ? ",\"functions\":[{\"function\":\"minecraft:set_count\",\"count\":2,\"conditions\":[{\"condition\":\"minecraft:block_state_property\",\"block\":\"ashen_frontier:"
+                    + id + "\",\"properties\":{\"type\":\"double\"}}]}]" : "";
+            save(writes, output, "data/ashen_frontier/loot_table/blocks/" + id,
+                    "{\"type\":\"minecraft:block\",\"pools\":[{\"rolls\":1,\"entries\":[{\"type\":\"minecraft:item\",\"name\":\"" + recovery
+                            + "\"" + functions + "}],\"conditions\":[{\"condition\":\"minecraft:survives_explosion\"}" + condition + "]}]}");
+        }
+        for (var pair : Map.of(
+                "stored_salvage", new String[]{"Stored salvage: processing belongs to later technology", "保管・分解用: 加工は後続技術で解放"},
+                "survival_supply", new String[]{"Survival supply: clothing / medical use belongs to physiology", "生活物資: 着用・医療効果は生理システムで対応"},
+                "food", new String[]{"Ready to eat", "そのまま食べられる保存食"},
+                "inert_equipment", new String[]{"Inert relic: recover using simple tools", "非稼働の遺物: 簡易工具で回収"},
+                "simple_tool", new String[]{"Simple tool: recovers old equipment", "簡易工具: 旧設備の回収に使用"},
+                "sealed_container", new String[]{"Sealed supply: collection / opening requires a later system", "密封物資: 採取・開封は後続システムで対応"},
+                "document", new String[]{"Use to record knowledge for your team", "使用するとチームの知識に記録"}).entrySet()) {
+            english.addProperty("tooltip.ashen_frontier." + pair.getKey(), pair.getValue()[0]);
+            japanese.addProperty("tooltip.ashen_frontier." + pair.getKey(), pair.getValue()[1]);
+        }
+        english.addProperty("tooltip.ashen_frontier.quality", "Quality: %s");
+        japanese.addProperty("tooltip.ashen_frontier.quality", "品質: %s");
+        english.addProperty("tooltip.ashen_frontier.content_mass", "Contents: %s kg");
+        japanese.addProperty("tooltip.ashen_frontier.content_mass", "内容量: %s kg");
+        english.addProperty("tooltip.ashen_frontier.document_id", "Document: %s");
+        japanese.addProperty("tooltip.ashen_frontier.document_id", "資料ID: %s");
+        english.addProperty("message.ashen_frontier.document_recorded", "Recorded team knowledge: %s");
+        japanese.addProperty("message.ashen_frontier.document_recorded", "チームの知識に記録しました: %s");
         for (var entry : NatureCatalog.entries()) {
             String id = entry.id();
             if (entry.kind().equals("rock") || entry.kind().equals("ore") || entry.kind().equals("coal")) {
@@ -113,12 +159,18 @@ public final class NatureDataProvider implements DataProvider {
         }
         saveTag(writes, output, "minecraft", "block", "mineable/pickaxe", pickaxe);
         saveTag(writes, output, "minecraft", "block", "mineable/axe", axe);
+        shapes.forEach((shape, values) -> {
+            String tag = shape.equals("stairs") ? shape : shape + "s";
+            saveTag(writes, output, "minecraft", "block", tag, values);
+            saveTag(writes, output, "minecraft", "item", tag, values);
+        });
         saveTag(writes, output, "ashen_frontier", "block", "soft_for_hand", soft);
-        saveTag(writes, output, "ashen_frontier", "block", "needs_simple_tool", new JsonArray());
+        saveTag(writes, output, "ashen_frontier", "block", "needs_simple_tool", simple);
         for (var tool : Map.of("rock_tools", List.of("pickaxes"), "wood_tools", List.of("axes"),
                 "soil_tools", List.of("shovels", "hoes"), "simple_tools", List.<String>of()).entrySet()) {
             JsonArray values = new JsonArray();
             tool.getValue().forEach(tag -> values.add("#minecraft:" + tag));
+            if (tool.getKey().equals("simple_tools")) values.addAll(simpleTools);
             saveTag(writes, output, "ashen_frontier", "item", tool.getKey(), values);
         }
         return CompletableFuture.allOf(writes.toArray(CompletableFuture[]::new));

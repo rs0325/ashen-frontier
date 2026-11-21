@@ -17,6 +17,25 @@ public final class NatureTooltips {
     public static void tooltip(ItemTooltipEvent event) {
         var id = BuiltInRegistries.ITEM.getKey(event.getItemStack().getItem());
         if (!id.getNamespace().equals(AshenFrontierCore.NAMESPACE)) return;
+        var stack = event.getItemStack();
+        RelicCatalog.entries().stream().filter(entry -> entry.id().equals(id.getPath())).findFirst().ifPresent(entry -> {
+            if (!entry.behavior().equals("decoration")) event.getToolTip().add(Component.translatable("tooltip.ashen_frontier." + entry.behavior()));
+            if (entry.blockItem() && !entry.recovery().equals(entry.id())) {
+                event.getToolTip().add(Component.translatable("tooltip.ashen_frontier.recovery",
+                        RelicContent.item(entry.recovery()).getDescription()));
+            }
+        });
+        var quality = stack.get(NatureProperties.QUALITY);
+        if (quality != null && RelicCatalog.entries().stream().anyMatch(e -> e.id().equals(id.getPath()))) {
+            event.getToolTip().add(Component.translatable("tooltip.ashen_frontier.quality",
+                    quality.getNamespace().equals(AshenFrontierCore.NAMESPACE)
+                            && NatureCatalog.entries().stream().anyMatch(e -> e.id().equals(quality.getPath()))
+                            ? Component.translatable("fluid_type.ashen_frontier." + quality.getPath()) : Component.literal(quality.toString())));
+        }
+        var mass = stack.get(RelicProperties.CONTENT_MASS);
+        if (mass != null) event.getToolTip().add(Component.translatable("tooltip.ashen_frontier.content_mass", mass));
+        var document = stack.get(RelicProperties.DOCUMENT);
+        if (document != null) event.getToolTip().add(Component.translatable("tooltip.ashen_frontier.document_id", document.toString()));
         NatureCatalog.entries().stream().filter(entry -> entry.id().equals(id.getPath()) && entry.blockItem()
                 && !entry.recovery().equals(entry.id())).findFirst().ifPresent(entry -> {
             var recovery = ResourceLocation.parse(entry.recovery().contains(":")

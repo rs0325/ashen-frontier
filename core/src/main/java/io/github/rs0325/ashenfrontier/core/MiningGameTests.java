@@ -3,6 +3,8 @@ package io.github.rs0325.ashenfrontier.core;
 import com.mojang.authlib.GameProfile;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureCatalog;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicContent;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicCatalog;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -25,6 +27,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlock;
@@ -91,8 +94,13 @@ public final class MiningGameTests {
             mining.check(Blocks.SCAFFOLDING, Items.IRON_AXE, Items.IRON_PICKAXE, Items.SCAFFOLDING, true);
             mining.check(NatureContent.block("fallen_branch"), Items.IRON_AXE, Items.IRON_PICKAXE,
                     NatureContent.item("dry_branch"), true);
-            // 旧設備と簡易工具の未登録分はGameTest専用パックで契約だけを検証する。
-            mining.check(Blocks.CRAFTING_TABLE, Items.SHEARS, Items.IRON_AXE, Items.CRAFTING_TABLE, false);
+            for (var entry : RelicCatalog.entries()) {
+                if (!entry.kind().equals("equipment")) continue;
+                for (String tool : List.of("stone_hammer", "simple_wrench")) {
+                    mining.check(RelicContent.block(entry.id()), RelicContent.item(tool), Items.IRON_AXE,
+                            RelicContent.item(entry.recovery()), false);
+                }
+            }
             AshenFrontierCore.LOGGER.info("採掘経路検証: {}通り成功", mining.checks);
         }
         helper.succeed();
@@ -105,7 +113,7 @@ public final class MiningGameTests {
             helper.assertTrue(!Blocks.SLIME_BLOCK.defaultBlockState().is(MiningRules.HAND_SOFT)
                     && Blocks.SLIME_BLOCK.defaultBlockState().is(MiningRules.NEEDS_SIMPLE_TOOL),
                     "硬さ0の工具必須fixtureが有効でない");
-            mining.check(Blocks.SLIME_BLOCK, Items.SHEARS, Items.IRON_AXE, Items.SLIME_BLOCK, false);
+            mining.check(Blocks.SLIME_BLOCK, RelicContent.item("stone_hammer"), Items.IRON_AXE, Items.SLIME_BLOCK, false);
             int count = 0;
             for (var block : BuiltInRegistries.BLOCK) {
                 var state = block.defaultBlockState();
@@ -243,6 +251,9 @@ public final class MiningGameTests {
                             && drops().getFirst().getItem().getCount() == 1, "ドロップが不正: " + context + " / " + drops());
                     helper.assertTrue(progress >= 1 || cracks.stream().anyMatch(stage -> stage >= 0),
                             "ヒビ通知がない: " + context);
+                    player.gameMode.destroyBlock(pos);
+                    helper.assertTrue(drops().size() == 1 && drops().getFirst().getItem().getCount() == 1,
+                            "破壊済みの位置から二重に回収: " + context);
                 } else {
                     helper.assertTrue(cracks.stream().noneMatch(stage -> stage >= 0), "不適正工具でヒビが出る: " + context);
                     helper.assertTrue(!player.gameMode.destroyBlock(pos), "直接の破壊経路で適性を迂回できる: " + context);
@@ -259,6 +270,10 @@ public final class MiningGameTests {
             helper.getLevel().setBlockAndUpdate(pos, block.defaultBlockState());
             player.setItemInHand(InteractionHand.MAIN_HAND, tool);
             cracks.clear();
+            helper.assertTrue(!state().requiresCorrectToolForDrops() || state().canHarvestBlock(helper.getLevel(), pos, player)
+                    || !MiningRules.canMine(state(), tool), "適正工具で回収できない: " + block);
+            helper.assertTrue(helper.getLevel().getGameRules().getBoolean(GameRules.RULE_DOBLOCKDROPS),
+                    "ブロックドロップが無効");
         }
 
         private BlockState state() {

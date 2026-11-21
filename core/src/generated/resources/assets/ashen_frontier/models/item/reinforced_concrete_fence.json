@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/fence_inventory",
+  "textures": {
+    "texture": "ashen_frontier:block/reinforced_concrete_fence"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "ashen_frontier:block/corroded_steel_slab"
+    },
+    "type=double": {
+      "model": "ashen_frontier:block/corroded_steel_floor"
+    },
+    "type=top": {
+      "model": "ashen_frontier:block/corroded_steel_slab_top"
+    }
+  }
+}

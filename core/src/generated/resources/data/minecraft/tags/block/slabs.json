@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "ashen_frontier:concrete_slab",
+    "ashen_frontier:reinforced_concrete_slab",
+    "ashen_frontier:corroded_steel_slab",
+    "ashen_frontier:firebrick_slab",
+    "ashen_frontier:insulation_slab",
+    "ashen_frontier:chemical_tile_slab",
+    "ashen_frontier:shielding_slab",
+    "ashen_frontier:composite_slab"
+  ]
+}

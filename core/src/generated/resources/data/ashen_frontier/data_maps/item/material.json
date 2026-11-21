@@ -1,5 +1,11 @@
 {
   "values": {
+    "ashen_frontier:alloy_scrap": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:aluminium_scrap": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:andesite_chalcopyrite_ore": {
       "mass_kg": 1.0
     },
@@ -9,7 +15,49 @@
     "ashen_frontier:anthracite": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:archive_document": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:bandage": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:bearing": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:bituminous_coal": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cable_fragment": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:canned_food": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:catalyst": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:ceramic_fragment": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:chemical_powder": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:chemical_tile_floor": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:chemical_tile_pipe_casing": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:chemical_tile_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:chemical_tile_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:chemical_tile_wall": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:circuit_board": {
       "mass_kg": 1.0
     },
     "ashen_frontier:clay_sediment": {
@@ -18,7 +66,181 @@
     "ashen_frontier:clay_sediment_nitrate_ore": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:coil_winding": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:composite_cable_casing": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:composite_door": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:composite_fence": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:composite_floor": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:composite_fragment": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:composite_pipe_casing": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:composite_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:composite_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:composite_wall": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:composite_window": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:concrete_fence": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:concrete_floor": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:concrete_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:concrete_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:concrete_wall": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:contaminated_soil": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:copper_scrap": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:corroded_steel_cable_casing": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:corroded_steel_door": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:corroded_steel_fence": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:corroded_steel_floor": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:corroded_steel_pipe_casing": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:corroded_steel_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:corroded_steel_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:corroded_steel_wall": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:corroded_steel_window": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_android_wreck": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_archive_terminal": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_boiler": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_chemical_storage": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_control_panel": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_distillation_column": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_electrolyzer": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_fuel_cask": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_furnace": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_generator_control": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_geothermal_turbine": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_greenhouse_frame": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_ground_test_rig": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_hand_pump": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_lathe": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_launch_support": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_medical_cabinet": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_motor": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_propellant_plant": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_rail_controller": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_reaction_vessel": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_reactor_casing": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_remote_probe_terminal": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_sawmill": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_semiconductor_fabricator": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_steam_engine": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_storage_crate": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_thermal_generator": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_transformer": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_vacuum_pump": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_vehicle_wreck": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:damaged_warning_sign": {
       "mass_kg": 1.0
     },
     "ashen_frontier:dead_grass": {
@@ -33,10 +255,19 @@
     "ashen_frontier:dry_branch": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:electrode": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:electronic_component": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:fallen_branch": {
       "mass_kg": 1.0
     },
     "ashen_frontier:fallen_log": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:fastener": {
       "mass_kg": 1.0
     },
     "ashen_frontier:fertile_soil": {
@@ -45,10 +276,34 @@
     "ashen_frontier:fiber_bundle": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:filter_cartridge": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:firebrick_floor": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:firebrick_pipe_casing": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:firebrick_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:firebrick_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:firebrick_wall": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:flint": {
       "mass_kg": 1.0
     },
     "ashen_frontier:fungus_specimen": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:gear": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:glass_scrap": {
       "mass_kg": 1.0
     },
     "ashen_frontier:gneiss": {
@@ -81,6 +336,30 @@
     "ashen_frontier:gypsum": {
       "mass_kg": 1.0,
       "mohs_hardness": 2.0
+    },
+    "ashen_frontier:heat_resistant_plate": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:insulation_cable_casing": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:insulation_floor": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:insulation_pipe_casing": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:insulation_scrap": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:insulation_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:insulation_wall": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:iron_scrap": {
+      "mass_kg": 1.0
     },
     "ashen_frontier:lignite": {
       "mass_kg": 1.0
@@ -121,6 +400,18 @@
     "ashen_frontier:loose_pebble": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:lubricant_can": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:medical_supplies": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:motor_part": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:optical_lens": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:peat": {
       "mass_kg": 1.0
     },
@@ -139,16 +430,28 @@
     "ashen_frontier:peridotite_pentlandite_ore": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:pipe_fragment": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:plant_fiber": {
       "mass_kg": 1.0
     },
     "ashen_frontier:poor_soil": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:precision_mechanism": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:preserved_fungus": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:preserved_rations": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:preserved_seed": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:protective_gloves": {
       "mass_kg": 1.0
     },
     "ashen_frontier:quartzite": {
@@ -246,6 +549,24 @@
     "ashen_frontier:raw_uraninite": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:reinforced_concrete_fence": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:reinforced_concrete_floor": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:reinforced_concrete_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:reinforced_concrete_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:reinforced_concrete_wall": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:reinforced_concrete_window": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:rock_salt": {
       "mass_kg": 1.0
     },
@@ -253,6 +574,12 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:rubber_plant_seed": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:salvaged_battery": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:salvaged_cloth": {
       "mass_kg": 1.0
     },
     "ashen_frontier:sandstone_monazite_ore": {
@@ -264,7 +591,22 @@
     "ashen_frontier:sandstone_rutile_ore": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:seal_ring": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:sealed_oil_container": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:sealed_reagent_container": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:sealed_water_container": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:seed_specimen": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:sensor": {
       "mass_kg": 1.0
     },
     "ashen_frontier:shale": {
@@ -273,10 +615,64 @@
     "ashen_frontier:shale_pyrite_ore": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:shielding_door": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:shielding_floor": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:shielding_plate": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:shielding_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:shielding_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:shielding_wall": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:shielding_window": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:simple_wrench": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:slate": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:spring": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:stainless_steel_scrap": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:steel_scrap": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:stone_hammer": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:titanium_scrap": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:toxic_soil": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:vacuum_seal": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:valve": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:wood_scrap": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:work_boots": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:work_jacket": {
       "mass_kg": 1.0
     }
   }

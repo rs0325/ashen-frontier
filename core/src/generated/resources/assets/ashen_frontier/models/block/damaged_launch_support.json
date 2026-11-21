@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "ashen_frontier:block/damaged_launch_support",
+    "side": "ashen_frontier:block/damaged_launch_support_side",
+    "top": "ashen_frontier:block/damaged_launch_support_top"
+  }
+}

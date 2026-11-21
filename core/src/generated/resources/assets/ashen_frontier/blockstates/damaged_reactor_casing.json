@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/damaged_reactor_casing",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/damaged_reactor_casing"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/damaged_reactor_casing",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/damaged_reactor_casing",
+      "y": 270
+    }
+  }
+}
