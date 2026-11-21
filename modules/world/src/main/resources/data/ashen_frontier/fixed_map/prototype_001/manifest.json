@@ -1,0 +1,11 @@
+{
+  "map_version": "prototype_001",
+  "format_version": 1,
+  "fixed_seed": 0,
+  "width": 32768,
+  "depth": 32768,
+  "min_y": -64,
+  "height": 384,
+  "catalog_version": "prototype_001",
+  "files": {}
+}

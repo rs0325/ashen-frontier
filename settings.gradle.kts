@@ -14,7 +14,7 @@ plugins {
 rootProject.name = "ashen-frontier"
 
 val minecraftVersions = listOf("1.21.1")
-val featureModules = listOf("example")
+val featureModules = listOf("world")
 
 stonecutter {
     create(rootProject) {

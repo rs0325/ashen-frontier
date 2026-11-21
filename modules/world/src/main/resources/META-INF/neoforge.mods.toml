@@ -5,9 +5,9 @@ license = "${mod_license}"
 [[mods]]
 modId = "${mod_id}"
 version = "${mod_version}"
-displayName = "Ashen Frontier Example"
+displayName = "Ashen Frontier World"
 authors = "${mod_authors}"
-description = "機能Mod構成の検証用サンプル"
+description = "固定マップの生成と版管理"
 
 [[dependencies.${mod_id}]]
 modId = "ashen_frontier_core"

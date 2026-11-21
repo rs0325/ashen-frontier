@@ -1,0 +1,18 @@
+{
+  "dimensions": {
+    "minecraft:overworld": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "ashen_frontier:fixed_map",
+        "map": {
+          "map_version": "prototype_001",
+          "format_version": 1,
+          "manifest_hash": "6c36b4a4f20bae800ada3facf9de8e3b698810e11304bcf88ed911626158672b"
+        },
+        "biome_source": {
+          "biome": "minecraft:the_void"
+        }
+      }
+    }
+  }
+}
