@@ -1,0 +1,283 @@
+{
+  "values": {
+    "ashen_frontier:andesite_chalcopyrite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:andesite_sulfur_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:anthracite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:bituminous_coal": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:clay_sediment": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:clay_sediment_nitrate_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:contaminated_soil": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:dead_grass": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:dead_tree": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:degraded_soil": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:dry_branch": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:fallen_branch": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:fallen_log": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:fertile_soil": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:fiber_bundle": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:flint": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:fungus_specimen": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:gneiss": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:gneiss_graphite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:gneiss_uraninite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:granite_cassiterite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:granite_chalcopyrite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:granite_molybdenite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:granite_pyrite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:granite_spodumene_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:granite_uraninite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:gypsum": {
+      "mass_kg": 1.0,
+      "mohs_hardness": 2.0
+    },
+    "ashen_frontier:lignite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:limestone": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:limestone_apatite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:limestone_bauxite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:limestone_cassiterite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:limestone_galena_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:limestone_hematite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:limestone_magnetite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:limestone_pyrolusite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:limestone_scheelite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:limestone_sphalerite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:loose_flint": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:loose_pebble": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:peat": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:pebble": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:peridotite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:peridotite_chromite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:peridotite_magnetite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:peridotite_pentlandite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:plant_fiber": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:poor_soil": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:preserved_fungus": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:preserved_seed": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:quartzite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:quartzite_cobaltite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:quartzite_hematite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:quartzite_quartz_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_anthracite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_apatite": {
+      "mass_kg": 1.0,
+      "mohs_hardness": 5.0
+    },
+    "ashen_frontier:raw_bauxite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_bituminous_coal": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_cassiterite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_chalcopyrite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_chromite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_cobaltite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_galena": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_graphite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_hematite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_lignite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_magnetite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_molybdenite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_monazite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_nitrate": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_peat": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_pentlandite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_pyrite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_pyrolusite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_quartz": {
+      "mass_kg": 1.0,
+      "mohs_hardness": 7.0
+    },
+    "ashen_frontier:raw_rutile": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_scheelite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_sphalerite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_spodumene": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_sulfur": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raw_uraninite": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:rock_salt": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:rubber_plant_propagule": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:rubber_plant_seed": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:sandstone_monazite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:sandstone_quartz_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:sandstone_rutile_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:seed_specimen": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:shale": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:shale_pyrite_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:slate": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:toxic_soil": {
+      "mass_kg": 1.0
+    }
+  }
+}

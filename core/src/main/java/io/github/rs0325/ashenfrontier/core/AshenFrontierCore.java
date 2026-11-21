@@ -27,6 +27,10 @@ import io.github.rs0325.ashenfrontier.core.terminal.TerminalModules;
 import io.github.rs0325.ashenfrontier.core.terminal.TerminalModuleAction;
 import net.minecraft.world.item.Items;
 import io.github.rs0325.ashenfrontier.core.vanilla.RemovedLootModifiers;
+import io.github.rs0325.ashenfrontier.core.catalog.FuelData;
+import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
+import io.github.rs0325.ashenfrontier.core.catalog.NatureDataProvider;
+import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
 
 @Mod(AshenFrontierCore.MOD_ID)
 public final class AshenFrontierCore {
@@ -39,6 +43,10 @@ public final class AshenFrontierCore {
         RemovedLootModifiers.register(modEventBus);
         MaterialData.register(modEventBus);
         ItemProperties.register(modEventBus);
+        NatureProperties.register(modEventBus);
+        NatureContent.register(modEventBus);
+        FuelData.register(modEventBus);
+        modEventBus.addListener(NatureDataProvider::gatherData);
         modEventBus.addListener(MaterialDataProvider::gatherData);
         modEventBus.addListener(AshenFrontierCore::addGameTestDataPack);
         TeamData.register();
