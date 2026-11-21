@@ -20,7 +20,9 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import java.io.IOException;
 import java.util.Set;
+import javax.imageio.ImageIO;
 
 @GameTestHolder(AshenFrontierWorld.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -40,6 +42,7 @@ public final class WorldGameTests {
                 .orElseThrow().getSize();
         helper.assertTrue(size.equals(new Vec3i(16, 16, 16)), "読み込んだテンプレートの寸法は16³");
         var original = generator(helper);
+        helper.assertTrue(original.mapVersion().mapVersion().equals("earth_001"), "同梱配置図はearth_001");
         var ops = helper.getLevel().registryAccess().createSerializationContext(JsonOps.INSTANCE);
         var encoded = ChunkGenerator.CODEC.encodeStart(ops, original).getOrThrow();
         var decoded = (FixedMapChunkGenerator) ChunkGenerator.CODEC.parse(ops, encoded).getOrThrow();
@@ -48,6 +51,27 @@ public final class WorldGameTests {
         var record = MapSavedData.verify(helper.getLevel(), original.mapVersion());
         helper.assertTrue(MapSavedData.decode(record.save(new CompoundTag(), helper.getLevel().registryAccess()))
                 .equals(original.mapVersion()), "SavedDataの保存と読戻し");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierWorld.MOD_ID)
+    public static void bundledRasterLayers(GameTestHelper helper) {
+        var version = generator(helper).mapVersion();
+        BundledMaps.require(version);
+        for (String layer : new String[]{"height", "region", "water", "soil", "geology", "coast_river"}) {
+            String path = "/data/ashen_frontier/fixed_map/" + version.mapVersion() + "/" + layer + ".png";
+            try (var stream = BundledMaps.class.getResourceAsStream(path)) {
+                helper.assertTrue(stream != null, "配置図を同梱: " + layer);
+                var image = ImageIO.read(stream);
+                helper.assertTrue(image.getWidth() == 2048 && image.getHeight() == 2048, "配置図の寸法: " + layer);
+                helper.assertTrue(image.getRaster().getNumBands() == 1, "整数グレースケール: " + layer);
+                helper.assertTrue(image.getSampleModel().getSampleSize(0) == (layer.equals("height") ? 16 : 8),
+                        "配置図のビット幅: " + layer);
+                image.flush();
+            } catch (IOException e) {
+                throw new IllegalStateException("配置図を読めません: " + path, e);
+            }
+        }
         helper.succeed();
     }
 

@@ -1,0 +1,41 @@
+{
+  "map_version": "earth_001",
+  "format_version": 1,
+  "fixed_seed": 520026,
+  "width": 32768,
+  "depth": 32768,
+  "min_y": -64,
+  "height": 384,
+  "raster_width": 2048,
+  "raster_depth": 2048,
+  "catalog_version": "profiles_001",
+  "inputs": {
+    "corrections.json": "02dba2460763d76c88d780aa21acfbcc25b5533855764ed86bee210279e74d82",
+    "extraction.json": "46309f210a3177b27352e348985d5a7e54d99e53263fee5f83a3bf842041f60c",
+    "geology.json": "5615120fd85dcc7757c1b90a41dab7d062857dadd5f936ae53c9f67e5491a36b",
+    "land.png": "e5e2acecac47217278b1b195bf4fd5d6abe3721708b597c1556df6797068b07e",
+    "layout.json": "ade5b3d4d197eb94a6ee08e1081e9679d32c573e74f542cf8bac729a7f158f75"
+  },
+  "geology_profile_version": "geology_001",
+  "tool": {
+    "version": "1.2.0",
+    "python": "3.12",
+    "numpy": "2.2.6",
+    "pillow": "11.2.1",
+    "files": {
+      "tools/fixed-map/generate.py": "ecbf51398b82fe92a188d4a455e797236daefea09e29bd16017878cf28a78a30",
+      "tools/fixed-map/extract_mask.py": "be06ce81562d53d6c1394b81f42b03d9aab0d2c402e5324e4928628aa553feb8",
+      "tools/fixed-map/requirements.txt": "d25160758f6f0511b40d2788a949c86bb887869cba64c738e650e7d44fde471d"
+    }
+  },
+  "files": {
+    "height.png": "9b8cfc5466d46eb88c00be5fd479ad3c8cf93f9f523d7401d7b3eab45a9c6cd4",
+    "region.png": "9f347dd57a2da39ff546ff8e065f68315b6d567751ed70d256b46049c2896182",
+    "water.png": "fb9ee0ea530c434d2e20c817ed970186144b6f302f9fc4281d83043b961639d4",
+    "soil.png": "04575a467d27b2bc339110c7b93488d7db90046da0facacfd192640f6863df59",
+    "geology.png": "c97b82164aadc089b39c93a01cefabc7ca70604a4769d0c28cc2e69fecbf2074",
+    "coast_river.png": "332eeae1b2beea5750d8c862c8e50ffbadf013442db3537973c20917e5361d7f",
+    "index.json": "6be58122cc85e45bcc01ce7e1d0f33678dc868c128a60ef97ab02a01568f429e",
+    "geology_profiles.json": "19f00288295029ab32e217b092af328fc5bf2df09a850eebc4ccc1f0ec1bd11a"
+  }
+}
