@@ -45,6 +45,7 @@ public final class AshenFrontierCore {
         ItemProperties.register(modEventBus);
         NatureProperties.register(modEventBus);
         NatureContent.register(modEventBus);
+        MiningRules.register();
         FuelData.register(modEventBus);
         modEventBus.addListener(NatureDataProvider::gatherData);
         modEventBus.addListener(MaterialDataProvider::gatherData);

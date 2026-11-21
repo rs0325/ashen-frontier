@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "package": "io.github.rs0325.ashenfrontier.core.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": ["ServerPlayerGameModeMixin", "BlockStateMiningMixin"],
+  "client": ["client.MultiPlayerGameModeMixin"],
+  "injectors": {"defaultRequire": 1}
+}
