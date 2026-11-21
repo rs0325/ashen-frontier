@@ -19,6 +19,7 @@ import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import io.github.rs0325.ashenfrontier.world.structure.LootMarkerProcessor;
 import java.io.IOException;
 import java.nio.file.Files;
 
@@ -31,6 +32,7 @@ public final class AshenFrontierWorld {
             DeferredRegister.create(Registries.BIOME_SOURCE, AshenFrontierCore.NAMESPACE);
 
     public AshenFrontierWorld(IEventBus bus) {
+        LootMarkerProcessor.register(bus);
         GENERATORS.register("fixed_map", () -> FixedMapChunkGenerator.CODEC);
         BIOME_SOURCES.register("fixed_map", () -> FixedMapBiomeSource.CODEC);
         GENERATORS.register(bus);

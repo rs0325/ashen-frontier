@@ -1,0 +1,37 @@
+{
+  "format": "sponge3",
+  "dimension": "minecraft:overworld",
+  "range": [
+    -49,
+    -16,
+    -1,
+    15,
+    33,
+    3
+  ],
+  "inputs": {
+    "boundary.schem": "7cb7677a6f80fe6877e5a6370b27d68c0b046a76fc7e46652c1c3b640fc4b0cf"
+  },
+  "outputs": {
+    "data/ashen_frontier_world/structure/conversion_fixture/0_0_0.nbt": "352f62c51c56a43f48e35c2bf77d69c44f74b89666920084a5212c2434230a63",
+    "data/ashen_frontier_world/structure/conversion_fixture/0_48_0.nbt": "8fd6ac4ba9d48e8e70392f198333a61d988fc658777ced116af9db9f0a40bbf0",
+    "data/ashen_frontier_world/structure/conversion_fixture/48_0_0.nbt": "e977103f91b25aff8a65b7ed0e1aefc3fa371794a4b0ebdc2be14ef73a58a752",
+    "data/ashen_frontier_world/structure/conversion_fixture/48_48_0.nbt": "0b27853eb27457990d9d068f1bd2e182330ff345598daa801c68c6e69ca99308"
+  },
+  "removedBlocks": [
+    "minecraft:spawner@BlockPos{x\u003d3, y\u003d1, z\u003d1}",
+    "minecraft:command_block@BlockPos{x\u003d4, y\u003d1, z\u003d1}"
+  ],
+  "entities": "全削除",
+  "inventoryAndComponents": "全削除",
+  "rights": {
+    "author": "Ashen Frontier contributors",
+    "source": "tools/structures/src/main/java/io/github/rs0325/ashenfrontier/structures/FixtureWriter.java",
+    "license": "MIT",
+    "redistribution": true,
+    "modification": true,
+    "attribution": "Copyright (c) 2026 Ashen Frontier contributors / MIT",
+    "inputSha256": "7cb7677a6f80fe6877e5a6370b27d68c0b046a76fc7e46652c1c3b640fc4b0cf",
+    "inputVersion": "sponge3:1.21.1/3955"
+  }
+}
