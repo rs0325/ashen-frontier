@@ -1,4 +1,5 @@
 {
+  "config.ashen_frontier_core.loot.lifeSupportMultiplier": "Building life support loot multiplier",
   "command.ashen_frontier.team.created": "Created your team.",
   "command.ashen_frontier.team.invited": "You have been invited to a team.",
   "command.ashen_frontier.team.invite_sent": "Invitation sent.",
