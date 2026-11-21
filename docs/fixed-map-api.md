@@ -36,3 +36,5 @@ overworldの`level.getChunkSource().getGenerator()`が`FixedMapChunkGenerator`�
 初期ボーダーは中心0、幅32768。仮地形はY=−64に岩盤、Y=−63〜63に石。範囲外は空チャンク。`getBaseHeight`・`getBaseColumn`・実チャンクは同じサンプラーを使う。バニラの構造物・装飾・初期Mob生成は実行しない。
 
 Bはcoreの登録、Cは配置図とmanifest、Dはこの生成器・BiomeSourceの地形と分布を実装する。地域・水域・地質・帯水層などの未実装APIを先に追加しない。初期シェルター座標や本来の地形の完成を、この仮地形で代替しない。
+
+自然物の配置ID、母岩と鉱物、土壌・水・燃料の品質、回収先はcoreの`catalog/nature.json`を参照する。登録済みAPIと単位、B2/G/D/Eへの引継ぎは[自然物の登録と制作契約](nature-catalog.md)に従う。配置図の仮カタログ版の更新はCの担当とし、Bからmanifestや配置図資産は変更しない。

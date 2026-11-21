@@ -1,0 +1,36 @@
+{
+  "values": {
+    "ashen_frontier:anthracite": {
+      "profile": "ashen_frontier:anthracite"
+    },
+    "ashen_frontier:bituminous_coal": {
+      "ash_fraction": 0.151,
+      "heating_value_j_kg": 2.805189897538856E7,
+      "profile": "ashen_frontier:bituminous_coal",
+      "sulfur_fraction": 0.012,
+      "volatile_fraction": 0.322
+    },
+    "ashen_frontier:lignite": {
+      "profile": "ashen_frontier:lignite"
+    },
+    "ashen_frontier:peat": {
+      "profile": "ashen_frontier:peat"
+    },
+    "ashen_frontier:raw_anthracite": {
+      "profile": "ashen_frontier:anthracite"
+    },
+    "ashen_frontier:raw_bituminous_coal": {
+      "ash_fraction": 0.151,
+      "heating_value_j_kg": 2.805189897538856E7,
+      "profile": "ashen_frontier:bituminous_coal",
+      "sulfur_fraction": 0.012,
+      "volatile_fraction": 0.322
+    },
+    "ashen_frontier:raw_lignite": {
+      "profile": "ashen_frontier:lignite"
+    },
+    "ashen_frontier:raw_peat": {
+      "profile": "ashen_frontier:peat"
+    }
+  }
+}

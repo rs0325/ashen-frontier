@@ -1,0 +1,40 @@
+{
+  "values": {
+    "ashen_frontier:flowing_heavy_high_sulfur_crude_oil": {
+      "api_gravity": 28.0,
+      "profile": "ashen_frontier:heavy_high_sulfur_crude_oil",
+      "sulfur_fraction": 0.021
+    },
+    "ashen_frontier:flowing_heavy_low_sulfur_crude_oil": {
+      "profile": "ashen_frontier:heavy_low_sulfur_crude_oil"
+    },
+    "ashen_frontier:flowing_light_high_sulfur_crude_oil": {
+      "api_gravity": 34.0,
+      "profile": "ashen_frontier:light_high_sulfur_crude_oil",
+      "sulfur_fraction": 0.02
+    },
+    "ashen_frontier:flowing_light_low_sulfur_crude_oil": {
+      "api_gravity": 36.0,
+      "profile": "ashen_frontier:light_low_sulfur_crude_oil",
+      "sulfur_fraction": 0.002
+    },
+    "ashen_frontier:heavy_high_sulfur_crude_oil": {
+      "api_gravity": 28.0,
+      "profile": "ashen_frontier:heavy_high_sulfur_crude_oil",
+      "sulfur_fraction": 0.021
+    },
+    "ashen_frontier:heavy_low_sulfur_crude_oil": {
+      "profile": "ashen_frontier:heavy_low_sulfur_crude_oil"
+    },
+    "ashen_frontier:light_high_sulfur_crude_oil": {
+      "api_gravity": 34.0,
+      "profile": "ashen_frontier:light_high_sulfur_crude_oil",
+      "sulfur_fraction": 0.02
+    },
+    "ashen_frontier:light_low_sulfur_crude_oil": {
+      "api_gravity": 36.0,
+      "profile": "ashen_frontier:light_low_sulfur_crude_oil",
+      "sulfur_fraction": 0.002
+    }
+  }
+}
