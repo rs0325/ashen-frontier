@@ -34,9 +34,10 @@ public final class CompatibilityClientEvents {
     }
 
     private static void showWarning() {
-        SystemToast.multiline(Minecraft.getInstance(),
+        var minecraft = Minecraft.getInstance();
+        minecraft.getToasts().addToast(SystemToast.multiline(minecraft,
                 SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
-                Component.translatable("compatibility.ashen_frontier.title"), warning());
+                Component.translatable("compatibility.ashen_frontier.title"), warning()));
     }
 
     private static Component warning() {
