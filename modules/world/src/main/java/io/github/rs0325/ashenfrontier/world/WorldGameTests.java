@@ -355,6 +355,22 @@ public final class WorldGameTests {
                 "汚染された海に濃い霧を設定");
         helper.assertTrue(BiomeAtmosphere.values().get(AshenFrontierCore.id("alpine_wastes")).density() < 0.2,
                 "高山を清浄な例外に設定");
+        helper.assertTrue(BiomeAtmosphere.values().get(AshenFrontierCore.id("arid_wasteland")).dustParticle()
+                        == BiomeAtmosphere.DustParticle.WHITE_ASH
+                        && BiomeAtmosphere.values().get(AshenFrontierCore.id("industrial_wasteland")).dustParticle()
+                        == BiomeAtmosphere.DustParticle.ASH
+                        && BiomeAtmosphere.values().get(AshenFrontierCore.id("barren_land")).dustParticle()
+                        == BiomeAtmosphere.DustParticle.ASH
+                        && BiomeAtmosphere.values().get(AshenFrontierCore.id("warm_barren_land")).dustParticle()
+                        == BiomeAtmosphere.DustParticle.ASH
+                        && BiomeAtmosphere.values().values().stream()
+                        .filter(value -> value.dustParticle() != BiomeAtmosphere.DustParticle.NONE).count() == 4,
+                "砂塵の対象4地域と粒子種別を設定");
+        helper.assertTrue(BiomeAtmosphere.values().get(AshenFrontierCore.id("temperate_wasteland")).dustParticle()
+                        == BiomeAtmosphere.DustParticle.NONE
+                        && BiomeAtmosphere.values().get(AshenFrontierCore.id("cold_research_wastes")).dustParticle()
+                        == BiomeAtmosphere.DustParticle.NONE,
+                "通常地域と寒冷地域は砂塵なし");
         helper.succeed();
     }
 }
