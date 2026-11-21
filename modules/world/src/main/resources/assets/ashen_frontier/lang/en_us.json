@@ -1,3 +1,15 @@
 {
-  "generator.ashen_frontier.fixed_map": "Fixed Map (Ashen Frontier)"
+  "generator.ashen_frontier.fixed_map": "Fixed Map (Ashen Frontier)",
+  "biome.ashen_frontier.polluted_ocean": "Polluted Ocean",
+  "biome.ashen_frontier.temperate_wasteland": "Temperate Wasteland",
+  "biome.ashen_frontier.abandoned_farmland": "Abandoned Farmland",
+  "biome.ashen_frontier.mining_highlands": "Mining Highlands",
+  "biome.ashen_frontier.arid_wasteland": "Arid Wasteland",
+  "biome.ashen_frontier.industrial_wasteland": "Industrial Wasteland",
+  "biome.ashen_frontier.industrial_coast": "Industrial Coast",
+  "biome.ashen_frontier.cold_research_wastes": "Cold Research Wastes",
+  "biome.ashen_frontier.barren_land": "Barren Land",
+  "biome.ashen_frontier.cold_barren_land": "Cold Barren Land",
+  "biome.ashen_frontier.warm_barren_land": "Warm Barren Land",
+  "biome.ashen_frontier.alpine_wastes": "Alpine Wastes"
 }

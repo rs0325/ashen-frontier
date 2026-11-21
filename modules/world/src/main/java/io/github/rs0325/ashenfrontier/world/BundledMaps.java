@@ -7,13 +7,16 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Set;
+import java.util.HashSet;
 
 /** クラスパスに同梱した版だけを解決する。ワールドやデータパックから資産を上書きしない。 */
 public final class BundledMaps {
+    private static final Set<MapVersion> VERIFIED = new HashSet<>();
     private BundledMaps() {}
 
     /** 指定版のmanifestと資産を照合し、不足・不一致は版名を含む例外にする。 */
-    public static void require(MapVersion version) {
+    public static synchronized void require(MapVersion version) {
+        if (VERIFIED.contains(version)) return;
         if (!version.mapVersion().matches("[a-z0-9_-]+")) {
             throw new IllegalStateException("固定マップ版 " + version.mapVersion() + ": 不正な版名です");
         }
@@ -35,6 +38,7 @@ public final class BundledMaps {
                 throw new IllegalStateException("固定マップ版 " + version.mapVersion() + ": 資産ハッシュ不一致 " + entry.getKey());
             }
         }
+        VERIFIED.add(version);
     }
 
     private static byte[] read(String path, String version) {

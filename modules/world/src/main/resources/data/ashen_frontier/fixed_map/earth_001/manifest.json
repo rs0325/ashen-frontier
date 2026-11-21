@@ -23,7 +23,7 @@
     "numpy": "2.2.6",
     "pillow": "11.2.1",
     "files": {
-      "tools/fixed-map/generate.py": "ecbf51398b82fe92a188d4a455e797236daefea09e29bd16017878cf28a78a30",
+      "tools/fixed-map/generate.py": "e356e4b8daee115434712800a8e7874a0d058b781033d20184601954c0505c1a",
       "tools/fixed-map/extract_mask.py": "be06ce81562d53d6c1394b81f42b03d9aab0d2c402e5324e4928628aa553feb8",
       "tools/fixed-map/requirements.txt": "d25160758f6f0511b40d2788a949c86bb887869cba64c738e650e7d44fde471d"
     }
