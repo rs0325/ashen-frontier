@@ -29,6 +29,7 @@
   "config.ashen_frontier_core.compatibility.allowedMods": "追加で許可するMod ID",
   "config.ashen_frontier_core.units.temperatureKelvin": "温度をケルビンで表示する",
   "config.ashen_frontier_core.units.pressurePascal": "圧力をパスカルで表示する",
+  "config.ashen_frontier_core.visual.particleQuality": "霧・砂塵の粒子品質（0: 無効、1: 低、2: 標準）",
   "key.ashen_frontier.terminal": "個人端末を開く",
   "key.categories.ashen_frontier": "Ashen Frontier",
   "terminal.ashen_frontier.title": "個人端末",

@@ -23,6 +23,10 @@ public final class CoreConfig {
             .translation("config.ashen_frontier_core.units.pressurePascal")
             .comment("圧力をパスカルで表示する")
             .define("units.pressurePascal", false);
+    private static final ModConfigSpec.IntValue PARTICLE_QUALITY = CLIENT_BUILDER
+            .translation("config.ashen_frontier_core.visual.particleQuality")
+            .comment("霧・砂塵の装飾粒子の描画品質（0: 無効、1: 少ない、2: 標準）")
+            .defineInRange("visual.particleQuality", 2, 0, 2);
     private static final ModConfigSpec.ConfigValue<List<? extends String>> CLIENT_ALLOWED_MODS = CLIENT_BUILDER
             .translation("config.ashen_frontier_core.compatibility.allowedMods")
             .comment("互換性チェックで許可する追加Mod ID")
@@ -38,6 +42,7 @@ public final class CoreConfig {
 
     public static boolean useKelvin() { return USE_KELVIN.get(); }
     public static boolean usePascal() { return USE_PASCAL.get(); }
+    public static int particleQuality() { return PARTICLE_QUALITY.get(); }
 
     public static List<String> serverAllowedMods() {
         return SERVER_ALLOWED_MODS.get().stream().map(String.class::cast).toList();

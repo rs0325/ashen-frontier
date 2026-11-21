@@ -66,7 +66,15 @@ Bはcoreの登録、Cは配置図とmanifest、Dはこの生成器・BiomeSource
 
 地層の厚さは固定シード・定義のsalt・プロファイル/層ID・絶対座標を入力とする256ブロック格子の滑らかなノイズで整数範囲内に決める。地層の下部境界だけに傾斜・断層変位を適用し、上の境界以下・Y=−63以上へ制限する。Eで洞窟・鉱床を追加するときは、この母岩と保護判定を使い、土壌・水より先に適用する。Fの有限採水・海域の補給・帯水層は未実装。生成時の流体更新はここでは登録せず、Fの制御へ接続する。
 
-K用のバイオームIDは`ashen_frontier:`名前空間の`polluted_ocean`、`temperate_wasteland`、`abandoned_farmland`、`mining_highlands`、`arid_wasteland`、`industrial_wasteland`、`industrial_coast`、`cold_research_wastes`、`barren_land`、`cold_barren_land`、`warm_barren_land`、`alpine_wastes`。この順でCodecへ保存する。未割当て陸地は絶対緯度60°以上を寒冷、25°未満を温暖、その間を中立にし、陸地の地表Y=210以上は高山とする。バイオームJSONの標準effectsは共通の既定色のみ。霧・砂塵の濃さや独自描画データはKで追加する。
+バイオームIDは`ashen_frontier:`名前空間の`polluted_ocean`、`temperate_wasteland`、`abandoned_farmland`、`mining_highlands`、`arid_wasteland`、`industrial_wasteland`、`industrial_coast`、`cold_research_wastes`、`barren_land`、`cold_barren_land`、`warm_barren_land`、`alpine_wastes`。この順でCodecへ保存する。未割当て陸地は絶対緯度60°以上を寒冷、25°未満を温暖、その間を中立にし、陸地の地表Y=210以上は高山とする。
+
+## ワールド端と静的な大気
+
+固定マップのoverworldでは、サーバー起動時に標準WorldBorderの中心を原点、幅を32768に設定する。LevelDataに保存されたスポーンが範囲外なら初期地点`(-8500, 100, -8192)`へ戻し、範囲内なら保持する。ボーダーの同期は標準パケットに任せる。
+
+霧色は各Biomeの標準`effects.fog_color`を使う。標準Biomeには濃度の項目がないため、バイオームIDに対応する補助定義を`data/<namespace>/biome_atmosphere/<biome_path>.json`へ置く。`density`は0〜1の有限数、`dust_color`は24bit RGB整数。生成元は`tools/fixed-map/write_biomes.py`。追加のライブラリや独自レジストリは使わず、既存の研究定義と同じリロードリスナー・参加時と`/reload`時の全量同期を使う。削除した定義は次の同期で消え、定義のないBiomeは独自描画の対象外となる。値の範囲違反ではリロードを失敗させ、直前の定義を保持する。
+
+濃度と砂塵色は標準の霧色と同じ4ブロック格子のガウス補間を使う。外縁までの最短水平距離の90%以内で霧を不透明にし、256ブロック以内では距離に応じて開始・終了距離をさらに縮める。水・溶岩・粉雪の霧は標準処理を使う。寒冷Biomeの雪片と砂塵の比率も周囲の気温から補間する。クライアントの粒子品質を無効にしても、距離霧とボーダーは維持する。時刻・天候による濃度変化は追加しない。
 
 高山の閾値は`FixedTerrain.surfaceY`と同じノイズ・丸め・水域制約適用後のYで判定する。寒冷研究地域（北）の65°N以上の陸地には8層以上の氷床、鉱業・寒冷研究地域の50〜65°Nの高所（Y=180以上）と60°N以上の谷には氷河を置く。谷は四方96ブロックの平均標高より2ブロック以上低い地点とし、氷床内の谷も氷を厚くする。厚さは緯度・標高・用途別saltの固定ノイズから決め、地表高を変えず表面を`snow_block`、その下3層を`packed_ice`、さらに下を`blue_ice`へ置き換える。寒冷バイオーム（寒冷研究・寒冷な未割当て・高山）では氷河以外の乾いた地表にも雪ブロックを置く。海・河川・湖は凍結せず、範囲外は空のまま。雪氷はランダムtickで融けないブロックを使い、季節・融解・採水処理は追加しない。
 

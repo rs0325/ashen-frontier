@@ -29,6 +29,7 @@
   "config.ashen_frontier_core.compatibility.allowedMods": "Additional allowed mod IDs",
   "config.ashen_frontier_core.units.temperatureKelvin": "Display temperature in kelvin",
   "config.ashen_frontier_core.units.pressurePascal": "Display pressure in pascals",
+  "config.ashen_frontier_core.visual.particleQuality": "Fog and dust particle quality (0: off, 1: low, 2: standard)",
   "key.ashen_frontier.terminal": "Open personal terminal",
   "key.categories.ashen_frontier": "Ashen Frontier",
   "terminal.ashen_frontier.title": "Personal terminal",
