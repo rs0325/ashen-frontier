@@ -66,6 +66,8 @@ Gradleのプロジェクトは`:<モジュール>:<Minecraftバージョン>`（
 
 ### 機能Modの追加
 
+機能Modの責務・分割・依存は[設計02](design/02-architecture.md)で確定している。`modules/example`は配線検証用の仮モジュールで、[M2](design/12-m2-fixed-map.md)のworld追加時に削除する。上記のexampleの起動例・下記の追加手順は、その実装時にworldへ置き換える。
+
 1. `settings.gradle.kts`の`featureModules`へ名前を追加する。
 2. `modules/<name>/build.gradle.kts`で`id("ashenfrontier.mod")`を適用する。
 3. `modules/<name>/src/main/resources/META-INF/neoforge.mods.toml`を`modules/example`に倣って作成する。
@@ -78,7 +80,6 @@ Gradleのプロジェクトは`:<モジュール>:<Minecraftバージョン>`（
 
 ## 未決定事項
 
-- 機能Modの分け方（`modules/example`は配線検証用の仮モジュール）
 - Mavenへの公開
 
 ## GameTest構造物
