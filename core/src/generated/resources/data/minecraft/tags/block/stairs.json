@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "ashen_frontier:concrete_stairs",
+    "ashen_frontier:reinforced_concrete_stairs",
+    "ashen_frontier:corroded_steel_stairs",
+    "ashen_frontier:firebrick_stairs",
+    "ashen_frontier:chemical_tile_stairs",
+    "ashen_frontier:shielding_stairs",
+    "ashen_frontier:composite_stairs"
+  ]
+}

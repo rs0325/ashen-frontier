@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "ashen_frontier:concrete_fence",
+    "ashen_frontier:reinforced_concrete_fence",
+    "ashen_frontier:corroded_steel_fence",
+    "ashen_frontier:composite_fence"
+  ]
+}

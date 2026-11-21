@@ -1,8 +1,10 @@
 package io.github.rs0325.ashenfrontier.core;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureCatalog;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicCatalog;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStreamReader;
@@ -14,6 +16,37 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class NatureCatalogTest {
+    @Test
+    void relicCatalogAssetsAndRecoveryReferencesAreComplete() throws Exception {
+        Set<String> ids = new HashSet<>();
+        NatureCatalog.entries().forEach(entry -> assertTrue(ids.add(entry.id())));
+        var materials = json("data/ashen_frontier/data_maps/item/material.json").getAsJsonObject("values");
+        var english = json("assets/ashen_frontier_core/lang/en_us.json");
+        var japanese = json("assets/ashen_frontier_core/lang/ja_jp.json");
+        for (var entry : RelicCatalog.entries()) {
+            String id = entry.id();
+            assertTrue(ids.add(id), "自然物とのID衝突: " + id);
+            assertTrue(id.matches("[a-z]+(?:_[a-z]+)*"), id);
+            if (entry.kind().equals("equipment")) assertTrue(id.startsWith("damaged_"), id);
+            String key = (entry.block() ? "block." : "item.") + "ashen_frontier." + id;
+            assertEquals(entry.en(), english.get(key).getAsString());
+            assertEquals(entry.ja(), japanese.get(key).getAsString());
+            assertEquals(entry.massKg(), materials.getAsJsonObject("ashen_frontier:" + id).get("mass_kg").getAsDouble());
+            resource("assets/ashen_frontier/textures/" + (entry.block() ? "block/" : "item/") + id + ".png");
+            json("assets/ashen_frontier/models/item/" + id + ".json");
+            if (entry.block()) {
+                json("assets/ashen_frontier/blockstates/" + id + ".json");
+                // 接続形状には単一の同名モデルがないため、状態が参照する全モデルを照合する。
+                assertModelsExist(json("assets/ashen_frontier/blockstates/" + id + ".json"));
+                json("data/ashen_frontier/loot_table/blocks/" + id + ".json");
+                assertNotNull(RelicCatalog.require(entry.recovery()));
+            }
+        }
+        assertEquals(50, RelicCatalog.entries().stream().filter(e -> e.kind().equals("structure")).count());
+        assertEquals(32, RelicCatalog.entries().stream().filter(e -> e.kind().equals("equipment")).count());
+        assertEquals(50, RelicCatalog.entries().stream().filter(e -> e.kind().equals("item")).count());
+    }
+
     @Test
     void allIdsAndRecoveryReferencesHaveGeneratedAssetsAndMaterial() throws Exception {
         Set<String> ids = new HashSet<>();
@@ -50,6 +83,7 @@ class NatureCatalogTest {
                 assertTrue(items.contains(recovery) || recovery.equals("minecraft:oak_log"), recovery);
             }
         }
+        RelicCatalog.entries().forEach(entry -> items.add("ashen_frontier:" + entry.id()));
         assertEquals(items, materials.keySet());
     }
 
@@ -113,6 +147,20 @@ class NatureCatalogTest {
     private static JsonObject json(String path) throws Exception {
         try (var reader = new InputStreamReader(resource(path).openStream(), StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader).getAsJsonObject();
+        }
+    }
+
+    private static void assertModelsExist(JsonElement value) throws Exception {
+        if (value.isJsonArray()) {
+            for (var child : value.getAsJsonArray()) assertModelsExist(child);
+        } else if (value.isJsonObject()) {
+            for (var pair : value.getAsJsonObject().entrySet()) {
+                if (pair.getKey().equals("model")) {
+                    String model = pair.getValue().getAsString();
+                    String[] location = model.split(":", 2);
+                    json("assets/" + location[0] + "/models/" + location[1] + ".json");
+                } else assertModelsExist(pair.getValue());
+            }
         }
     }
 

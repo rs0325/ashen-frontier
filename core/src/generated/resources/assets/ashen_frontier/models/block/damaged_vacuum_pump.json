@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "ashen_frontier:block/damaged_vacuum_pump",
+    "side": "ashen_frontier:block/damaged_vacuum_pump_side",
+    "top": "ashen_frontier:block/damaged_vacuum_pump_top"
+  }
+}

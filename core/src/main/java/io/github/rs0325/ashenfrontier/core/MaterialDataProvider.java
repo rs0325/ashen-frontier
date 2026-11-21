@@ -6,6 +6,8 @@ import net.neoforged.neoforge.common.data.DataMapProvider;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
 import io.github.rs0325.ashenfrontier.core.catalog.FuelData;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureCatalog;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicCatalog;
+import java.util.stream.Stream;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -21,7 +23,7 @@ final class MaterialDataProvider extends DataMapProvider {
 
     @Override
     protected void gather(HolderLookup.Provider lookup) {
-        for (var entry : NatureCatalog.entries()) {
+        for (var entry : Stream.concat(NatureCatalog.entries().stream(), RelicCatalog.entries().stream()).toList()) {
             if (entry.fuel() != null) {
                 var fuel = FuelData.from(entry);
                 if (entry.fluid()) {

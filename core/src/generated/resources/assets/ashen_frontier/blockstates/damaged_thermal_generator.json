@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/damaged_thermal_generator",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/damaged_thermal_generator"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/damaged_thermal_generator",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/damaged_thermal_generator",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/damaged_furnace",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/damaged_furnace"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/damaged_furnace",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/damaged_furnace",
+      "y": 270
+    }
+  }
+}

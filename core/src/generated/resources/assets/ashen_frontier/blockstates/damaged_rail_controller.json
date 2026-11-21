@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/damaged_rail_controller",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/damaged_rail_controller"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/damaged_rail_controller",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/damaged_rail_controller",
+      "y": 270
+    }
+  }
+}

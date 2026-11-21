@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "ashen_frontier:block/concrete_slab"
+    },
+    "type=double": {
+      "model": "ashen_frontier:block/concrete_floor"
+    },
+    "type=top": {
+      "model": "ashen_frontier:block/concrete_slab_top"
+    }
+  }
+}

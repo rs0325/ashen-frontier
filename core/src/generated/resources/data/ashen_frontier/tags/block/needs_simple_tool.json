@@ -1,4 +1,37 @@
 {
   "replace": false,
-  "values": []
+  "values": [
+    "ashen_frontier:damaged_hand_pump",
+    "ashen_frontier:damaged_greenhouse_frame",
+    "ashen_frontier:damaged_sawmill",
+    "ashen_frontier:damaged_furnace",
+    "ashen_frontier:damaged_boiler",
+    "ashen_frontier:damaged_steam_engine",
+    "ashen_frontier:damaged_lathe",
+    "ashen_frontier:damaged_rail_controller",
+    "ashen_frontier:damaged_thermal_generator",
+    "ashen_frontier:damaged_geothermal_turbine",
+    "ashen_frontier:damaged_motor",
+    "ashen_frontier:damaged_transformer",
+    "ashen_frontier:damaged_electrolyzer",
+    "ashen_frontier:damaged_vehicle_wreck",
+    "ashen_frontier:damaged_reaction_vessel",
+    "ashen_frontier:damaged_distillation_column",
+    "ashen_frontier:damaged_semiconductor_fabricator",
+    "ashen_frontier:damaged_reactor_casing",
+    "ashen_frontier:damaged_fuel_cask",
+    "ashen_frontier:damaged_launch_support",
+    "ashen_frontier:damaged_propellant_plant",
+    "ashen_frontier:damaged_vacuum_pump",
+    "ashen_frontier:damaged_ground_test_rig",
+    "ashen_frontier:damaged_remote_probe_terminal",
+    "ashen_frontier:damaged_control_panel",
+    "ashen_frontier:damaged_warning_sign",
+    "ashen_frontier:damaged_storage_crate",
+    "ashen_frontier:damaged_android_wreck",
+    "ashen_frontier:damaged_generator_control",
+    "ashen_frontier:damaged_chemical_storage",
+    "ashen_frontier:damaged_medical_cabinet",
+    "ashen_frontier:damaged_archive_terminal"
+  ]
 }

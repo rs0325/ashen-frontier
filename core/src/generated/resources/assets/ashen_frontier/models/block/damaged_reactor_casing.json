@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "ashen_frontier:block/damaged_reactor_casing",
+    "side": "ashen_frontier:block/damaged_reactor_casing_side",
+    "top": "ashen_frontier:block/damaged_reactor_casing_top"
+  }
+}

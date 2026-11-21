@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "ashen_frontier:block/chemical_tile_slab"
+    },
+    "type=double": {
+      "model": "ashen_frontier:block/chemical_tile_floor"
+    },
+    "type=top": {
+      "model": "ashen_frontier:block/chemical_tile_slab_top"
+    }
+  }
+}

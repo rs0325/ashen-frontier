@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "ashen_frontier:block/damaged_generator_control",
+    "side": "ashen_frontier:block/damaged_generator_control_side",
+    "top": "ashen_frontier:block/damaged_generator_control_top"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/door_top_right",
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "bottom": "ashen_frontier:block/corroded_steel_door",
+    "top": "ashen_frontier:block/corroded_steel_door"
+  }
+}

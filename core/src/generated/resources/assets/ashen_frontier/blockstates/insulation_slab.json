@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "ashen_frontier:block/insulation_slab"
+    },
+    "type=double": {
+      "model": "ashen_frontier:block/insulation_floor"
+    },
+    "type=top": {
+      "model": "ashen_frontier:block/insulation_slab_top"
+    }
+  }
+}

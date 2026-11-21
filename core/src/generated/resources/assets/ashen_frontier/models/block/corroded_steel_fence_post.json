@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/fence_post",
+  "textures": {
+    "texture": "ashen_frontier:block/corroded_steel_fence"
+  }
+}

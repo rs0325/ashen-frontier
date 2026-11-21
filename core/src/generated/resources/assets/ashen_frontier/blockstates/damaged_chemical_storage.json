@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/damaged_chemical_storage",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/damaged_chemical_storage"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/damaged_chemical_storage",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/damaged_chemical_storage",
+      "y": 270
+    }
+  }
+}

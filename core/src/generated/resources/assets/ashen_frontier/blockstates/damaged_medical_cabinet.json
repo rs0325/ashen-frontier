@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/damaged_medical_cabinet",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/damaged_medical_cabinet"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/damaged_medical_cabinet",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/damaged_medical_cabinet",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "ashen_frontier:block/damaged_rail_controller",
+    "side": "ashen_frontier:block/damaged_rail_controller_side",
+    "top": "ashen_frontier:block/damaged_rail_controller_top"
+  }
+}

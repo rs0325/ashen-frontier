@@ -1,4 +1,4 @@
 {
   "replace": false,
-  "values": ["minecraft:crafting_table", "minecraft:slime_block"]
+  "values": ["minecraft:slime_block"]
 }

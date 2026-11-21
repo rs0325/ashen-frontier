@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/damaged_transformer",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/damaged_transformer"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/damaged_transformer",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/damaged_transformer",
+      "y": 270
+    }
+  }
+}

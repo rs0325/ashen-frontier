@@ -1,6 +1,6 @@
 # 自然物の登録と制作契約
 
-Issue #50の入力は`core/src/main/resources/catalog/nature.json`。登録、英日表示、モデル、回収loot、材料・燃料データマップ、画像生成が同じ入力を読む。分類の正本は[設計12](design/12-m2-fixed-map.md)。このカタログはBの自然物を全IDへ展開したもので、Gが所有する旧設備・部品・容器の追加は#56で同じ入力へ統合する。worldの配置資産はここでは変更しない。
+Issue #50の入力は`core/src/main/resources/catalog/nature.json`。登録、英日表示、モデル、回収loot、材料・燃料データマップ、画像生成が同じ入力を読む。分類の正本は[設計12](design/12-m2-fixed-map.md)。このカタログはBの自然物を全IDへ展開したもの。Issue #56の旧設備・部品・容器は同じ列で`relics.json`へ分け、材料・表示・回収のデータ生成へ統合する。後続契約は[遺物カタログ](relic-catalog.md)を参照する。worldの配置資産はここでは変更しない。
 
 ## 列と単位
 

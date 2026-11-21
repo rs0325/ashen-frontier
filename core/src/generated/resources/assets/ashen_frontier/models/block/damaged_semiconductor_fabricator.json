@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "ashen_frontier:block/damaged_semiconductor_fabricator",
+    "side": "ashen_frontier:block/damaged_semiconductor_fabricator_side",
+    "top": "ashen_frontier:block/damaged_semiconductor_fabricator_top"
+  }
+}
