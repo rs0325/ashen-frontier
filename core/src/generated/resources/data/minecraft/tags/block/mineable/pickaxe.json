@@ -43,6 +43,18 @@
     "ashen_frontier:peat",
     "ashen_frontier:lignite",
     "ashen_frontier:bituminous_coal",
-    "ashen_frontier:anthracite"
+    "ashen_frontier:anthracite",
+    "minecraft:ice",
+    "minecraft:packed_ice",
+    "minecraft:blue_ice",
+    "minecraft:frosted_ice",
+    "minecraft:reinforced_deepslate",
+    "minecraft:redstone_lamp",
+    "minecraft:beacon",
+    "minecraft:trial_spawner",
+    "minecraft:vault",
+    "minecraft:piston",
+    "minecraft:sticky_piston",
+    "minecraft:piston_head"
   ]
 }
