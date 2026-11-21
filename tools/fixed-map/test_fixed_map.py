@@ -195,6 +195,8 @@ class FixedMapTests(unittest.TestCase):
             version = json.loads(preset.read_text(encoding="utf-8"))["dimensions"]["minecraft:overworld"]["generator"]["map"]
             self.assertEqual(version["map_version"],"earth_002")
             self.assertEqual(version["manifest_hash"],sha(output/"manifest.json"))
+            generator = json.loads(preset.read_text(encoding="utf-8"))["dimensions"]["minecraft:overworld"]["generator"]
+            self.assertEqual(generator["biome_source"]["map"],version)
             for name in ["index.json","geology_profiles.json"]:
                 self.assertEqual(json.loads((output/name).read_text(encoding="utf-8"))["map_version"],"earth_002")
 

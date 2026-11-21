@@ -7,10 +7,28 @@
         "map": {
           "map_version": "earth_001",
           "format_version": 1,
-          "manifest_hash": "e0ba84c8c3026d7d4b2bcc6dcc45494ff6e4d4b6a51b37003d7f3fa05f6316ae"
+          "manifest_hash": "336d15bbfcda5ba9da2c640bd8c9fb3d2af01ef8c9be160846c2ca8afb18a867"
         },
         "biome_source": {
-          "biome": "minecraft:the_void"
+          "biomes": [
+            "ashen_frontier:polluted_ocean",
+            "ashen_frontier:temperate_wasteland",
+            "ashen_frontier:abandoned_farmland",
+            "ashen_frontier:mining_highlands",
+            "ashen_frontier:arid_wasteland",
+            "ashen_frontier:industrial_wasteland",
+            "ashen_frontier:industrial_coast",
+            "ashen_frontier:cold_research_wastes",
+            "ashen_frontier:barren_land",
+            "ashen_frontier:cold_barren_land",
+            "ashen_frontier:warm_barren_land",
+            "ashen_frontier:alpine_wastes"
+          ],
+          "map": {
+            "map_version": "earth_001",
+            "format_version": 1,
+            "manifest_hash": "336d15bbfcda5ba9da2c640bd8c9fb3d2af01ef8c9be160846c2ca8afb18a867"
+          }
         }
       }
     }

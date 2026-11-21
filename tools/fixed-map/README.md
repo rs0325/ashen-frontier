@@ -16,6 +16,8 @@ py -3.12 -m venv tools/fixed-map/.venv
 .\gradlew.bat gameTest
 ```
 
+バイオームと英日表示の生成は標準ライブラリのみの`python write_biomes.py`で行う（リポジトリルートからは`tools/fixed-map/write_biomes.py`）。出力JSONはGitで管理する。配置図の`--update-preset`は生成器とバイオーム両方の版・manifestハッシュを同期する。
+
 POSIXでは仮想環境の実行ファイルを`.venv/bin/python`へ読み替える。同じPythonのマイナーバージョン、固定ライブラリ、入力、ツールで再生成する。標準`unittest`を使うためテスト依存は不要。生成処理は約10秒、配列と排水ヒープを含む一時メモリは数百MiB規模を想定する。制作時だけの一括処理でありゲームのtick処理には持ち込まない。
 
 `--input <directory>`は相対・絶対パスを受け取り、最初に絶対パスへ解決する。manifestの`inputs`は入力ディレクトリからの相対名とハッシュを記録する。`--output <directory>`で比較用の別出力を作れる。省略時は入力の`map_version`を同梱先のディレクトリ名に使い、検査もその版に照合する。次版の入力でも同じCLIを利用できる。

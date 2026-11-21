@@ -1,3 +1,15 @@
 {
-  "generator.ashen_frontier.fixed_map": "固定マップ（Ashen Frontier）"
+  "generator.ashen_frontier.fixed_map": "固定マップ（Ashen Frontier）",
+  "biome.ashen_frontier.polluted_ocean": "汚染された海",
+  "biome.ashen_frontier.temperate_wasteland": "温帯の荒廃地",
+  "biome.ashen_frontier.abandoned_farmland": "旧農業地帯",
+  "biome.ashen_frontier.mining_highlands": "鉱業高地",
+  "biome.ashen_frontier.arid_wasteland": "内陸の乾燥荒廃地",
+  "biome.ashen_frontier.industrial_wasteland": "工業荒廃地",
+  "biome.ashen_frontier.industrial_coast": "沿岸工業地帯",
+  "biome.ashen_frontier.cold_research_wastes": "北の寒冷研究地域",
+  "biome.ashen_frontier.barren_land": "未割当ての荒廃地",
+  "biome.ashen_frontier.cold_barren_land": "寒冷な未割当て荒廃地",
+  "biome.ashen_frontier.warm_barren_land": "温暖な未割当て荒廃地",
+  "biome.ashen_frontier.alpine_wastes": "高山の荒廃地"
 }

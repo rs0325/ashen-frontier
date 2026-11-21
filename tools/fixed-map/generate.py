@@ -472,6 +472,9 @@ def main(argv=None):
             preset["dimensions"]["minecraft:overworld"]["generator"]["map"] = {
                 "map_version": index["map_version"], "format_version": 1,
                 "manifest_hash": sha(output/"manifest.json")}
+            generator = preset["dimensions"]["minecraft:overworld"]["generator"]
+            if "map" in generator["biome_source"]:
+                generator["biome_source"]["map"] = generator["map"].copy()
             write_json(preset_path,preset)
 
 
