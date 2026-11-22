@@ -25,6 +25,7 @@ public final class FixedTerrain {
     private final BlockState[] waterIce = new BlockState[9];
     private final FixedUnderground underground;
     private final Map<Long, Integer> anchorSurfaces;
+    private final double islandReferenceY;
     private final BlockState clay;
     private final BlockState talus, riverGravel, till, silt, loess, blackSand;
     private final BlockState talusLayer, siltLayer, loessLayer;
@@ -52,6 +53,7 @@ public final class FixedTerrain {
                 Blocks.TUFF.defaultBlockState(), block("ashen_frontier:quartzite"), Blocks.DIORITE.defaultBlockState(),
                 Blocks.COBBLESTONE.defaultBlockState()};
         var geology = map.geology();
+        islandReferenceY = geology.get("island_reference_y").getAsDouble();
         String salt = geology.get("thickness_salt").getAsString();
         for (var entry : geology.getAsJsonObject("profiles").entrySet()) {
             var profile = entry.getValue().getAsJsonObject();
@@ -164,11 +166,15 @@ public final class FixedTerrain {
         double shoreHeight = OceanRelief.shoreHeight(coast,shore);
         var island = map.mountainIsland(x, z);
         if (island != null && coast >= 0) {
-            double radius=Math.hypot(x-island.x(),z-island.z());
-            double profile=Math.sqrt(Math.max(0,1-Math.pow(radius/(radius+coast*1.3+1e-6),2)));
-            profile += TerrainMath.fbm(map.seed(), "island_relief", x, z, 32) * .25 * profile * (1-profile);
-            double height=63+(island.peakY()-63)*Math.clamp(profile,0,1);
-            return 63 + (height - 63) * TerrainMath.smooth(coast / 12);
+            double height = 63 + coast*.35;
+            double detail = TerrainMath.fbm(map.seed(), "island_gullies", x,z,32);
+            for (var peak : island.peaks()) {
+                height = Math.max(height, TerrainMath.islandPeak(x-peak.x(),z-peak.z(),peak.y(),
+                        peak.radius(),peak.cos(),peak.sin(),detail));
+            }
+            double rise = 16 + 12*TerrainMath.noise(map.seed(),"island_cliffs",x,z,96)
+                    *TerrainMath.smooth((island.inlandDepth()-16)/48.0);
+            return 63 + (height-63)*TerrainMath.smooth(coast/rise);
         }
         double wx = (TerrainMath.noise(map.seed(), "relief_x", x, z, 256) - 0.5) * 24 * weight;
         double wz = (TerrainMath.noise(map.seed(), "relief_z", x, z, 256) - 0.5) * 24 * weight;
@@ -243,8 +249,9 @@ public final class FixedTerrain {
         var anchor = map.geologyAnchor(x, z);
         double geologyWeight = anchor == null ? 1 : anchor.weight();
         double anchorY = anchor == null ? 0 : anchorSurfaces.get(((long) anchor.x() << 32) ^ (anchor.z() & 0xffffffffL));
-        double datum = profile.referenceY;
-        if (profile.uplift != null) {
+        var island = map.mountainIsland(x,z);
+        double datum = island != null ? islandReferenceY : profile.referenceY;
+        if (profile.uplift != null && island == null) {
             var uplift = profile.uplift;
             datum -= TerrainMath.smooth((Math.abs(z - uplift.axisZ) - uplift.width) / uplift.transition) * uplift.drop;
         }
@@ -278,8 +285,8 @@ public final class FixedTerrain {
         double sx = (east-west)/16, sz = (south-north)/16, slope = Math.hypot(sx,sz);
         double hollow = (east+west+south+north)/4-relief.continuous;
         double mountain = map.mountainWeight(x,z);
-        boolean rock = map.mountainIsland(x,z) != null && relief.coast < 64
-                || slope >= .9 || relief.shore.rock() > .65 && relief.coast < 96;
+        boolean rock = slope >= .9 || island != null && relief.coast < 8
+                || island == null && relief.shore.rock() > .65 && relief.coast < 96;
         int layers = 0;
         double aboveLine = 0;
         if (!wet && (MapCoordinates.latitude(z) >= 45 || biome == 9 || surface >= 180)) {
@@ -293,6 +300,7 @@ public final class FixedTerrain {
             layers=Math.min(layers,TerrainMath.depositLayers(edge,scatter));
             aboveLine = relief.continuous-line;
         }
+        if (island != null) layers = Math.min(layers,4);
         int ice = !wet && !rock && relief.coast > 48 && slope < .65
                 ? iceDepth(x, z, surface, false) : 0;
         if (map.region(x,z)==7)ice=(int)Math.floor(ice*boundary.cold());
@@ -314,7 +322,7 @@ public final class FixedTerrain {
         if (cell != null && cell.bodies().isEmpty() && cell.passages().isEmpty()) cell = null;
         double patch=TerrainMath.noise(map.seed(),"surface_patches",x,z,18);
         BlockState surfaceMaterial = surfaceMaterial(x,z,relief,profile,soil,slope,hollow,rock,boundary.dry(),patch);
-        int soilDepth = 2 + (int) (TerrainMath.noise(map.seed(), "soil_thickness", x, z, 20) * 3);
+        int soilDepth = (island == null ? 2 : 1) + (int) (TerrainMath.noise(map.seed(), "soil_thickness", x, z, 20) * (island == null ? 3 : 2));
         boolean walkway=map.walkways().sample(x,z).distance()<1;
         if(walkway && layers<8)layers=Math.min(layers,2);
         int cover = TerrainMath.snowCover(relief.continuous,surface,layers);
@@ -336,7 +344,7 @@ public final class FixedTerrain {
         int waterKind = relief.coast < 0 ? 3 : relief.river.distance() < relief.river.width() ? 2 : 1;
         BlockState frozen = wet ? frozenWater(quality, x, z, relief.water, relief.water - surface, waterKind, boundary.cold()) : null;
         return new Column(surface, relief.water, surfaceMaterial, waters[quality], boundaries, profile, ice, snow, x, z, cell,
-                soilDepth, cap, powder, surfaceMaterial==null && (slope>.35 || mountain>.1 || map.mountainIsland(x,z)!=null) ? weathered:null,
+                soilDepth, cap, powder, surfaceMaterial==null && island==null && (slope>.35 || mountain>.1) ? weathered:null,
                 (int)(regionalFold*24+patch*3),geologyWeight,tilt+regionalFold*96,
                 18+24*TerrainMath.noise(map.seed(),"rock_band_width",x,z,192), frozen, anchor == null ? 575 : (int) anchorY - 20);
     }
@@ -349,7 +357,14 @@ public final class FixedTerrain {
 
     private BlockState surfaceMaterial(int x, int z, Surface relief, Profile profile, int soil,
                                        double slope, double hollow, boolean rock, double dry, double patch) {
-        if (rock || map.mountainIsland(x,z) != null) return null;
+        if (rock) return null;
+        if (map.mountainIsland(x,z) != null && relief.coast >= 0) {
+            double scatter=TerrainMath.noise(map.seed(),"island_sediment_edge",x,z,1);
+            double rubble=TerrainMath.smooth((hollow+.2)/.9)*TerrainMath.smooth((slope-.08)/.25);
+            if(scatter<rubble)return talus;
+            if(slope<.28 && relief.coast>24 && hollow>.15)return soils[soil]==null?Blocks.COARSE_DIRT.defaultBlockState():soils[soil];
+            return null;
+        }
         BlockState material = soils[soil];
         double beachWidth = relief.shore.beachWidth();
         var river = relief.river;

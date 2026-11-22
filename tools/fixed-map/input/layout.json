@@ -941,7 +941,36 @@
         -4992,
         -14704
       ],
-      "peak_y": 195
+      "peak_y": 195,
+      "summits": [
+        {
+          "xz": [
+            -4912,
+            -14720
+          ],
+          "peak_y": 195,
+          "radius_blocks": 108.0,
+          "axis_degrees": 75
+        },
+        {
+          "xz": [
+            -4912,
+            -14832
+          ],
+          "peak_y": 172,
+          "radius_blocks": 96.0,
+          "axis_degrees": 20
+        },
+        {
+          "xz": [
+            -4928,
+            -14656
+          ],
+          "peak_y": 158,
+          "radius_blocks": 92.0,
+          "axis_degrees": -20
+        }
+      ]
     },
     {
       "id": "branch_island_south_central",
@@ -950,7 +979,36 @@
         -4720,
         -14816
       ],
-      "peak_y": 205
+      "peak_y": 205,
+      "summits": [
+        {
+          "xz": [
+            -4736,
+            -14784
+          ],
+          "peak_y": 205,
+          "radius_blocks": 104.39999999999999,
+          "axis_degrees": 30
+        },
+        {
+          "xz": [
+            -4784,
+            -14880
+          ],
+          "peak_y": 176,
+          "radius_blocks": 92.0,
+          "axis_degrees": 90
+        },
+        {
+          "xz": [
+            -4736,
+            -14688
+          ],
+          "peak_y": 165,
+          "radius_blocks": 92.0,
+          "axis_degrees": 0
+        }
+      ]
     },
     {
       "id": "branch_island_south_east",
@@ -959,7 +1017,27 @@
         -4496,
         -14688
       ],
-      "peak_y": 150
+      "peak_y": 150,
+      "summits": [
+        {
+          "xz": [
+            -4528,
+            -14672
+          ],
+          "peak_y": 150,
+          "radius_blocks": 68.39999999999999,
+          "axis_degrees": 35
+        },
+        {
+          "xz": [
+            -4480,
+            -14656
+          ],
+          "peak_y": 130,
+          "radius_blocks": 64.0,
+          "axis_degrees": -20
+        }
+      ]
     },
     {
       "id": "branch_island_north_west",
@@ -968,7 +1046,27 @@
         -5168,
         -14960
       ],
-      "peak_y": 130
+      "peak_y": 130,
+      "summits": [
+        {
+          "xz": [
+            -5152,
+            -14960
+          ],
+          "peak_y": 130,
+          "radius_blocks": 61.199999999999996,
+          "axis_degrees": 50
+        },
+        {
+          "xz": [
+            -5184,
+            -14928
+          ],
+          "peak_y": 124,
+          "radius_blocks": 64.0,
+          "axis_degrees": 0
+        }
+      ]
     },
     {
       "id": "branch_island_north_east",
@@ -977,7 +1075,27 @@
         -5104,
         -15072
       ],
-      "peak_y": 150
+      "peak_y": 150,
+      "summits": [
+        {
+          "xz": [
+            -4960,
+            -15104
+          ],
+          "peak_y": 150,
+          "radius_blocks": 68.39999999999999,
+          "axis_degrees": 10
+        },
+        {
+          "xz": [
+            -4992,
+            -15072
+          ],
+          "peak_y": 130,
+          "radius_blocks": 68.0,
+          "axis_degrees": 55
+        }
+      ]
     }
   ],
   "river": {

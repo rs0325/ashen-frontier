@@ -302,5 +302,6 @@
       "faults": [],
       "reference_y": 96
     }
-  }
+  },
+  "island_reference_y": 180
 }

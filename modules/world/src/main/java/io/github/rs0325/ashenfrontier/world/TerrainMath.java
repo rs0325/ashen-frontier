@@ -97,6 +97,16 @@ final class TerrainMath {
         return coverage < .92 ? 1 + (scatter < coverage * .5 ? 1 : 0)
                 : Math.clamp((int) Math.ceil((coverage - .92) / .08 * 8), 2, 8);
     }
+
+    static double islandPeak(double dx, double dz, int peak, double radius, double cos, double sin, double detail) {
+        double along=(dx*cos+dz*sin)/radius, across=(-dx*sin+dz*cos)/(radius*.65);
+        double r=Math.hypot(along,across);
+        double angle=Math.atan2(across,along);
+        r*=1+(.22*Math.sin(angle*3)+detail*.35)*smooth(r/.3);
+        double profile=Math.pow(1-smooth(r),.7);
+        double gully=Math.pow(Math.max(0,Math.sin(angle*4+detail*3)),6)*18*profile*(1-profile);
+        return 63+(peak-63)*profile-gully;
+    }
     /** 静的な寒冷水面の判定。kindは湖1・川2・海3、水深はブロック数。 */
     static boolean freezes(double latitude, int water, int depth, int kind, double cold) {
         double score = Math.abs(latitude) + (water - 63) / 32.0 + cold * 12;

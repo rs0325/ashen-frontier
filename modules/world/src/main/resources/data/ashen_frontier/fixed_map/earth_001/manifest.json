@@ -12,33 +12,33 @@
   "inputs": {
     "corrections.json": "02dba2460763d76c88d780aa21acfbcc25b5533855764ed86bee210279e74d82",
     "extraction.json": "46309f210a3177b27352e348985d5a7e54d99e53263fee5f83a3bf842041f60c",
-    "geology.json": "74b8b5b9b3cd3fdcebf79e2c3cef82c8b82cfc35c9efd9c3b036734734824574",
+    "geology.json": "6b8ccdbd12de01c3ca5c7b76eb72e376af2a7052c6824717878146c49ae86775",
     "island_channels.json": "d01bca70ab06245eb50e4fd306f97e27be064e999177ef41d7a02ce9d18024ac",
     "land.png": "fb668e97a8396f13cef32c68a8060cff743bf4e61a3af0c154960d975375dc0e",
-    "layout.json": "41950c2838917acce74319224894d115491ad43623c3b244a4db89ead1f4735a"
+    "layout.json": "82a5a61b2a6c9f71ebb7d24cd12b8aba31328c205bbb7b374ab1b1ad3f199833"
   },
   "geology_profile_version": "geology_002",
   "tool": {
-    "version": "1.11.0",
+    "version": "1.12.0",
     "python": "3.12",
     "numpy": "2.2.6",
     "pillow": "11.2.1",
     "files": {
-      "tools/fixed-map/generate.py": "c7ea686c584678c1b857000ff8783ad621e62da9f10d41c0c353b77ec8945750",
+      "tools/fixed-map/generate.py": "d83547577d53863d1e4fbd88e921b4eb894f7a0f59fde471176ecb0dce1e41c2",
       "tools/fixed-map/extract_mask.py": "be06ce81562d53d6c1394b81f42b03d9aab0d2c402e5324e4928628aa553feb8",
       "tools/fixed-map/requirements.txt": "d25160758f6f0511b40d2788a949c86bb887869cba64c738e650e7d44fde471d",
       "tools/fixed-map/write_underground.py": "62783c7217e8c53a9813c10182d9cbc542fa2b12a5255501ed0a5b6e54999da9"
     }
   },
   "files": {
-    "height.png": "72488f704303d2445c1b98fcdf9be7fd4685db9d0e10f2652f8337d6930e8f68",
+    "height.png": "2433354e4e56bcaa15b39ec4380b6936acdfb8cd4ebeb202ee1da7969013a229",
     "region.png": "3d1e9c71dfc591ba6475660678a093b18e7483d3992f3b9dc2dbab5808d35de7",
     "water.png": "c3986612965d12f4b2423f3f7ca86c9cfee626becd01c4ec7fcd15ecfea97598",
     "soil.png": "e6d5fc56bdb652f5a38c102664e3023733aea094d316e2862010d606ac009eeb",
     "geology.png": "d74ab623eb3c51bc99686a2aa8e8c98b05421174dbf31783d7487a6560312f92",
     "coast_river.png": "f32499722f428ce43bbf2e6aa6c235b5a2ab34b998c4ade8c26d4c71ea73b25c",
-    "index.json": "087f3eb86794caad7e6e0786cdc56b9e0a55a519ef2233e3484205f01c87db52",
-    "geology_profiles.json": "eac2b1eef48927d98451c35aa9d9de8d7bdb6111fb82788698dbd216c0680821",
+    "index.json": "41b5905ee9d3af4bc2d6751cee4ae0df54cf4b6fa3257b2e824056b950cf74bb",
+    "geology_profiles.json": "84b7292cdd28feb3d74ef7cbe92ec9a708f52cd4230fed7d3860a360a23794e4",
     "underground.json": "3240dda60023894244d07bfaaa9773ac842fc3297a552559edb9309104dacd11"
   }
 }

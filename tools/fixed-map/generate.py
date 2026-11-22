@@ -23,7 +23,7 @@ OUTPUT = ROOT / MAP_RESOURCES / "earth_001"
 SIZE = 2048
 LAYERS = ("height", "region", "water", "soil", "geology", "coast_river")
 RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json", "underground.json")
-TOOL_VERSION = "1.11.0"
+TOOL_VERSION = "1.12.0"
 
 
 def sha(path):
@@ -298,13 +298,20 @@ def island_relief(config, labels, height, mountain_mask):
         while interior.any():
             depth[interior] += 16
             interior &= ~neighbors(~interior)
-        candidates = np.argwhere(depth==depth.max())
-        center = np.array(mask.shape)/2
-        cy,cx = min(candidates,key=lambda p:float(np.sum((p-center)**2)))
         y,x = np.mgrid[:mask.shape[0],:mask.shape[1]]
-        radial = np.hypot(x-cx,y-cy)/math.hypot(*mask.shape)
-        profile = np.sqrt(np.clip(1-(radial/(radial+depth/max(16,depth.max())+1e-6))**2,0,1))
-        target = 64+(peak["peak_y"]-64)*(.15+.85*profile)
+        target = np.full(mask.shape,63.,np.float32)
+        for summit in peak["summits"]:
+            angle=math.radians(summit["axis_degrees"])
+            dx=(x+x0)*16-16384-summit["xz"][0]
+            dz=(y+y0)*16-16384-summit["xz"][1]
+            along=(dx*math.cos(angle)+dz*math.sin(angle))/summit["radius_blocks"]
+            across=(-dx*math.sin(angle)+dz*math.cos(angle))/(summit["radius_blocks"]*.65)
+            r=np.hypot(along,across)
+            profile=(1-np.clip(r,0,1)**2*(3-2*np.clip(r,0,1)))**.7
+            target=np.maximum(target,63+(summit["peak_y"]-63)*profile)
+        target=np.maximum(64,target)
+        cx,cy=pixel(peak["summits"][0]["xz"])
+        cx-=x0;cy-=y0
         area = height[y0:y1,x0:x1]
         area[mask] = target[mask]
         mountain_mask |= component
@@ -325,6 +332,8 @@ def island_relief(config, labels, height, mountain_mask):
 
 def validate_geology(definition):
     """カタログで確認済みの岩石参照と、地層の正の厚さ範囲を検査する。"""
+    if not -127 <= definition["island_reference_y"] <= 575:
+        raise ValueError("島の地層の基準Yが生成範囲外です")
     rocks = set(definition["catalog"]["rock_ids"]) | {"minecraft:stone", "minecraft:granite", "minecraft:sandstone"}
     for profile in definition["profiles"].values():
         if not -127 <= profile["reference_y"] <= 575:

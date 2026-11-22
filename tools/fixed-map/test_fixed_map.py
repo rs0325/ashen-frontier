@@ -20,6 +20,20 @@ from generate import (LAYERS, MAP_RESOURCES, OUTPUT, RESOURCE_FILES, ROOT, SIZE,
 
 
 class FixedMapTests(unittest.TestCase):
+    def test_small_island_summits_stay_inside_the_approved_components(self):
+        for island in self.config["mountain_islands"]:
+            component=island_component(self.land,island["anchor_xz"])
+            summits=island["summits"]
+            self.assertGreaterEqual(len(summits),2)
+            self.assertEqual(max(s["peak_y"] for s in summits),island["peak_y"])
+            for summit in summits:
+                x,z=pixel(summit["xz"])
+                self.assertTrue(component[z,x])
+                self.assertGreaterEqual(summit["peak_y"],123)
+                self.assertLessEqual(summit["peak_y"],205)
+            self.assertEqual(self.index["mountain_islands"][self.config["mountain_islands"].index(island)]["summits"],summits)
+        self.assertEqual(self.index["geology_profile_version"],"geology_002")
+
     def test_water_animation_frames_and_quality_colors(self):
         from animate_water import WATERS, TEXTURES
         for water in WATERS:
