@@ -53,6 +53,10 @@ class MountainReliefTest {
         for(var value:index().getAsJsonArray("ocean_features")) {
             var feature=value.getAsJsonObject();var point=feature.getAsJsonArray("points").get(0).getAsJsonArray();
             int x=point.get(0).getAsInt(),z=point.get(1).getAsInt();
+            if(feature.get("kind").getAsString().equals("ridge")) {
+                var next=feature.getAsJsonArray("points").get(1).getAsJsonArray();
+                x=(x+next.get(0).getAsInt())/2;z=(z+next.get(1).getAsInt())/2;
+            }
             if(feature.get("kind").getAsString().equals("trench")){x+=200;z-=13;}
             double coast=map.coastDistance(x,z);
             assertTrue(coast<0,"海底起伏の中心を海に置く");

@@ -55,7 +55,7 @@ class FixedReliefTest {
                 int height = FixedTerrain.surfaceY(map, x, z);
                 var river = map.river(x, z);
                 boolean cliff = distance > 0 && OceanRelief.shore(map,x,z).cliff() > .4;
-                int limit = river.distance() < river.width() + 4 ? 3 : cliff || distance > 16 && map.mountainWeight(x,z) > .1 ? 5 : 2;
+                int limit = river.distance() < river.width() + 4 ? 3 : cliff || distance > 16 && height > 80 && map.mountainWeight(x,z) > .1 ? 12 : 2;
                 assertTrue(Math.abs(height - FixedTerrain.surfaceY(map, x + 1, z)) <= limit,"海岸・河口の東西段差: " + x + "," + z
                         + " height="+height+" next="+FixedTerrain.surfaceY(map,x+1,z)+" coast="+distance+" river="+river.distance()+" width="+river.width()+" water="+river.surface()+" grade="+river.grade()+" limit="+limit);
                 assertTrue(Math.abs(height - FixedTerrain.surfaceY(map, x, z + 1)) <= limit,"海岸・河口の南北段差: " + x + "," + z

@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import javax.imageio.ImageIO;
 
 /** 版ごとに一度だけ読み込む配置図。配列と索引は構築後に変更・公開しない。 */
@@ -25,13 +27,18 @@ public final class FixedMapData {
     private record Facility(double x, double z, double radius) {}
     private final Map<Long, List<Entrance>> entrances;
     private final Map<Long, List<Entrance>> geologyAnchors;
+    private final Set<Long> weatheredContacts;
     private final List<Facility> facilities;
     private final RiverCourse river;
-    private record Mountain(double[][] points, double radius) {}
+    private record Mountain(double[][] points, double radius, int peakY) {}
+    private int terminationJoin, terminationTransition;
     private final List<Mountain> mountains;
     record IslandPeak(int x, int z, int y, double radius, double cos, double sin) {}
     record MountainIsland(int peakY, int inlandDepth, int x, int z, List<IslandPeak> peaks) {}
     private final Map<Integer, MountainIsland> mountainIslands;
+    private final List<MountainIsland> islandCoasts;
+    private record SurfaceCorrection(int x,int z,double displacement) {}
+    private final Map<Long,List<SurfaceCorrection>> surfaceCorrections;
     private final TerrainWalkways walkways;
     private final OceanRelief ocean;
     private final JsonObject geology;
@@ -70,8 +77,14 @@ public final class FixedMapData {
                 }
             }
             var index = json(root + "index.json");
+            var contacts=new HashSet<Long>();
+            for(var value:index.getAsJsonArray("underground_weathered_contacts")) {
+                var point=value.getAsJsonArray();contacts.add(key(point.get(0).getAsInt(),point.get(1).getAsInt()));
+            }
+            weatheredContacts=Set.copyOf(contacts);
             ocean = new OceanRelief(index.getAsJsonArray("ocean_features"));
             var islandPixels = new HashMap<Integer, MountainIsland>();
+            var islandCoasts=new ArrayList<MountainIsland>();
             for (var value : index.getAsJsonArray("mountain_islands")) {
                 var island = value.getAsJsonObject();
                 var summit = island.getAsJsonArray("summit_xz");
@@ -84,6 +97,7 @@ public final class FixedMapData {
                 }
                 var peak = new MountainIsland(island.get("peak_y").getAsInt(), island.get("inland_depth_blocks").getAsInt(),
                         summit.get(0).getAsInt(), summit.get(1).getAsInt(),List.copyOf(peaks));
+                islandCoasts.add(peak);
                 for (var row : island.getAsJsonArray("pixel_spans_y_x0_x1ex")) {
                     var span = row.getAsJsonArray();
                     for (int x = span.get(1).getAsInt(); x < span.get(2).getAsInt(); x++) {
@@ -105,6 +119,7 @@ public final class FixedMapData {
                 }
             }
             mountainIslands = Map.copyOf(shorePixels);
+            this.islandCoasts=List.copyOf(islandCoasts);
             var mountains = new ArrayList<Mountain>();
             for (var value : index.getAsJsonArray("mountains")) {
                 var mountain = value.getAsJsonObject();
@@ -114,9 +129,12 @@ public final class FixedMapData {
                     points[i][0] = source.get(i).getAsJsonArray().get(0).getAsDouble();
                     points[i][1] = source.get(i).getAsJsonArray().get(1).getAsDouble();
                 }
-                mountains.add(new Mountain(points, mountain.get("radius_blocks").getAsDouble()));
+                mountains.add(new Mountain(points, mountain.get("radius_blocks").getAsDouble(),mountain.get("peak_y").getAsInt()));
             }
             this.mountains = List.copyOf(mountains);
+            var termination = index.getAsJsonArray("mountains").get(0).getAsJsonObject().getAsJsonObject("termination");
+            terminationJoin=termination.get("join_x").getAsInt();
+            terminationTransition=termination.get("transition_blocks").getAsInt();
             walkways = new TerrainWalkways(index.getAsJsonArray("walkways"), seed);
             geology = json(root + "geology_profiles.json");
             if (!geology.get("map_version").getAsString().equals(version.mapVersion())
@@ -219,6 +237,15 @@ public final class FixedMapData {
                 if (i > 0) points[i][2] = Math.min(points[i][2], points[i - 1][2]);
             }
             river = new RiverCourse(points, seed);
+            var corrections=new HashMap<Long,List<SurfaceCorrection>>();
+            for(var value:index.getAsJsonArray("underground_surface_controls")) {
+                var control=value.getAsJsonArray();int x=control.get(0).getAsInt(),z=control.get(1).getAsInt();
+                double displacement=control.get(2).getAsInt()-FixedTerrain.unconstrainedSurfaceY(this,x,z);
+                var correction=new SurfaceCorrection(x,z,displacement);
+                for(int cz=(z-96)>>7;cz<=((z+96)>>7);cz++)for(int cx=(x-96)>>7;cx<=((x+96)>>7);cx++)
+                    corrections.computeIfAbsent(key(cx,cz),k->new ArrayList<>()).add(correction);
+            }
+            surfaceCorrections=Map.copyOf(corrections);
         } catch (IOException | RuntimeException e) {
             throw new IllegalStateException("固定マップ版 " + version.mapVersion() + ": 配置図を読めません", e);
         }
@@ -399,6 +426,29 @@ public final class FixedMapData {
         return MapCoordinates.contains(x, z) ? mountainIslands.get(at(x, z)) : null;
     }
 
+    double islandOffshoreWeight(int x,int z) {
+        double weight=0;
+        for(int i=0;i<islandCoasts.size();i++) {
+            var island=islandCoasts.get(i);
+            double reach=Math.hypot((x-island.x())*.7,z-island.z());
+            weight=Math.max(weight,TerrainMath.smooth((360-reach)/180));
+        }
+        return weight;
+    }
+
+    double surfaceCorrection(int x,int z) {
+        double sum=0,total=0,strength=0;
+        var controls=surfaceCorrections.getOrDefault(key(x>>7,z>>7),List.of());
+        for(int i=0;i<controls.size();i++) {
+            var control=controls.get(i);
+            double squared=(double)(x-control.x)*(x-control.x)+(double)(z-control.z)*(z-control.z);
+            double taper=TerrainMath.smooth((96-Math.sqrt(squared))/80);
+            double weight=taper*taper/((1+squared)*(1+squared));
+            sum+=control.displacement*weight;total+=weight;strength=Math.max(strength,taper);
+        }
+        return total==0?0:sum/total*strength;
+    }
+
     double mountainWeight(int x, int z) {
         double weight = 0;
         for (var mountain : mountains) {
@@ -413,13 +463,31 @@ public final class FixedMapData {
         }
         return weight;
     }
+
+    double terminationWeight(int x,int z) {
+        return TerrainMath.smooth((terminationJoin-(double)x)/terminationTransition)*mountainWeight(x,z);
+    }
+
+    int mountainCeiling(int x,int z) {
+        int ceiling=0;
+        for(int m=0;m<mountains.size();m++) {
+            var mountain=mountains.get(m);
+            for(int i=1;i<mountain.points.length;i++) {
+                var a=mountain.points[i-1];var b=mountain.points[i];
+                double dx=b[0]-a[0],dz=b[1]-a[1];
+                double t=Math.clamp(((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz),0,1);
+                if(Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz)<mountain.radius)ceiling=Math.max(ceiling,mountain.peakY);
+            }
+        }
+        return ceiling==0?520:ceiling;
+    }
     OceanRelief ocean() { return ocean; }
     JsonObject geology() { return geology.deepCopy(); }
 
     /** 範囲外は0。範囲内は最近傍の地域ID（0〜7、255）を返す。 */
     public int region(int x, int z) { return category(0, x, z); }
 
-    record GeologyAnchor(int x, int z, double weight) {}
+    record GeologyAnchor(int x, int z, double weight, boolean weathered) {}
 
     GeologyAnchor geologyAnchor(int x, int z) {
         Entrance nearest = null;
@@ -428,7 +496,7 @@ public final class FixedMapData {
             double candidate = Math.hypot(x - anchor.x, z - anchor.z);
             if (candidate < distance) { distance = candidate; nearest = anchor; }
         }
-        return nearest == null ? null : new GeologyAnchor(nearest.x, nearest.z, TerrainMath.smooth((distance - 4) / 44));
+        return nearest == null ? null : new GeologyAnchor(nearest.x, nearest.z, TerrainMath.smooth((distance - 4) / 44),weatheredContacts.contains(key(nearest.x,nearest.z)));
     }
 
     record Boundary(int region, int soil, double dry, double cold) {}

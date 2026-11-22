@@ -50,6 +50,11 @@ final class OceanRelief {
         double detail = (TerrainMath.noise(map.seed(),"abyssal",x,z,768)-.5)*6
                 + (TerrainMath.noise(map.seed(),"shelf_ripples",x,z,96)-.5)*2;
         double height = 63-depth+detail*TerrainMath.smooth(distance/96);
+        double island=map.islandOffshoreWeight(x,z);
+        if(island>0) {
+            double rock=5*distance/(distance+8)-TerrainMath.rockRelief(map.seed(),x,z)*.2*TerrainMath.smooth(distance/8);
+            height-=rock*island;
+        }
         for (var feature : features) {
             double px=x,pz=z;
             if(feature.relief<0) {
@@ -81,15 +86,19 @@ final class OceanRelief {
                     double floor=-37+feature.relief*depthTip+12*TerrainMath.noise(map.seed(),"trench_floor",x,z,72);
                     height += (Math.min(height,floor)-height)*wall*coastWeight;
                 } else if(feature.seamount) {
-                    double r=nearest/feature.width;
-                    double profile=Math.pow(1-TerrainMath.smooth(r),2);
-                    double angle=Math.atan2(z-feature.points[0][1],x-feature.points[0][0]);
-                    double relief=Math.sin(angle*5+nearest/72)*24+TerrainMath.fbm(map.seed(),"seamount_relief",x,z,64)*40;
-                    height += (feature.relief*profile+relief*profile*(1-profile))
+                    double u=(x-feature.points[0][0])/feature.width,v=(z-feature.points[0][1])/feature.width;
+                    double warp=TerrainMath.fbm(map.seed(),"seamount_relief",x,z,64);
+                    double shoulder=TerrainMath.smooth((Math.abs(u)+Math.abs(v))*8);
+                    double profile=Math.pow(Math.max(0,1-Math.abs(u)*1.5-Math.abs(v+u*.4+warp*.12*shoulder)*1.7),1.2);
+                    double relief=TerrainMath.rockRelief(map.seed(),x,z)*shoulder;
+                    height += (feature.relief*profile+relief*profile)
                             *TerrainMath.smooth((distance-shore.shelfWidth)/200);
                 } else {
-                    double shape=Math.exp(-3*nearest*nearest/(feature.width*feature.width));
-                    height += feature.relief*shape*TerrainMath.smooth((distance-shore.shelfWidth)/200);
+                    double ribs=TerrainMath.fbm(map.seed(),"ocean_ribs",x,z,96);
+                    double shape=Math.max(0,1-nearest/(feature.width*(.65+.2*ribs)));
+                    double end=TerrainMath.smooth(Math.min(nearestStation,feature.length-nearestStation)/400);
+                    height += (feature.relief*shape+TerrainMath.rockRelief(map.seed(),x,z)*shape)*end
+                            *TerrainMath.smooth((distance-shore.shelfWidth)/200);
                 }
             }
         }

@@ -23,7 +23,7 @@ OUTPUT = ROOT / MAP_RESOURCES / "earth_001"
 SIZE = 2048
 LAYERS = ("height", "region", "water", "soil", "geology", "coast_river")
 RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json", "underground.json")
-TOOL_VERSION = "1.12.0"
+TOOL_VERSION = "1.14.0"
 
 
 def sha(path):
@@ -192,8 +192,11 @@ def mountain_coordinates(mountain, bx, bz):
     for a,b in zip(mountain["points"],mountain["points"][1:]):
         vx,vz = b[0]-a[0],b[1]-a[1]
         length = math.hypot(vx,vz)
-        t = np.clip(((bx-a[0])*vx+(bz-a[1])*vz)/(length*length),0,1)
-        distance = (bx-a[0]-t*vx)**2+(bz-a[1]-t*vz)**2
+        projection=((bx-a[0])*vx+(bz-a[1])*vz)/(length*length)
+        t = np.clip(projection,0,1)
+        across=np.abs((vx*(bz-a[1])-vz*(bx-a[0]))/length)
+        outside=np.abs(projection-t)*length
+        distance = (np.maximum(across,outside)+.5*np.minimum(across,outside))**2
         nearer = distance < squared
         station = np.where(nearer,offset+t*length,station)
         cross = np.where(nearer,(vx*(bz-a[1])-vz*(bx-a[0]))/length,cross)
@@ -211,6 +214,33 @@ def ridge_variation(station, scale, seed):
     return values[cell]+(values[cell+1]-values[cell])*t
 
 
+def termination_relief(termination, bx, bz):
+    """西端の支尾根と、その間を海へ抜ける沢の固定断面。"""
+    foundation = termination["base_y"]
+    height = np.full(bx.shape, foundation, np.float32)
+    for points in termination["ridges"]:
+        for a,b in zip(points,points[1:]):
+            dx,dz = b[0]-a[0],b[1]-a[1]
+            t = np.clip(((bx-a[0])*dx+(bz-a[1])*dz)/(dx*dx+dz*dz),0,1)
+            distance = np.hypot(bx-a[0]-t*dx,bz-a[1]-t*dz)
+            width = a[3]+(b[3]-a[3])*t
+            crest = a[2]+(b[2]-a[2])*t
+            section = np.maximum(0,1-(distance/width)**1.5)
+            height = np.maximum(height,foundation+(crest-foundation)*section)
+    for points in termination["valleys"]:
+        for a,b in zip(points,points[1:]):
+            dx,dz = b[0]-a[0],b[1]-a[1]
+            t = np.clip(((bx-a[0])*dx+(bz-a[1])*dz)/(dx*dx+dz*dz),0,1)
+            distance = np.hypot(bx-a[0]-t*dx,bz-a[1]-t*dz)
+            width = a[3]+(b[3]-a[3])*t
+            cut = np.clip(1-distance/width,0,1)
+            cut = cut*cut*(3-2*cut)
+            floor = a[2]+(b[2]-a[2])*t
+            height += np.minimum(0,floor-height)*cut
+    weight = np.clip((termination["join_x"]-bx)/termination["transition_blocks"],0,1)
+    return height,weight*weight*(3-2*weight)
+
+
 def mountain_relief(config, bx, bz, height, nw):
     """承認済みの範囲内にだけ、主稜線・峰・支稜と谷を作る。"""
     rugged = np.clip(1-np.abs(noise(config["fixed_seed"]+91)/12),0,1)**2
@@ -220,18 +250,24 @@ def mountain_relief(config, bx, bz, height, nw):
         distance,station,cross = mountain_coordinates(mountain,bx,bz)
         radius = mountain["radius_blocks"]
         height += np.clip(1-distance/(radius*2.4),0,1)*(mountain["foothill_y"]-config["terrain_base_y"])*nw
-        envelope = np.clip(1-(distance/radius)**2,0,1)**2
+        envelope = np.clip(1-distance/radius,0,1)
         phase = station/230+2.2*ridge_variation(station,600,config["fixed_seed"]+i+96)+distance/180+np.sign(cross)*.8+warp*2
-        spurs = np.exp(-(np.sin(phase)/(.18+.20*rugged))**2)*(.5+.5*rugged)
-        target = 170+105*envelope+25*spurs*envelope
+        spurs = np.clip(1-np.abs(np.sin(phase))/(.18+.20*rugged),0,1)*(.5+.5*rugged)
+        terminal = np.clip(station/900,0,1) if i==0 else np.ones_like(station)
+        target = 110+60*terminal+(55+50*terminal)*envelope+55*spurs*envelope
         for summit in mountain["summits"]:
             px,pz = summit["xz"]
             angle = math.radians(summit["axis_degrees"])
             u = ((bx-px)*math.cos(angle)+(bz-pz)*math.sin(angle))/summit["radius_blocks"]
             v = (-(bx-px)*math.sin(angle)+(bz-pz)*math.cos(angle))/(summit["radius_blocks"]*summit["aspect"])
-            r = np.hypot(u,v)*(1+.12*np.sin(np.arctan2(v,u)*3+angle*2))
-            cone = .9*np.clip(1-r,0,1)**1.05+.1*np.clip(1-np.sqrt(r),0,1)
+            shoulder=np.clip((np.abs(u)+np.abs(v))/.2,0,1)
+            v=v+(.12*np.sin(u*5)+warp*.08)*shoulder
+            r = .58*np.abs(u)+.72*np.abs(v)+.24*np.abs(v+u*.7)
+            cone = np.clip(1-r,0,1)**1.05
             target = np.maximum(target,170+(summit["peak_y"]-170)*cone)
+        if i == 0:
+            terminal_height,terminal_weight = termination_relief(mountain["termination"],bx,bz)
+            target += (terminal_height-target)*terminal_weight
         active = (distance < radius) & nw
         blend = np.clip((radius-distance)/(radius*.25),0,1)
         blend = blend*blend*(3-2*blend)
@@ -240,11 +276,12 @@ def mountain_relief(config, bx, bz, height, nw):
         influence |= active
     for mountain in config["mountains"]:
         for saddle in mountain["passes"]:
-            distance = np.hypot(bx-saddle["xz"][0],bz-saddle["xz"][1])
-            blend = np.clip(1-distance/480,0,1)
+            along=bz-saddle["xz"][1]
+            across=np.abs(bx-saddle["xz"][0]+30*np.sin(along/150))
+            blend = np.clip((480-np.maximum(across*.9,np.abs(along)*.6))/200,0,1)
             blend = blend*blend*(3-2*blend)
-            target = saddle["surface_y"]+distance*.10
-            height += (target-height)*blend
+            target = saddle["surface_y"]+np.abs(along)*.10+across*.35
+            height += np.minimum(0,target-height)*blend
     return height,influence
 
 
@@ -306,8 +343,9 @@ def island_relief(config, labels, height, mountain_mask):
             dz=(y+y0)*16-16384-summit["xz"][1]
             along=(dx*math.cos(angle)+dz*math.sin(angle))/summit["radius_blocks"]
             across=(-dx*math.sin(angle)+dz*math.cos(angle))/(summit["radius_blocks"]*.65)
-            r=np.hypot(along,across)
-            profile=(1-np.clip(r,0,1)**2*(3-2*np.clip(r,0,1)))**.7
+            shoulder=np.clip((np.abs(along)+np.abs(across))/.3,0,1)
+            across-=.16*np.sin(along*5)*shoulder
+            profile=np.clip(1-.56*np.abs(along)-.72*np.abs(across)-.22*np.abs(across+along*.65),0,1)
             target=np.maximum(target,63+(summit["peak_y"]-63)*profile)
         target=np.maximum(64,target)
         cx,cy=pixel(peak["summits"][0]["xz"])
@@ -389,13 +427,16 @@ def generate_assets(input_dir, output):
     height,mountain_mask = mountain_relief(config,bx,bz,height,nw)
     # 源流は主脈と分岐に挟まれる谷頭。北で閉じ、南へ開く谷にする。
     source_x,source_z = config["river"]["points"][0]
-    head = (bx-source_x)**2+((bz-source_z)*.65)**2
-    height = np.where(nw,np.minimum(height,110+head*.0016),height)
+    head = np.abs(bx-source_x+40*np.sin((bz-source_z)/160))*.8
+    head += np.maximum(0,source_z-bz)*.4+np.maximum(0,bz-source_z)*.06
+    height = np.where(nw,np.minimum(height,110+head),height)
     coast = land & neighbors(~land)
     # 海岸の平滑な遷移。元の陸海輪郭は変えない。
     shore = np.array(Image.fromarray((~land).astype("uint8")*255).filter(ImageFilter.GaussianBlur(5)), dtype=np.float32)/255
     height = np.where(land, 64 + (height-64)*(1-shore), height)
     height[coast] = 64
+    terminal_height,terminal_weight = termination_relief(config["mountains"][0]["termination"],bx,bz)
+    height += np.maximum(0,terminal_height-config["mountains"][0]["termination"]["base_y"])*terminal_weight*shore*nw
     island_peaks = island_relief(config,labels,height,mountain_mask)
     print("窪地処理と流路", flush=True)
     river = config["river"]
@@ -578,6 +619,8 @@ def generate_assets(input_dir, output):
                  {"id": river["id"], "membership_bit": 2, "surface_spans_y_x0_x1ex_y": spans, "centerline_pixel_x_y_surface": profile}],
              "facilities": facilities, "routes": routes, "walkways": walkways, "mountains": config["mountains"],
              "mountain_islands": island_peaks,
+             "underground_surface_controls": config["underground_surface_controls"],
+             "underground_weathered_contacts": config["underground_weathered_contacts"],
              "ocean_features": config["ocean_features"],
              "deposits": config["deposits"], "deferred": config["deferred"],
              "metrics": {"land_pixels": counts.tolist(), "land_area_ratios": ratios,
