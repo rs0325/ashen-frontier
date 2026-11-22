@@ -14,6 +14,8 @@ import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
@@ -30,7 +32,9 @@ public final class AshenFrontierWorld {
     private static final DeferredRegister<MapCodec<? extends BiomeSource>> BIOME_SOURCES =
             DeferredRegister.create(Registries.BIOME_SOURCE, AshenFrontierCore.NAMESPACE);
 
-    public AshenFrontierWorld(IEventBus bus) {
+    public AshenFrontierWorld(IEventBus bus, ModContainer container) {
+        container.registerConfig(ModConfig.Type.CLIENT, MapClientConfig.SPEC);
+        bus.addListener(MapTeleportRequest::register);
         GENERATORS.register("fixed_map", () -> FixedMapChunkGenerator.CODEC);
         BIOME_SOURCES.register("fixed_map", () -> FixedMapBiomeSource.CODEC);
         GENERATORS.register(bus);
