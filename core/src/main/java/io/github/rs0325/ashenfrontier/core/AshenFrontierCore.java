@@ -29,6 +29,7 @@ import net.minecraft.world.item.Items;
 import io.github.rs0325.ashenfrontier.core.vanilla.RemovedLootModifiers;
 import io.github.rs0325.ashenfrontier.core.catalog.FuelData;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
+import io.github.rs0325.ashenfrontier.core.catalog.CoreCreativeTab;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureDataProvider;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
 import io.github.rs0325.ashenfrontier.core.catalog.RelicProperties;
@@ -50,6 +51,7 @@ public final class AshenFrontierCore {
         NatureContent.register(modEventBus);
         RelicProperties.register(modEventBus);
         RelicContent.register(modEventBus);
+        CoreCreativeTab.register(modEventBus);
         MiningRules.register();
         FuelData.register(modEventBus);
         modEventBus.addListener(NatureDataProvider::gatherData);

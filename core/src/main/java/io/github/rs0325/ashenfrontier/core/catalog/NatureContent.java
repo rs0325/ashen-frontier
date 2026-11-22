@@ -7,6 +7,10 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.level.block.MudBlock;
+import net.minecraft.world.level.block.HalfTransparentBlock;
+import net.minecraft.world.level.block.ColoredFallingBlock;
+import net.minecraft.util.ColorRGBA;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.bus.api.IEventBus;
@@ -48,10 +52,19 @@ public final class NatureContent {
                 var block = BLOCKS.register(id, () -> {
                     var properties = BlockBehaviour.Properties.ofFullCopy(
                         switch (entry.kind()) {
-                            case "soil" -> Blocks.DIRT;
+                            case "soil", "sediment", "sediment_layer" -> Blocks.DIRT;
+                            case "falling_sediment" -> Blocks.GRAVEL;
+                            case "mud" -> Blocks.MUD;
+                            case "ice" -> Blocks.PACKED_ICE;
                             case "natural" -> entry.material().equals("wood") ? Blocks.OAK_PLANKS : Blocks.DEAD_BUSH;
                             default -> Blocks.STONE;
                         }).strength(entry.hardness(), entry.hardness() * 3);
+                    if (entry.kind().equals("ice")) return new HalfTransparentBlock(properties.noOcclusion()
+                            .isViewBlocking((state, level, pos) -> false));
+                    if (entry.layer()) return new SedimentLayerBlock(properties.noOcclusion());
+                    if (entry.kind().equals("mud")) return new MudBlock(properties);
+                    if (entry.kind().equals("falling_sediment")) return new ColoredFallingBlock(
+                            new ColorRGBA(0xff000000 | Integer.parseInt(entry.color(), 16)), properties);
                     return entry.loose() ? new LooseNaturalBlock(properties) : new Block(properties);
                 });
                 BLOCK_ENTRIES.put(id, block);

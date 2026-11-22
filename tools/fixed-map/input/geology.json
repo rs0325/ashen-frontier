@@ -1,12 +1,22 @@
 {
   "format_version": 1,
-  "profile_version": "geology_001",
+  "profile_version": "geology_002",
   "catalog": {
     "version": 1,
     "commit": "d033a41789694242f619d327b04062509dad7720",
     "path": "core/src/main/resources/catalog/nature.json",
     "sha256": "d7a3d50e3c88ba362ad47b6b499b7723d5c0b9cdacfc259883d5c87f84248763",
-    "rock_ids": ["ashen_frontier:limestone", "ashen_frontier:shale", "ashen_frontier:slate", "ashen_frontier:quartzite", "ashen_frontier:gneiss", "ashen_frontier:peridotite", "ashen_frontier:rock_salt", "ashen_frontier:gypsum", "ashen_frontier:clay_sediment"]
+    "rock_ids": [
+      "ashen_frontier:limestone",
+      "ashen_frontier:shale",
+      "ashen_frontier:slate",
+      "ashen_frontier:quartzite",
+      "ashen_frontier:gneiss",
+      "ashen_frontier:peridotite",
+      "ashen_frontier:rock_salt",
+      "ashen_frontier:gypsum",
+      "ashen_frontier:clay_sediment"
+    ]
   },
   "layer_order": "top_to_bottom",
   "thickness_unit": "minecraft_block",
@@ -15,69 +25,282 @@
   "thickness_salt": "geology_thickness",
   "notes": "層順・厚さ範囲・傾斜・断層は架空地形の制作値。実在の地層や現実の厚さを復元する値ではない。鉱床の母岩との対応・鉱物・埋蔵量はE（#54）が確定する。",
   "source_catalog": "docs/nature-catalog.md",
-  "source_keys": ["banded_iron", "silica", "carbonate_zinc", "nitrate"],
+  "source_keys": [
+    "banded_iron",
+    "silica",
+    "carbonate_zinc",
+    "nitrate"
+  ],
   "profiles": {
     "0": {
       "name": "ocean",
-      "layers_top_to_bottom": [{"id": "ocean_base", "rock": "minecraft:stone", "thickness_blocks": [16,32]}],
+      "layers_top_to_bottom": [
+        {
+          "id": "ocean_base",
+          "rock": "minecraft:stone",
+          "thickness_blocks": [
+            16,
+            32
+          ]
+        }
+      ],
       "basement": "minecraft:stone",
-      "dip": {"anchor_xz": [0,0], "gradient_xz": [0,0]},
-      "faults": []
+      "dip": {
+        "anchor_xz": [
+          0,
+          0
+        ],
+        "gradient_xz": [
+          0,
+          0
+        ]
+      },
+      "faults": [],
+      "reference_y": 90
     },
     "1": {
       "name": "unclassified_land",
-      "layers_top_to_bottom": [{"id": "unclassified_base", "rock": "minecraft:stone", "thickness_blocks": [16,32]}],
+      "layers_top_to_bottom": [
+        {
+          "id": "unclassified_base",
+          "rock": "minecraft:stone",
+          "thickness_blocks": [
+            16,
+            32
+          ]
+        }
+      ],
       "basement": "minecraft:stone",
-      "dip": {"anchor_xz": [0,0], "gradient_xz": [0,0]},
-      "faults": []
+      "dip": {
+        "anchor_xz": [
+          0,
+          0
+        ],
+        "gradient_xz": [
+          0,
+          0
+        ]
+      },
+      "faults": [],
+      "reference_y": 90
     },
     "2": {
       "name": "plain_profile",
       "layers_top_to_bottom": [
-        {"id": "clay_cap", "rock": "ashen_frontier:clay_sediment", "thickness_blocks": [2,5]},
-        {"id": "sandstone", "rock": "minecraft:sandstone", "thickness_blocks": [8,16]},
-        {"id": "shale", "rock": "ashen_frontier:shale", "thickness_blocks": [8,16]},
-        {"id": "limestone", "rock": "ashen_frontier:limestone", "thickness_blocks": [12,24]}
+        {
+          "id": "clay_cap",
+          "rock": "ashen_frontier:clay_sediment",
+          "thickness_blocks": [
+            2,
+            5
+          ]
+        },
+        {
+          "id": "sandstone",
+          "rock": "minecraft:sandstone",
+          "thickness_blocks": [
+            8,
+            16
+          ]
+        },
+        {
+          "id": "shale",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            8,
+            16
+          ]
+        },
+        {
+          "id": "limestone",
+          "rock": "ashen_frontier:limestone",
+          "thickness_blocks": [
+            12,
+            24
+          ]
+        }
       ],
       "basement": "minecraft:granite",
-      "dip": {"anchor_xz": [-8500,-8192], "gradient_xz": [0.0005,0.001]},
-      "faults": []
+      "dip": {
+        "anchor_xz": [
+          -8500,
+          -8192
+        ],
+        "gradient_xz": [
+          0.0005,
+          0.001
+        ]
+      },
+      "faults": [],
+      "reference_y": 100
     },
     "3": {
       "name": "mountain_profile",
       "layers_top_to_bottom": [
-        {"id": "granite", "rock": "minecraft:granite", "thickness_blocks": [12,32]},
-        {"id": "gneiss", "rock": "ashen_frontier:gneiss", "thickness_blocks": [16,40]},
-        {"id": "quartzite", "rock": "ashen_frontier:quartzite", "thickness_blocks": [8,24]}
+        {
+          "id": "granite",
+          "rock": "minecraft:granite",
+          "thickness_blocks": [
+            12,
+            32
+          ]
+        },
+        {
+          "id": "gneiss",
+          "rock": "ashen_frontier:gneiss",
+          "thickness_blocks": [
+            16,
+            40
+          ]
+        },
+        {
+          "id": "quartzite",
+          "rock": "ashen_frontier:quartzite",
+          "thickness_blocks": [
+            8,
+            24
+          ]
+        }
       ],
       "basement": "ashen_frontier:gneiss",
-      "dip": {"anchor_xz": [-8000,-11800], "gradient_xz": [0.004,0.001]},
-      "faults": [{"point_xz": [-6000,-11800], "normal_xz": [1,0], "throw_blocks": 12}]
+      "dip": {
+        "anchor_xz": [
+          -8000,
+          -11800
+        ],
+        "gradient_xz": [
+          0.004,
+          0.001
+        ]
+      },
+      "faults": [
+        {
+          "point_xz": [
+            -6000,
+            -11800
+          ],
+          "normal_xz": [
+            1,
+            0
+          ],
+          "throw_blocks": 12
+        }
+      ],
+      "reference_y": 440,
+      "uplift": {
+        "axis_z": -11800,
+        "half_width_blocks": 600,
+        "transition_blocks": 2200,
+        "drop_blocks": 180
+      }
     },
     "4": {
       "name": "arid_profile",
       "layers_top_to_bottom": [
-        {"id": "dry_clay_cap", "rock": "ashen_frontier:clay_sediment", "thickness_blocks": [2,4]},
-        {"id": "sandstone", "rock": "minecraft:sandstone", "thickness_blocks": [8,20]},
-        {"id": "gypsum", "rock": "ashen_frontier:gypsum", "thickness_blocks": [4,12]},
-        {"id": "rock_salt", "rock": "ashen_frontier:rock_salt", "thickness_blocks": [4,12]},
-        {"id": "shale", "rock": "ashen_frontier:shale", "thickness_blocks": [8,16]}
+        {
+          "id": "dry_clay_cap",
+          "rock": "ashen_frontier:clay_sediment",
+          "thickness_blocks": [
+            2,
+            4
+          ]
+        },
+        {
+          "id": "sandstone",
+          "rock": "minecraft:sandstone",
+          "thickness_blocks": [
+            8,
+            20
+          ]
+        },
+        {
+          "id": "gypsum",
+          "rock": "ashen_frontier:gypsum",
+          "thickness_blocks": [
+            4,
+            12
+          ]
+        },
+        {
+          "id": "rock_salt",
+          "rock": "ashen_frontier:rock_salt",
+          "thickness_blocks": [
+            4,
+            12
+          ]
+        },
+        {
+          "id": "shale",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            8,
+            16
+          ]
+        }
       ],
       "basement": "minecraft:stone",
-      "dip": {"anchor_xz": [-12400,-5300], "gradient_xz": [0.001,0.0005]},
-      "faults": []
+      "dip": {
+        "anchor_xz": [
+          -12400,
+          -5300
+        ],
+        "gradient_xz": [
+          0.001,
+          0.0005
+        ]
+      },
+      "faults": [],
+      "reference_y": 110
     },
     "5": {
       "name": "coastal_profile",
       "layers_top_to_bottom": [
-        {"id": "coastal_clay", "rock": "ashen_frontier:clay_sediment", "thickness_blocks": [2,5]},
-        {"id": "sandstone", "rock": "minecraft:sandstone", "thickness_blocks": [12,24]},
-        {"id": "limestone", "rock": "ashen_frontier:limestone", "thickness_blocks": [8,20]},
-        {"id": "shale", "rock": "ashen_frontier:shale", "thickness_blocks": [16,24]}
+        {
+          "id": "coastal_clay",
+          "rock": "ashen_frontier:clay_sediment",
+          "thickness_blocks": [
+            2,
+            5
+          ]
+        },
+        {
+          "id": "sandstone",
+          "rock": "minecraft:sandstone",
+          "thickness_blocks": [
+            12,
+            24
+          ]
+        },
+        {
+          "id": "limestone",
+          "rock": "ashen_frontier:limestone",
+          "thickness_blocks": [
+            8,
+            20
+          ]
+        },
+        {
+          "id": "shale",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            16,
+            24
+          ]
+        }
       ],
       "basement": "minecraft:granite",
-      "dip": {"anchor_xz": [-4000,-3700], "gradient_xz": [0.001,0.001]},
-      "faults": []
+      "dip": {
+        "anchor_xz": [
+          -4000,
+          -3700
+        ],
+        "gradient_xz": [
+          0.001,
+          0.001
+        ]
+      },
+      "faults": [],
+      "reference_y": 96
     }
   }
 }

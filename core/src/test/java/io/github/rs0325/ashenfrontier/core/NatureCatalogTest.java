@@ -74,7 +74,8 @@ class NatureCatalogTest {
             }
             assertTrue(materials.has("ashen_frontier:" + id), id);
             json("assets/ashen_frontier/models/item/" + id + ".json");
-            resource("assets/ashen_frontier/textures/" + (entry.block() ? "block/" : "item/") + id + ".png");
+            resource("assets/ashen_frontier/textures/" + (entry.block() ? "block/" : "item/") + (entry.layer() ? entry.material() : id) + ".png");
+            if (entry.layer()) assertModelsExist(json("assets/ashen_frontier/blockstates/" + id + ".json"));
             if (entry.block()) {
                 var loot = json("data/ashen_frontier/loot_table/blocks/" + id + ".json");
                 String recovery = loot.getAsJsonArray("pools").get(0).getAsJsonObject()
@@ -85,6 +86,32 @@ class NatureCatalogTest {
         }
         RelicCatalog.entries().forEach(entry -> items.add("ashen_frontier:" + entry.id()));
         assertEquals(items, materials.keySet());
+    }
+
+    @Test
+    void sedimentsReferenceTheirTexturesModelsAndShovelTags() throws Exception {
+        var shovel = json("data/minecraft/tags/block/mineable/shovel.json").getAsJsonArray("values");
+        Set<String> ids = new HashSet<>();
+        shovel.forEach(value -> ids.add(value.getAsString()));
+        int count = 0;
+        for (var entry : NatureCatalog.entries()) {
+            if (!entry.sediment()) continue;
+            assertTrue(ids.contains("ashen_frontier:" + entry.id()), entry.id());
+            assertEquals(entry.id(), entry.recovery());
+            assertNull(getClass().getResource("/data/ashen_frontier/recipe/" + entry.id() + ".json"));
+            if (entry.layer()) {
+                var variants = json("assets/ashen_frontier/blockstates/" + entry.id() + ".json").getAsJsonObject("variants");
+                assertEquals(8, variants.size());
+                for (int layers = 1; layers <= 8; layers++) {
+                    var model = json("assets/ashen_frontier/models/block/" + entry.id() + "_" + layers + ".json");
+                    assertEquals("minecraft:block/thin_block", model.get("parent").getAsString());
+                    assertEquals("ashen_frontier:block/" + entry.material(), model.getAsJsonObject("textures").get("all").getAsString());
+                    assertEquals(layers * 2, model.getAsJsonArray("elements").get(0).getAsJsonObject().getAsJsonArray("to").get(1).getAsInt());
+                }
+            }
+            count++;
+        }
+        assertEquals(12, count);
     }
 
     @Test
@@ -142,6 +169,25 @@ class NatureCatalogTest {
         for (String coal : new String[]{"peat", "lignite", "bituminous_coal", "anthracite"}) {
             assertEquals(NatureCatalog.require(coal).fuel(), NatureCatalog.require("raw_" + coal).fuel());
         }
+    }
+
+    @Test
+    void iceAssetsKeepTheirSourceWaterAndTranslucentModels() throws Exception {
+        var tags = json("data/minecraft/tags/block/mineable/pickaxe.json").getAsJsonArray("values");
+        Set<String> pickaxes = new HashSet<>();
+        tags.forEach(value -> pickaxes.add(value.getAsString()));
+        int count = 0;
+        for (var entry : NatureCatalog.entries()) {
+            if (!entry.kind().equals("ice")) continue;
+            assertEquals("water", NatureCatalog.require(entry.quality()).kind());
+            assertEquals(entry.id(), entry.recovery());
+            assertTrue(pickaxes.contains("ashen_frontier:" + entry.id()));
+            var model = json("assets/ashen_frontier/models/block/" + entry.id() + ".json");
+            assertEquals("minecraft:translucent", model.get("render_type").getAsString());
+            assertNull(getClass().getResource("/data/ashen_frontier/recipe/" + entry.id() + ".json"));
+            count++;
+        }
+        assertEquals(5, count);
     }
 
     private static JsonObject json(String path) throws Exception {

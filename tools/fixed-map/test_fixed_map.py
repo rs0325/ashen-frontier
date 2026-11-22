@@ -1,5 +1,6 @@
 """配置図の制作契約を、同梱資産と再生成の両方で検査する。"""
 
+import hashlib
 import json
 import math
 import shutil
@@ -14,11 +15,26 @@ import numpy as np
 from PIL import Image
 
 from generate import (LAYERS, MAP_RESOURCES, OUTPUT, RESOURCE_FILES, ROOT, SIZE, TOOL,
-                      drainage, generate, load_inputs, main, neighbors, pixel,
+                      drainage, generate, island_component, island_relief, load_inputs, main, mountain_coordinates, neighbors, pixel,
                       raster_line, sha, validate, write_json)
 
 
 class FixedMapTests(unittest.TestCase):
+    def test_water_animation_frames_and_quality_colors(self):
+        from animate_water import WATERS, TEXTURES
+        for water in WATERS:
+            for kind,size in (("still",16),("flow",32)):
+                path = TEXTURES/f"{water}_{kind}.png"
+                metadata = json.loads(path.with_suffix(".png.mcmeta").read_text(encoding="utf-8"))["animation"]
+                self.assertEqual(metadata["frames"],list(range(32)))
+                self.assertEqual(metadata["frametime"],2)
+                with Image.open(path) as image:
+                    self.assertEqual(image.size,(size,size*32))
+                    frames = [image.crop((0,i*size,size,(i+1)*size)) for i in range(32)]
+                    self.assertGreater(len({frame.tobytes() for frame in frames}),8)
+                    palette = set(frames[0].getdata())
+                    for frame in frames: self.assertEqual(set(frame.getdata()),palette)
+
     @classmethod
     def setUpClass(cls):
         cls.config, cls.land = load_inputs(TOOL / "input")
@@ -27,10 +43,117 @@ class FixedMapTests(unittest.TestCase):
 
     def test_dimensions_types_and_hashes(self):
         validate(OUTPUT,self.config["map_version"])
-        self.assertLessEqual(self.layers["height"].max(),383)
+        self.assertLessEqual(self.layers["height"].max(),639)
         self.assertEqual(self.layers["height"].dtype,np.uint16)
         for name in LAYERS[1:]:
             self.assertEqual(self.layers[name].dtype,np.uint8)
+        manifest=json.loads((OUTPUT/"manifest.json").read_text(encoding="utf8"))
+        dimension=json.loads((ROOT/"modules/world/src/main/resources/data/ashen_frontier/dimension_type/fixed_map.json").read_text(encoding="utf8"))
+        self.assertEqual((manifest["min_y"],manifest["height"]),(-128,704))
+        self.assertEqual((dimension["min_y"],dimension["height"],dimension["logical_height"]),(-128,704,704))
+
+    def test_fixed_summits_and_confirmed_ocean_features(self):
+        for mountain in self.config["mountains"]:
+            self.assertGreaterEqual(len(mountain["summits"]),10)
+            for summit in mountain["summits"]:
+                x,z=summit["xz"]
+                distance,_,_=mountain_coordinates(mountain,np.array([[x]]),np.array([[z]]))
+                self.assertLess(distance.item(),mountain["radius_blocks"])
+                self.assertLessEqual(summit["peak_y"],520)
+        self.assertEqual(self.index["ocean_features"],self.config["ocean_features"])
+        self.assertEqual([f["kind"] for f in self.config["ocean_features"]],["trench","ridge","seamount"])
+        for feature in self.config["ocean_features"]:
+            self.assertEqual(feature["status"],"confirmed")
+            for point in feature["points"]:
+                x,y=pixel(point)
+                self.assertEqual(self.land[y,x],0,"固定海底起伏の中心は海面下")
+
+    def test_fixed_mountain_ranges_geology_and_passes(self):
+        mountains = self.config["mountains"]
+        self.assertEqual([m["id"] for m in mountains],["north_main","north_branch"])
+        self.assertEqual(self.index["mountains"],mountains)
+        self.assertEqual(mountains[0]["radius_blocks"],1100)
+        self.assertEqual(mountains[1]["radius_blocks"],700)
+        self.assertEqual([m["peak_y"] for m in mountains],[520,440])
+        self.assertGreaterEqual(mountains[1]["points"][-1][1]+16384,1000)
+        z,x = np.mgrid[:SIZE,:SIZE]
+        bx,bz = x*16-16384,z*16-16384
+        for mountain in mountains:
+            distance,_,_ = mountain_coordinates(mountain,bx,bz)
+            active = (distance<mountain["radius_blocks"]) & (self.land==1)
+            self.assertTrue(np.all(self.layers["geology"][active]==3),mountain["id"])
+            self.assertGreater(self.layers["height"][active].max()-64,200)
+            for a,b in zip(mountain["points"],mountain["points"][1:]):
+                for t in np.linspace(0,1,101):
+                    px,py = pixel(np.rint(np.array(a)+(np.array(b)-a)*t).astype(int))
+                    self.assertEqual(self.land[py,px],1,"主脈・移動した分岐の陸上連続性")
+        branch=mountains[1]
+        self.assertEqual(branch["points"],[[-3800,-12020],[-2368,-14992]])
+        self.assertEqual(branch["passes"],[])
+        path=next(r for r in self.config["routes"] if r["id"]=="north_path")
+        self.assertNotIn([-5448,-13264],path["points"])
+        for point in self.index["walkways"][0]["points_x_z_y"]:
+            distance,_,_=mountain_coordinates(branch,np.array([[point[0]]]),np.array([[point[1]]]))
+            self.assertGreater(distance.item(),branch["radius_blocks"],"north_pathは分岐を横切らない")
+        cold = next(f for f in self.config["facilities"] if f["id"]=="cold_north")
+        px,py = pixel(cold["xz"])
+        self.assertEqual(self.layers["height"][py,px]-64,cold["surface_y"])
+        for mountain in mountains:
+            for saddle in mountain["passes"]:
+                points = next(w["points_x_z_y"] for w in self.index["walkways"] if w["id"]==saddle["route"])
+                self.assertIn(saddle["xz"],[p[:2] for p in points])
+
+    def test_approved_mask_changes_only_by_the_two_island_channels(self):
+        delta = json.loads((TOOL/"input/island_channels.json").read_text(encoding="utf-8"))
+        self.assertEqual(delta["original_file_sha256"],"e5e2acecac47217278b1b195bf4fd5d6abe3721708b597c1556df6797068b07e")
+        self.assertEqual(delta["original_pixels_sha256"],"4f87816791c601eeee24173b20e6b446c242f5cdd827f6a9482a93c0fd05de40")
+        self.assertEqual(sha(TOOL/"input/land.png"),delta["updated_file_sha256"])
+        restored = self.land.copy()
+        for y,x in delta["removed_pixels_y_x"]:
+            self.assertEqual(self.land[y,x],0)
+            restored[y,x] = 4
+        self.assertEqual(hashlib.sha256(restored.tobytes()).hexdigest(),delta["original_pixels_sha256"])
+        allowed = island_component(restored,[-4912,-14768]) | island_component(restored,[-5088,-15072])
+        self.assertTrue(all(allowed[y,x] for y,x in delta["removed_pixels_y_x"]))
+        np.testing.assert_array_equal(self.layers["coast_river"] & 8 != 0,self.land==0)
+        np.testing.assert_array_equal(self.layers["region"] != 0,self.land>0)
+        self.assertEqual(len(self.config["mountain_islands"]),5)
+        occupied = np.zeros(self.land.shape,bool)
+        for specification,peak in zip(self.config["mountain_islands"],self.index["mountain_islands"]):
+            component = island_component(self.land,specification["anchor_xz"])
+            self.assertFalse(np.any(occupied & component))
+            occupied |= component
+            self.assertTrue(np.all(self.layers["geology"][component]==3))
+            heights = self.layers["height"][component].astype(int)-64
+            self.assertEqual(heights.max(),specification["peak_y"])
+            self.assertGreaterEqual(heights.max(),123)
+            self.assertLessEqual(heights.max(),213)
+            self.assertGreaterEqual(peak["summit_xz"][1]+16384,1000)
+            reconstructed = np.zeros(self.land.shape,bool)
+            for y,x0,x1 in peak["pixel_spans_y_x0_x1ex"]: reconstructed[y,x0:x1] = True
+            np.testing.assert_array_equal(component,reconstructed)
+
+    def test_required_walkway_grades_and_endpoints(self):
+        facilities = {f["id"]: f for f in self.config["facilities"]}
+        for walkway in self.index["walkways"]:
+            points = walkway["points_x_z_y"]
+            start,end = ("spawn","mining") if walkway["id"]=="mining_access" else ("mining","cold_north")
+            for point,anchor in [(points[0],start),(points[-1],end)]:
+                self.assertEqual(point[:2],facilities[anchor]["xz"])
+                self.assertEqual(point[2],facilities[anchor]["surface_y"])
+            for a,b in zip(points,points[1:]):
+                self.assertLessEqual(abs(a[2]-b[2]),math.dist(a[:2],b[:2])/8+.00011)
+                px,py = pixel(a[:2])
+                self.assertEqual(self.land[py,px],1)
+
+    def test_island_relief_is_limited_to_the_five_components(self):
+        height = np.where(self.land>0,140.,40.).astype(np.float32)
+        original = height.copy()
+        selected = np.zeros(height.shape,bool)
+        island_relief(self.config,self.land,height,selected)
+        self.assertLessEqual(height[selected].max(),213)
+        self.assertGreater(height[selected].min(),63)
+        np.testing.assert_array_equal(height[~selected],original[~selected])
 
     def test_every_pixel_and_deferred_regions(self):
         for name in LAYERS[1:]:
@@ -251,6 +374,7 @@ class FixedMapTests(unittest.TestCase):
         rocks = set(definition["catalog"]["rock_ids"]) | {"minecraft:stone","minecraft:granite","minecraft:sandstone"}
         for profile in definition["profiles"].values():
             self.assertIn(profile["basement"],rocks)
+            self.assertTrue(-127 <= profile["reference_y"] <= 575)
             self.assertEqual(len(profile["dip"]["gradient_xz"]),2)
             self.assertEqual(len(profile["dip"]["anchor_xz"]),2)
             for fault in profile["faults"]:

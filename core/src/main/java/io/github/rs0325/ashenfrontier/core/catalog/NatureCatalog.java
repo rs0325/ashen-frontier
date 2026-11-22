@@ -74,5 +74,13 @@ public final class NatureCatalog {
         public boolean loose() {
             return kind.equals("natural") && !id.equals("dead_tree") && !id.equals("fallen_log");
         }
+
+        public boolean sediment() {
+            return kind.equals("sediment") || kind.equals("falling_sediment") || kind.equals("mud") || layer();
+        }
+
+        public boolean layer() {
+            return kind.equals("sediment_layer");
+        }
     }
 }

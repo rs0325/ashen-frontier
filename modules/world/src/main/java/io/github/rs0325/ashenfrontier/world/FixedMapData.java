@@ -5,7 +5,9 @@ import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.imageio.ImageIO;
 
@@ -17,6 +19,20 @@ public final class FixedMapData {
     private final byte[][] categories = new byte[5][SIZE * SIZE];
     private final short[] waterSurface = new short[SIZE * SIZE];
     private final boolean[] protectedArea = new boolean[SIZE * SIZE];
+    private final float[] coastDistance;
+    private final float[] protectionDistance;
+    private record Entrance(int x, int z) {}
+    private record Facility(double x, double z, double radius) {}
+    private final Map<Long, List<Entrance>> entrances;
+    private final Map<Long, List<Entrance>> geologyAnchors;
+    private final List<Facility> facilities;
+    private final RiverCourse river;
+    private record Mountain(double[][] points, double radius) {}
+    private final List<Mountain> mountains;
+    record MountainIsland(int peakY, int inlandDepth, int x, int z) {}
+    private final Map<Integer, MountainIsland> mountainIslands;
+    private final TerrainWalkways walkways;
+    private final OceanRelief ocean;
     private final JsonObject geology;
     private final long seed;
 
@@ -44,7 +60,7 @@ public final class FixedMapData {
                         for (int x = 0; x < SIZE; x++) {
                             int value = raster.getSample(x, z, 0), at = z * SIZE + x;
                             if (layer == 0) {
-                                if (value > 383) throw new IllegalStateException("標高が範囲外です");
+                                if (value > 639) throw new IllegalStateException("標高が範囲外です");
                                 heights[at] = (short) (value - 64);
                             } else categories[layer - 1][at] = (byte) value;
                         }
@@ -53,6 +69,47 @@ public final class FixedMapData {
                 }
             }
             var index = json(root + "index.json");
+            ocean = new OceanRelief(index.getAsJsonArray("ocean_features"));
+            var islandPixels = new HashMap<Integer, MountainIsland>();
+            for (var value : index.getAsJsonArray("mountain_islands")) {
+                var island = value.getAsJsonObject();
+                var summit = island.getAsJsonArray("summit_xz");
+                var peak = new MountainIsland(island.get("peak_y").getAsInt(), island.get("inland_depth_blocks").getAsInt(),
+                        summit.get(0).getAsInt(), summit.get(1).getAsInt());
+                for (var row : island.getAsJsonArray("pixel_spans_y_x0_x1ex")) {
+                    var span = row.getAsJsonArray();
+                    for (int x = span.get(1).getAsInt(); x < span.get(2).getAsInt(); x++) {
+                        islandPixels.put(span.get(0).getAsInt() * SIZE + x, peak);
+                    }
+                }
+            }
+            var shorePixels = new HashMap<>(islandPixels);
+            for (var entry : islandPixels.entrySet()) {
+                int px = entry.getKey() % SIZE, pz = entry.getKey() / SIZE;
+                for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
+                    int at = (pz + dz) * SIZE + px + dx;
+                    var other = shorePixels.get(at);
+                    var peak = entry.getValue();
+                    double x = (px + dx) * 16 - 16384, z = (pz + dz) * 16 - 16384;
+                    if (!islandPixels.containsKey(at) && (other == null
+                            || Math.hypot(x - peak.x, z - peak.z) < Math.hypot(x - other.x, z - other.z)))
+                        shorePixels.put(at, peak);
+                }
+            }
+            mountainIslands = Map.copyOf(shorePixels);
+            var mountains = new ArrayList<Mountain>();
+            for (var value : index.getAsJsonArray("mountains")) {
+                var mountain = value.getAsJsonObject();
+                var source = mountain.getAsJsonArray("points");
+                double[][] points = new double[source.size()][2];
+                for (int i = 0; i < points.length; i++) {
+                    points[i][0] = source.get(i).getAsJsonArray().get(0).getAsDouble();
+                    points[i][1] = source.get(i).getAsJsonArray().get(1).getAsDouble();
+                }
+                mountains.add(new Mountain(points, mountain.get("radius_blocks").getAsDouble()));
+            }
+            this.mountains = List.copyOf(mountains);
+            walkways = new TerrainWalkways(index.getAsJsonArray("walkways"), seed);
             geology = json(root + "geology_profiles.json");
             if (!geology.get("map_version").getAsString().equals(version.mapVersion())
                     || geology.get("format_version").getAsInt() != version.formatVersion()
@@ -88,12 +145,16 @@ public final class FixedMapData {
                     throw new IllegalStateException("水域の品質・水面が不足しています");
                 }
             }
+            var facilities = new ArrayList<Facility>();
             for (var value : index.getAsJsonArray("facilities")) {
                 var facility = value.getAsJsonObject();
                 var xz = facility.getAsJsonArray("xz");
+                facilities.add(new Facility(xz.get(0).getAsDouble(), xz.get(1).getAsDouble(),
+                        facility.get("protection_radius").getAsDouble()));
                 markProtection(xz.get(0).getAsDouble(), xz.get(1).getAsDouble(),
                         xz.get(0).getAsDouble(), xz.get(1).getAsDouble(), facility.get("protection_radius").getAsDouble());
             }
+            this.facilities = List.copyOf(facilities);
             for (var value : index.getAsJsonArray("routes")) {
                 var route = value.getAsJsonObject();
                 var points = route.getAsJsonArray("points");
@@ -104,10 +165,162 @@ public final class FixedMapData {
                             b.get(1).getAsDouble(), route.get("protection_radius").getAsDouble());
                 }
             }
+            for (var value : index.getAsJsonArray("walkways")) {
+                var points = value.getAsJsonObject().getAsJsonArray("points_x_z_y");
+                for (int i = 1; i < points.size(); i++) {
+                    var a = points.get(i - 1).getAsJsonArray(); var b = points.get(i).getAsJsonArray();
+                    markProtection(a.get(0).getAsDouble(), a.get(1).getAsDouble(), b.get(0).getAsDouble(), b.get(1).getAsDouble(), 8);
+                }
+            }
+            var underground = UndergroundLayout.read(version);
+            coastDistance = smoothDistance(distances(true));
+            protectionDistance = distances(false);
+            var entrances = new HashMap<Long, List<Entrance>>();
+            var geologyAnchors = new HashMap<Long, List<Entrance>>();
+            for (var deposit : underground.deposits()) {
+                addEntrance(geologyAnchors,deposit.x(),deposit.z());
+                if (!deposit.id().startsWith("oil_") && !Boolean.TRUE.equals(deposit.vanilla())) {
+                    addEntrance(entrances, deposit.x() - Math.max(96, deposit.depth() + 24), deposit.z());
+                }
+            }
+            for (var space : underground.spaces()) {
+                addEntrance(entrances, space.x() - Integer.signum(space.end_x() - space.x()) * (space.depth() + 16), space.z());
+            }
+            entrances.replaceAll((key, value) -> List.copyOf(value));
+            this.entrances = Map.copyOf(entrances);
+            this.geologyAnchors = Map.copyOf(geologyAnchors);
             smoothRegionHeights();
+            // 元の河床を埋め戻し、連続した谷の断面で彫り直す。
+            for (int i = 0; i < heights.length; i++) {
+                if ((categories[4][i] & 2) != 0 && !protectedArea[i]) heights[i] = (short) (waterSurface[i] + 6);
+            }
+            var centerline = index.getAsJsonArray("water_bodies").get(1).getAsJsonObject()
+                    .getAsJsonArray("centerline_pixel_x_y_surface");
+            double[][] points = new double[centerline.size()][3];
+            for (int i = 0; i < points.length; i++) {
+                var point = centerline.get(i).getAsJsonArray();
+                points[i][0] = MapCoordinates.MIN + point.get(0).getAsInt() * 16;
+                points[i][1] = MapCoordinates.MIN + point.get(1).getAsInt() * 16;
+                double coast = coastDistance((int) points[i][0], (int) points[i][1]);
+                points[i][2] = Math.min(point.get(2).getAsDouble(), 63 + Math.max(0, coast - 80) / 32);
+                double ground = Double.POSITIVE_INFINITY;
+                for (int dz = -112; dz <= 112; dz += 16) for (int dx = -112; dx <= 112; dx += 16) {
+                    ground = Math.min(ground, FixedTerrain.landHeight(this, (int) points[i][0] + dx, (int) points[i][1] + dz));
+                }
+                points[i][2] = Math.min(points[i][2], Math.max(63, Math.floor(ground) - 4));
+                if (i > 0) points[i][2] = Math.min(points[i][2], points[i - 1][2]);
+            }
+            river = new RiverCourse(points, seed);
         } catch (IOException | RuntimeException e) {
             throw new IllegalStateException("固定マップ版 " + version.mapVersion() + ": 配置図を読めません", e);
         }
+    }
+
+    private float[] distances(boolean coast) {
+        float[] values = new float[heights.length];
+        Arrays.fill(values, coast ? 32768 : 128);
+        for (int z = 0; z < SIZE; z++) for (int x = 0; x < SIZE; x++) {
+            int i = z * SIZE + x;
+            if (!coast) {
+                if (protectedArea[i]) values[i] = 0;
+            } else if ((x > 0 && (categories[0][i] == 0) != (categories[0][i - 1] == 0))
+                    || (x < SIZE - 1 && (categories[0][i] == 0) != (categories[0][i + 1] == 0))
+                    || (z > 0 && (categories[0][i] == 0) != (categories[0][i - SIZE] == 0))
+                    || (z < SIZE - 1 && (categories[0][i] == 0) != (categories[0][i + SIZE] == 0))) values[i] = 8;
+        }
+        for (int z = 0; z < SIZE; z++) for (int x = 0; x < SIZE; x++) {
+            int i = z * SIZE + x;
+            if (x > 0) values[i] = Math.min(values[i], values[i - 1] + 16);
+            if (z > 0) {
+                values[i] = Math.min(values[i], values[i - SIZE] + 16);
+                if (x > 0) values[i] = Math.min(values[i], values[i - SIZE - 1] + 22.627417f);
+                if (x < SIZE - 1) values[i] = Math.min(values[i], values[i - SIZE + 1] + 22.627417f);
+            }
+        }
+        for (int z = SIZE - 1; z >= 0; z--) for (int x = SIZE - 1; x >= 0; x--) {
+            int i = z * SIZE + x;
+            if (x < SIZE - 1) values[i] = Math.min(values[i], values[i + 1] + 16);
+            if (z < SIZE - 1) {
+                values[i] = Math.min(values[i], values[i + SIZE] + 16);
+                if (x > 0) values[i] = Math.min(values[i], values[i + SIZE - 1] + 22.627417f);
+                if (x < SIZE - 1) values[i] = Math.min(values[i], values[i + SIZE + 1] + 22.627417f);
+            }
+        }
+        if (coast) for (int i = 0; i < values.length; i++) if (categories[0][i] == 0) values[i] = -values[i];
+        return values;
+    }
+
+    private static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xffffffffL); }
+
+    private static void addEntrance(Map<Long, List<Entrance>> cells, int x, int z) {
+        var entrance = new Entrance(x, z);
+        for (int cx = (x - 48) >> 7; cx <= (x + 48) >> 7; cx++) {
+            for (int cz = (z - 48) >> 7; cz <= (z + 48) >> 7; cz++) {
+                cells.computeIfAbsent(key(cx, cz), ignored -> new ArrayList<>()).add(entrance);
+            }
+        }
+    }
+
+    private float[] smoothDistance(float[] values) {
+        float[] horizontal = new float[values.length];
+        for (int z = 0; z < SIZE; z++) for (int x = 0; x < SIZE; x++) {
+            int i = z * SIZE + x;
+            horizontal[i] = (values[z * SIZE + Math.max(0, x - 1)] + 2 * values[i]
+                    + values[z * SIZE + Math.min(SIZE - 1, x + 1)]) / 4;
+        }
+        for (int z = 0; z < SIZE; z++) for (int x = 0; x < SIZE; x++) {
+            values[z * SIZE + x] = (horizontal[Math.max(0, z - 1) * SIZE + x]
+                    + 2 * horizontal[z * SIZE + x] + horizontal[Math.min(SIZE - 1, z + 1) * SIZE + x]) / 4;
+        }
+        return values;
+    }
+
+    private double interpolate(float[] values, double x, double z) {
+        double px = Math.clamp((x - MapCoordinates.MIN) / 16, 0, SIZE - 1);
+        double pz = Math.clamp((z - MapCoordinates.MIN) / 16, 0, SIZE - 1);
+        int ix = (int) px, iz = (int) pz, nx = Math.min(ix + 1, SIZE - 1), nz = Math.min(iz + 1, SIZE - 1);
+        return TerrainMath.bilinear(values[iz * SIZE + ix], values[iz * SIZE + nx],
+                values[nz * SIZE + ix], values[nz * SIZE + nx], px - ix, pz - iz);
+    }
+
+    double coastDistance(int x, int z) {
+        double wx = (TerrainMath.noise(seed, "coast_x", x, z, 48) - 0.5) * 12;
+        double wz = (TerrainMath.noise(seed, "coast_z", x, z, 48) - 0.5) * 12;
+        double px = Math.clamp((x + wx - MapCoordinates.MIN) / 16, 0, SIZE - 1);
+        double pz = Math.clamp((z + wz - MapCoordinates.MIN) / 16, 0, SIZE - 1);
+        int ix = (int) px, iz = (int) pz;
+        return TerrainMath.cubic(distanceRow(ix, iz - 1, px - ix), distanceRow(ix, iz, px - ix),
+                distanceRow(ix, iz + 1, px - ix), distanceRow(ix, iz + 2, px - ix), pz - iz);
+    }
+
+    private double distanceRow(int x, int z, double t) {
+        int offset = Math.clamp(z, 0, SIZE - 1) * SIZE;
+        return TerrainMath.cubic(coastDistance[offset + Math.max(0, x - 1)], coastDistance[offset + x],
+                coastDistance[offset + Math.min(SIZE - 1, x + 1)], coastDistance[offset + Math.min(SIZE - 1, x + 2)], t);
+    }
+
+    double detailWeight(int x, int z) {
+        double weight = 0.25 + 0.75 * TerrainMath.smooth(interpolate(protectionDistance, x, z) / 96);
+        for (var facility : facilities) {
+            double dx = x - facility.x, dz = z - facility.z;
+            if (Math.abs(dx) < facility.radius + 48 && Math.abs(dz) < facility.radius + 48) {
+                weight *= TerrainMath.smooth((Math.hypot(dx, dz) - facility.radius) / 48);
+            }
+        }
+        for (var entrance : entrances.getOrDefault(key(x >> 7, z >> 7), List.of())) {
+            weight = Math.min(weight, TerrainMath.smooth((Math.hypot(x - entrance.x, z - entrance.z) - 12) / 32));
+        }
+        return weight;
+    }
+
+    RiverCourse.Sample river(int x, int z) { return river.sample(x, z); }
+
+    boolean hazardProtected(int x, int z) {
+        if (isProtected(x, z) || walkways.sample(x, z).distance() <= 16) return true;
+        for (var entrance : entrances.getOrDefault(key(x >> 7, z >> 7), List.of())) {
+            if (Math.hypot(x - entrance.x, z - entrance.z) <= 48) return true;
+        }
+        return false;
     }
 
     private void smoothRegionHeights() {
@@ -173,19 +386,95 @@ public final class FixedMapData {
     }
 
     long seed() { return seed; }
+    TerrainWalkways walkways() { return walkways; }
+    MountainIsland mountainIsland(int x, int z) {
+        return MapCoordinates.contains(x, z) ? mountainIslands.get(at(x, z)) : null;
+    }
+
+    double mountainWeight(int x, int z) {
+        double weight = 0;
+        for (var mountain : mountains) {
+            double nearest = mountain.radius;
+            for (int i = 1; i < mountain.points.length; i++) {
+                var a = mountain.points[i - 1]; var b = mountain.points[i];
+                double dx = b[0] - a[0], dz = b[1] - a[1];
+                double t = Math.clamp(((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz), 0, 1);
+                nearest = Math.min(nearest, Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz));
+            }
+            weight = Math.max(weight, TerrainMath.smooth(1 - nearest / mountain.radius));
+        }
+        return weight;
+    }
+    OceanRelief ocean() { return ocean; }
     JsonObject geology() { return geology.deepCopy(); }
 
     /** 範囲外は0。範囲内は最近傍の地域ID（0〜7、255）を返す。 */
     public int region(int x, int z) { return category(0, x, z); }
+
+    record GeologyAnchor(int x, int z, double weight) {}
+
+    GeologyAnchor geologyAnchor(int x, int z) {
+        Entrance nearest = null;
+        double distance = 48;
+        for (var anchor : geologyAnchors.getOrDefault(key(x >> 7, z >> 7), List.of())) {
+            double candidate = Math.hypot(x - anchor.x, z - anchor.z);
+            if (candidate < distance) { distance = candidate; nearest = anchor; }
+        }
+        return nearest == null ? null : new GeologyAnchor(nearest.x, nearest.z, TerrainMath.smooth((distance - 4) / 44));
+    }
+
+    record Boundary(int region, int soil, double dry, double cold) {}
+
+    Boundary boundary(int x, int z) {
+        double weight = detailWeight(x, z);
+        int wx = (int) Math.round(TerrainMath.fbm(seed, "boundary_x", x, z, 192) * 64 * weight);
+        int wz = (int) Math.round(TerrainMath.fbm(seed, "boundary_z", x, z, 192) * 64 * weight);
+        int nx = Math.clamp(x + wx, MapCoordinates.MIN, MapCoordinates.MAX - 1);
+        int nz = Math.clamp(z + wz, MapCoordinates.MIN, MapCoordinates.MAX - 1);
+        double gx=(nx-MapCoordinates.MIN)/96.0,gz=(nz-MapCoordinates.MIN)/96.0;
+        int ix=(int)Math.floor(gx),iz=(int)Math.floor(gz);
+        double tx=TerrainMath.smooth(gx-ix),tz=TerrainMath.smooth(gz-iz),dry=0,cold=0,total=0;
+        double regionPick=TerrainMath.noise(seed,"region_edge",Math.floorDiv(x,4),Math.floorDiv(z,4),1);
+        double soilPick=TerrainMath.noise(seed,"soil_edge",x,z,1);
+        int region=category(0,nx,nz),soil=category(2,nx,nz);
+        for(int dz=0;dz<=1;dz++)for(int dx=0;dx<=1;dx++) {
+            int sx=Math.clamp(MapCoordinates.MIN+(ix+dx)*96,MapCoordinates.MIN,MapCoordinates.MAX-1);
+            int sz=Math.clamp(MapCoordinates.MIN+(iz+dz)*96,MapCoordinates.MIN,MapCoordinates.MAX-1);
+            int r=category(0,sx,sz),s=category(2,sx,sz);
+            double part=(dx==0?1-tx:tx)*(dz==0?1-tz:tz);
+            if(r==4)dry+=part;
+            if(r==7)cold+=part;
+            if(regionPick>=total && regionPick<total+part)region=r;
+            if(soilPick>=total && soilPick<total+part)soil=s;
+            total+=part;
+        }
+        return new Boundary(region,soil,dry,cold);
+    }
     int category(int layer, int x, int z) {
         return MapCoordinates.contains(x, z) ? Byte.toUnsignedInt(categories[layer][at(x, z)]) : 0;
     }
 
     /** 海・河道・湖のbit。範囲外は0で、海域として扱わない。 */
-    public int waterMask(int x, int z) { return category(4, x, z); }
+    public int waterMask(int x, int z) {
+        if (!MapCoordinates.contains(x, z)) return 0;
+        double coast = coastDistance(x, z);
+        if (coast < 0) return 8;
+        var sample = river.sample(x, z);
+        return (coast < 48 ? 1 : 0) | (sample.distance() < sample.width() ? 2 : 0) | (category(4, x, z) & 4);
+    }
 
     /** 水質対応表のID。乾燥・範囲外は0。 */
-    public int waterQuality(int x, int z) { return category(1, x, z); }
+    public int waterQuality(int x, int z) {
+        if (!MapCoordinates.contains(x, z)) return 0;
+        if (coastDistance(x, z) < 0) return 8;
+        var sample = river.sample(x, z);
+        if (sample.distance() < sample.width()) return riverQuality(sample);
+        return (category(4, x, z) & 4) != 0 ? category(1, x, z) : 0;
+    }
+
+    int riverQuality(RiverCourse.Sample sample) {
+        return category(1, sample.x(), sample.z());
+    }
 
     /** 土壌5段階のID。0は露岩・未割当て・範囲外で、境界の材料混合前の値。 */
     public int soilQuality(int x, int z) { return category(2, x, z); }
@@ -195,7 +484,11 @@ public final class FixedMapData {
 
     /** 指定水域の水面ブロックY。水域以外はInteger.MIN_VALUE。 */
     public int waterSurface(int x, int z) {
-        return (waterMask(x, z) & 14) == 0 ? Integer.MIN_VALUE : waterSurface[at(x, z)];
+        if (!MapCoordinates.contains(x, z)) return Integer.MIN_VALUE;
+        if (coastDistance(x, z) < 0) return 63;
+        var sample = river.sample(x, z);
+        if (sample.distance() < sample.width()) return (int) Math.floor(sample.surface());
+        return (category(4, x, z) & 4) != 0 ? waterSurface[at(x, z)] : Integer.MIN_VALUE;
     }
 
     /** 施設・経路の水平保護域。16ブロック格子の被覆により最大24ブロック広く保護する。 */
@@ -203,12 +496,23 @@ public final class FixedMapData {
         return MapCoordinates.contains(x, z) && protectedArea[at(x, z)];
     }
 
-    /** 範囲内の標高Yを双線形補間する。最終画素の外挿はせず、端の値を延長する。 */
+    /** 範囲内の標高Yを3次補間する。最終画素の外挿はせず、端の値を延長する。 */
     public double height(int x, int z) {
         if (!MapCoordinates.contains(x, z)) throw new IllegalArgumentException("配置図の範囲外です");
-        int px = TerrainMath.pixel(x), pz = TerrainMath.pixel(z);
-        int nx = Math.min(SIZE - 1, px + 1), nz = Math.min(SIZE - 1, pz + 1);
-        return TerrainMath.bilinear(heights[pz * SIZE + px], heights[pz * SIZE + nx],
-                heights[nz * SIZE + px], heights[nz * SIZE + nx], TerrainMath.fraction(x), TerrainMath.fraction(z));
+        return height((double) x, (double) z);
+    }
+
+    double height(double x, double z) {
+        double px = Math.clamp((x - MapCoordinates.MIN) / 16, 0, SIZE - 1);
+        double pz = Math.clamp((z - MapCoordinates.MIN) / 16, 0, SIZE - 1);
+        int ix = (int) px, iz = (int) pz;
+        return TerrainMath.cubic(row(ix, iz - 1, px - ix), row(ix, iz, px - ix),
+                row(ix, iz + 1, px - ix), row(ix, iz + 2, px - ix), pz - iz);
+    }
+
+    private double row(int x, int z, double t) {
+        int offset = Math.clamp(z, 0, SIZE - 1) * SIZE;
+        return TerrainMath.cubic(heights[offset + Math.max(0, x - 1)], heights[offset + x],
+                heights[offset + Math.min(SIZE - 1, x + 1)], heights[offset + Math.min(SIZE - 1, x + 2)], t);
     }
 }

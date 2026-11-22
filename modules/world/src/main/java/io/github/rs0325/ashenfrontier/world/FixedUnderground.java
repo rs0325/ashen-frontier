@@ -13,6 +13,7 @@ import java.util.Map;
 public final class FixedUnderground {
     record Body(UndergroundLayout.Deposit data, int y, BlockState host, BlockState ore) {
         boolean contains(int x, int y, int z, int margin) {
+            if (Math.abs(y - this.y) > data.radii().get(1) + margin) return false;
             double dx = (x - data.x()) / (double) (data.radii().get(0) + margin);
             double dy = (y - this.y) / (double) (data.radii().get(1) + margin);
             double dz = (z - data.z()) / (double) (data.radii().get(2) + margin);
@@ -25,18 +26,21 @@ public final class FixedUnderground {
         }
     }
 
-    record Passage(String id, int ax, int az, int ay, int bx, int bz, int by, int width, int height) {
+    record Passage(String id, int ax, int az, int ay, int bx, int bz, int by, int width, int height, List<Integer> floors) {
         int floor(int x, int z) {
             double dx = bx - ax, dz = bz - az, length = dx * dx + dz * dz;
             double t = length == 0 ? 0 : ((x - ax) * dx + (z - az) * dz) / length;
             if (t < 0 || t > 1) return Integer.MIN_VALUE;
             if (Math.abs(x - ax - t * dx) > width || Math.abs(z - az - t * dz) > width) return Integer.MIN_VALUE;
-            return (int) Math.floor(ay + t * (by - ay));
+            double at = t * (floors.size() - 1);
+            int index = (int) at, next = Math.min(index + 1, floors.size() - 1);
+            return (int) Math.floor(floors.get(index) + (at - index) * (floors.get(next) - floors.get(index)));
         }
     }
 
     record Cell(List<Body> bodies, List<Passage> passages) {}
     private static final Cell EMPTY = new Cell(List.of(), List.of());
+    private static final int[] NO_PASSAGES = new int[0];
     private final Map<Long, Cell> cells;
     private final List<Body> bodies;
     private final List<Passage> passages;
@@ -73,17 +77,17 @@ public final class FixedUnderground {
             if (!data.id().startsWith("oil_") && !Boolean.TRUE.equals(data.vanilla())) {
                 int distance = Math.max(96, data.depth() + 24);
                 int x = data.x() - distance;
-                passages.add(new Passage(data.id(), x, data.z(), terrain.surfaceY(x, data.z()),
+                passages.add(passage(terrain, data.id(), x, data.z(), terrain.surfaceY(x, data.z()),
                         data.x(), data.z(), y, 1, 3));
             }
         }
         for (var space : layout.spaces()) {
             int floor = terrain.surfaceY(space.x(), space.z()) - space.depth();
             int entryX = space.x() - Integer.signum(space.end_x() - space.x()) * (space.depth() + 16);
-            passages.add(new Passage(space.id() + "_entry", entryX, space.z(),
+            passages.add(passage(terrain, space.id() + "_entry", entryX, space.z(),
                     terrain.surfaceY(entryX, space.z()),
                     space.x(), space.z(), floor, space.width(), space.height()));
-            passages.add(new Passage(space.id(), space.x(), space.z(), floor,
+            passages.add(passage(terrain, space.id(), space.x(), space.z(), floor,
                     space.end_x(), space.end_z(), floor, space.width(), space.height()));
         }
         this.bodies = List.copyOf(bodies);
@@ -104,6 +108,30 @@ public final class FixedUnderground {
         for (var key : passageCells.keySet()) cells.put(key,
                 new Cell(cells.getOrDefault(key, EMPTY).bodies, List.copyOf(passageCells.get(key))));
         this.cells = Map.copyOf(cells);
+    }
+
+    private static Passage passage(FixedTerrain terrain, String id, int ax, int az, int ay,
+                                   int bx, int bz, int by, int width, int height) {
+        int length = Math.max(Math.abs(bx - ax), Math.abs(bz - az));
+        double distance = Math.hypot(bx - ax, bz - az);
+        var floors = new ArrayList<Integer>();
+        for (int i = 0; i <= length; i++) {
+            double t = i / (double) Math.max(1, length);
+            int x = (int) Math.round(ax + t * (bx - ax)), z = (int) Math.round(az + t * (bz - az));
+            int floor = Math.min((int) Math.floor(ay + t * (by - ay)), terrain.surfaceY(x,z));
+            if (i != 0 && i != length) {
+                for (int offset = -width; offset <= width; offset++) {
+                    int dx = (int) Math.round(-(bz - az) * offset / distance);
+                    int dz = (int) Math.round((bx - ax) * offset / distance);
+                    floor = Math.min(floor, terrain.surfaceY(x + dx, z + dz));
+                }
+            }
+            floors.add(floor);
+        }
+        // 地表の窪みを横切る入口でも床を空中へ出さず、一段ずつ歩ける勾配にする。
+        for (int i = 1; i < floors.size(); i++) floors.set(i, Math.min(floors.get(i), floors.get(i - 1) + 1));
+        for (int i = floors.size() - 2; i >= 0; i--) floors.set(i, Math.min(floors.get(i), floors.get(i + 1) + 1));
+        return new Passage(id, ax, az, floors.getFirst(), bx, bz, floors.getLast(), width, height, List.copyOf(floors));
     }
 
     private static <T> void index(Map<Long, List<T>> cells, T value, int x0, int z0, int x1, int z1) {
@@ -132,23 +160,36 @@ public final class FixedUnderground {
     List<Passage> passages() { return passages; }
 
     static BlockState rock(Cell cell, int x, int y, int z, BlockState original) {
-        for (var body : cell.bodies) {
+        for (int i = 0; i < cell.bodies.size(); i++) {
+            var body = cell.bodies.get(i);
             if (body.data.lens() && body.contains(x, y, z, 3)) return body.host;
         }
         return original;
     }
 
     static BlockState state(Cell cell, int x, int y, int z, BlockState host) {
-        for (var body : cell.bodies) {
+        for (int i = 0; i < cell.bodies.size(); i++) {
+            var body = cell.bodies.get(i);
             if (host.equals(body.host) && body.contains(x, y, z, 0)) return body.ore;
         }
         return host;
     }
 
-    static boolean carved(Cell cell, int x, int y, int z) {
-        for (var passage : cell.passages) {
+    static int[] passageFloors(Cell cell, int x, int z) {
+        if (cell == null || cell.passages.isEmpty()) return NO_PASSAGES;
+        int[] floors = new int[cell.passages.size() * 2];
+        for (int i = 0; i < cell.passages.size(); i++) {
+            var passage = cell.passages.get(i);
             int floor = passage.floor(x, z);
-            if (floor != Integer.MIN_VALUE && y > floor && y <= floor + passage.height) return true;
+            floors[i * 2] = floor;
+            floors[i * 2 + 1] = floor + passage.height;
+        }
+        return floors;
+    }
+
+    static boolean carved(int[] floors, int y) {
+        for (int i = 0; i < floors.length; i += 2) {
+            if (y > floors[i] && y <= floors[i + 1]) return true;
         }
         return false;
     }

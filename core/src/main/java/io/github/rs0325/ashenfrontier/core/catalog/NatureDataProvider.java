@@ -33,11 +33,14 @@ public final class NatureDataProvider implements DataProvider {
         List<CompletableFuture<?>> writes = new ArrayList<>();
         JsonObject english = new JsonObject();
         JsonObject japanese = new JsonObject();
+        english.addProperty("itemGroup.ashen_frontier.contents", "Ashen Frontier");
+        japanese.addProperty("itemGroup.ashen_frontier.contents", "アシェン・フロンティア");
         english.addProperty("tooltip.ashen_frontier.recovery", "Recovers: %s");
         japanese.addProperty("tooltip.ashen_frontier.recovery", "回収先: %s");
         JsonArray pickaxe = new JsonArray();
         JsonArray soft = new JsonArray();
         JsonArray axe = new JsonArray();
+        JsonArray shovel = new JsonArray();
         JsonArray simple = new JsonArray();
         JsonArray simpleTools = new JsonArray();
         Map<String, JsonArray> shapes = Map.of("fence", new JsonArray(), "door", new JsonArray(),
@@ -86,7 +89,11 @@ public final class NatureDataProvider implements DataProvider {
         japanese.addProperty("message.ashen_frontier.document_recorded", "チームの知識に記録しました: %s");
         for (var entry : NatureCatalog.entries()) {
             String id = entry.id();
-            if (entry.kind().equals("rock") || entry.kind().equals("ore") || entry.kind().equals("coal")) {
+            if (entry.sediment()) {
+                soft.add("ashen_frontier:" + id);
+                shovel.add("ashen_frontier:" + id);
+            }
+            if (entry.kind().equals("rock") || entry.kind().equals("ore") || entry.kind().equals("coal") || entry.kind().equals("ice")) {
                 pickaxe.add("ashen_frontier:" + id);
             } else if (entry.block() && (entry.loose() || entry.kind().equals("soil")
                     || entry.kind().equals("natural") && !entry.material().equals("wood"))) {
@@ -105,20 +112,23 @@ public final class NatureDataProvider implements DataProvider {
                 save(writes, output, "assets/ashen_frontier/models/block/" + id,
                         "{\"textures\":{\"particle\":\"ashen_frontier:block/" + id + "_still\"}}");
             } else {
-                if (entry.block()) {
+                if (entry.layer()) {
+                    sedimentLayer(writes, output, entry);
+                } else if (entry.block()) {
                     save(writes, output, "assets/ashen_frontier/blockstates/" + id,
                             "{\"variants\":{\"\":{\"model\":\"ashen_frontier:block/" + id + "\"}}}");
                     boolean cross = entry.loose();
                     save(writes, output, "assets/ashen_frontier/models/block/" + id,
                             cross ? "{\"parent\":\"minecraft:block/cross\",\"render_type\":\"minecraft:cutout\",\"textures\":{\"cross\":\"ashen_frontier:block/" + id + "\"}}"
-                                    : "{\"parent\":\"minecraft:block/cube_all\",\"textures\":{\"all\":\"ashen_frontier:block/" + id + "\"}}");
+                                    : "{\"parent\":\"minecraft:block/cube_all\"," + (entry.kind().equals("ice") ? "\"render_type\":\"minecraft:translucent\"," : "")
+                                            + "\"textures\":{\"all\":\"ashen_frontier:block/" + id + "\"}}");
                     String recovery = entry.recovery().contains(":") ? entry.recovery() : "ashen_frontier:" + entry.recovery();
                     save(writes, output, "data/ashen_frontier/loot_table/blocks/" + id,
                             "{\"type\":\"minecraft:block\",\"pools\":[{\"rolls\":1,\"entries\":[{\"type\":\"minecraft:item\",\"name\":\"" + recovery
                                     + "\"}],\"conditions\":[{\"condition\":\"minecraft:survives_explosion\"}]}]}");
                 }
                 save(writes, output, "assets/ashen_frontier/models/item/" + id,
-                        entry.blockItem() ? "{\"parent\":\"ashen_frontier:block/" + id + "\"}"
+                        entry.blockItem() ? "{\"parent\":\"ashen_frontier:block/" + id + (entry.layer() ? "_1" : "") + "\"}"
                                 : "{\"parent\":\"minecraft:item/generated\",\"textures\":{\"layer0\":\"ashen_frontier:item/" + id + "\"}}");
             }
         }
@@ -159,6 +169,7 @@ public final class NatureDataProvider implements DataProvider {
         }
         saveTag(writes, output, "minecraft", "block", "mineable/pickaxe", pickaxe);
         saveTag(writes, output, "minecraft", "block", "mineable/axe", axe);
+        saveTag(writes, output, "minecraft", "block", "mineable/shovel", shovel);
         shapes.forEach((shape, values) -> {
             String tag = shape.equals("stairs") ? shape : shape + "s";
             saveTag(writes, output, "minecraft", "block", tag, values);
@@ -174,6 +185,34 @@ public final class NatureDataProvider implements DataProvider {
             saveTag(writes, output, "ashen_frontier", "item", tool.getKey(), values);
         }
         return CompletableFuture.allOf(writes.toArray(CompletableFuture[]::new));
+    }
+
+    private void sedimentLayer(List<CompletableFuture<?>> writes, CachedOutput output, NatureCatalog.Entry entry) {
+        String id = entry.id();
+        JsonObject variants = new JsonObject();
+        JsonArray functions = new JsonArray();
+        for (int layers = 1; layers <= 8; layers++) {
+            JsonObject model = new JsonObject();
+            model.addProperty("model", "ashen_frontier:block/" + id + "_" + layers);
+            variants.add("layers=" + layers, model);
+            String texture = "ashen_frontier:block/" + entry.material();
+            String faces = "\"down\":{\"texture\":\"#all\",\"cullface\":\"down\"},\"up\":{\"texture\":\"#all\"}";
+            for (String face : List.of("north", "south", "east", "west")) {
+                faces += ",\"" + face + "\":{\"uv\":[0," + (16-layers*2) + ",16,16],\"texture\":\"#all\",\"cullface\":\"" + face + "\"}";
+            }
+            save(writes, output, "assets/ashen_frontier/models/block/" + id + "_" + layers,
+                    "{\"parent\":\"minecraft:block/thin_block\",\"textures\":{\"all\":\"" + texture + "\",\"particle\":\"" + texture
+                            + "\"},\"elements\":[{\"from\":[0,0,0],\"to\":[16," + layers*2 + ",16],\"faces\":{" + faces + "}}]}");
+            functions.add(JsonParser.parseString("{\"function\":\"minecraft:set_count\",\"count\":" + layers
+                    + ",\"conditions\":[{\"condition\":\"minecraft:block_state_property\",\"block\":\"ashen_frontier:" + id
+                    + "\",\"properties\":{\"layers\":\"" + layers + "\"}}]}"));
+        }
+        JsonObject state = new JsonObject();
+        state.add("variants", variants);
+        save(writes, output, "assets/ashen_frontier/blockstates/" + id, state.toString());
+        save(writes, output, "data/ashen_frontier/loot_table/blocks/" + id,
+                "{\"type\":\"minecraft:block\",\"pools\":[{\"rolls\":1,\"entries\":[{\"type\":\"minecraft:item\",\"name\":\"ashen_frontier:"
+                        + id + "\",\"functions\":" + functions + "}],\"conditions\":[{\"condition\":\"minecraft:survives_explosion\"}]}]}");
     }
 
     private void saveTag(List<CompletableFuture<?>> writes, CachedOutput output, String namespace,
