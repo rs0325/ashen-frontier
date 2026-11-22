@@ -17,5 +17,9 @@ record MapTileKey(int level, int x, int z) {
 
     int minX() { return MapCoordinates.MIN + x * (SIZE << level); }
     int minZ() { return MapCoordinates.MIN + z * (SIZE << level); }
+    boolean overlaps(MapTileKey other) {
+        return minX() < other.minX() + (SIZE << other.level) && other.minX() < minX() + (SIZE << level)
+                && minZ() < other.minZ() + (SIZE << other.level) && other.minZ() < minZ() + (SIZE << level);
+    }
     MapTileKey parent() { return new MapTileKey(level + 1, x >> 1, z >> 1); }
 }

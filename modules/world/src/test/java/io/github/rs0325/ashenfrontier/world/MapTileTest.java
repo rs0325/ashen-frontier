@@ -103,4 +103,39 @@ class MapTileTest {
         storage.flush().join();
         assertEquals(42, new MapTileStorage(directory, "cache", null).load(last).join().heights[2 * MapTileKey.SIZE + 1]);
     }
+
+    @Test void refreshKeepsPreviousTileUntilReplacementArrives() {
+        var storage = new MapTileStorage(directory, "refresh", null);
+        var leaf = new MapTileKey(0, 0, 0);
+        var parent = leaf.parent();
+        var original = new MapTileData();
+        original.set(0, 0, 0x123456, 0x654321, 40);
+        storage.save(leaf, original).join();
+        var cache = new MapTileCache(storage);
+        cache.get(parent);
+        cache.get(leaf);
+        storage.flush().join();
+        cache.tick(false);
+        cache.get(leaf).set(0, 0, 0xABCDEF, 0xFEDCBA, 50);
+        cache.changed(leaf);
+        for (int i = 0; i < 110; i++) {
+            cache.tick(false);
+            assertNotNull(cache.get(parent), "上位タイルの再読込中にも以前のデータを参照できる");
+            storage.flush().join();
+        }
+        assertEquals(0xFFABCDEF, cache.get(parent).blocks[0]);
+        cache.close();
+    }
+
+    @Test void zoomReplacementRetainsOnlyOverlappingTiles() {
+        var parent = new MapTileKey(1, 0, 0);
+        for (int z = 0; z < 2; z++) for (int x = 0; x < 2; x++) {
+            var child = new MapTileKey(0, x, z);
+            assertTrue(parent.overlaps(child));
+            assertTrue(child.overlaps(parent));
+        }
+        assertFalse(parent.overlaps(new MapTileKey(0, 2, 0)));
+        assertFalse(parent.overlaps(new MapTileKey(0, 0, 2)));
+        assertFalse(new MapTileKey(0, 0, 0).overlaps(new MapTileKey(0, 1, 0)));
+    }
 }

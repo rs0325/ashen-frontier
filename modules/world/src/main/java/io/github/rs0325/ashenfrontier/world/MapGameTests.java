@@ -2,6 +2,8 @@ package io.github.rs0325.ashenfrontier.world;
 
 import com.mojang.authlib.GameProfile;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
+import io.github.rs0325.ashenfrontier.core.catalog.NatureCatalog;
+import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -22,11 +24,47 @@ import java.util.HashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.material.MapColor;
 
 @GameTestHolder(AshenFrontierWorld.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class MapGameTests {
     private MapGameTests() {}
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierWorld.MOD_ID, skyAccess = true)
+    public static void customWaterColorsUseSurfaceAndActualDepth(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var waters = NatureCatalog.entries().stream().filter(entry -> entry.kind().equals("water")).toList();
+        var fluids = NatureContent.fluids();
+        for (int i = 0; i < waters.size(); i++) {
+            String id = waters.get(i).id();
+            var water = NatureContent.block(id);
+            helper.assertTrue(MapChunkSampler.isWater(fluids.get(id).source().get().defaultFluidState()), "独自水の源流");
+            helper.assertTrue(MapChunkSampler.isWater(fluids.get(id).flowing().get().getFlowing(4, false)), "独自水の流水");
+            for (int z : new int[]{5, 9}) {
+                int depth = z == 5 ? 3 : 7;
+                helper.setBlock(i + 2, 12 - depth, z, z == 5 ? Blocks.STONE : Blocks.LAPIS_BLOCK);
+                for (int y = 13 - depth; y <= 12; y++) helper.setBlock(i + 2, y, z, water);
+            }
+        }
+        for (int i = 0; i < waters.size(); i++) for (int z : new int[]{5, 9}) {
+            var pos = helper.absolutePos(new BlockPos(i + 2, 12, z));
+            var data = new MapTileData();
+            MapChunkSampler.sample(level, level.getChunkAt(pos), data);
+            int at = MapTileKey.pixel(0, pos.getZ()) * MapTileKey.SIZE + MapTileKey.pixel(0, pos.getX());
+            double slope = (level.getHeight(Heightmap.Types.WORLD_SURFACE, pos.getX() - 1, pos.getZ()) - 1
+                    + level.getHeight(Heightmap.Types.WORLD_SURFACE, pos.getX(), pos.getZ() - 1) - 1) / 2.0 - pos.getY();
+            int depth = z == 5 ? 3 : 7;
+            helper.assertTrue(data.blocks[at] == (0xFF000000 | MapViewMath.blockColor(MapColor.WATER.col, depth, slope)),
+                    "8品質の水面色と実水深を使い、海底の岩の色を使わない: " + waters.get(i).id());
+            helper.assertTrue(data.relief[at] == (0xFF000000 | MapViewMath.color(pos.getY(), depth, slope)),
+                    "両画面で共有する高度タイルも実水深の色");
+        }
+        for (var entry : NatureCatalog.entries()) if (entry.kind().equals("oil")) {
+            helper.assertTrue(!MapChunkSampler.isWater(fluids.get(entry.id()).source().get().defaultFluidState()), "原油は水に分類しない");
+        }
+        helper.succeed();
+    }
 
     @GameTest(template = "empty", templateNamespace = AshenFrontierWorld.MOD_ID, skyAccess = true)
     public static void actualBlocksHeightAndWaterDepth(GameTestHelper helper) {

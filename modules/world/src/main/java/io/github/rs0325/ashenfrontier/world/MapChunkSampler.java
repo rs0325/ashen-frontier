@@ -1,5 +1,7 @@
 package io.github.rs0325.ashenfrontier.world;
 
+import io.github.rs0325.ashenfrontier.core.catalog.NatureCatalog;
+import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
@@ -7,10 +9,29 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.FluidState;
+
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** 受信済みチャンクだけを参照し、地図の元タイルへ1ブロックずつ実測値を書き込む。 */
 final class MapChunkSampler {
+    private static final Set<Fluid> WATER_FLUIDS = waterFluids();
+
     private MapChunkSampler() {}
+
+    private static Set<Fluid> waterFluids() {
+        var fluids = NatureContent.fluids();
+        return NatureCatalog.entries().stream().filter(entry -> entry.kind().equals("water"))
+                .flatMap(entry -> Stream.of(fluids.get(entry.id()).source().get(), fluids.get(entry.id()).flowing().get()))
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    static boolean isWater(FluidState state) {
+        return state.is(FluidTags.WATER) || WATER_FLUIDS.contains(state.getType());
+    }
 
     static void sample(Level level, LevelChunk chunk, MapTileData data) {
         int startX = chunk.getPos().getMinBlockX(), startZ = chunk.getPos().getMinBlockZ();
@@ -22,14 +43,19 @@ final class MapChunkSampler {
             MapColor color;
             do {
                 pos.set(wx, y, wz);
-                color = chunk.getBlockState(pos).getMapColor(level, pos);
+                var state = chunk.getBlockState(pos);
+                if (isWater(state.getFluidState()) && state.getCollisionShape(level, pos).isEmpty()) {
+                    color = MapColor.WATER;
+                    break;
+                }
+                color = state.getMapColor(level, pos);
                 if (color != MapColor.NONE) break;
                 y--;
             } while (y >= level.getMinBuildHeight());
             int depth = 0;
             var state = chunk.getBlockState(pos);
-            if (state.getFluidState().is(FluidTags.WATER) && state.getCollisionShape(level, pos).isEmpty()) {
-                while (y >= level.getMinBuildHeight() && chunk.getFluidState(pos.set(wx, y, wz)).is(FluidTags.WATER)) {
+            if (isWater(state.getFluidState()) && state.getCollisionShape(level, pos).isEmpty()) {
+                while (y >= level.getMinBuildHeight() && isWater(chunk.getFluidState(pos.set(wx, y, wz)))) {
                     depth++;
                     y--;
                 }

@@ -22,6 +22,8 @@ final class WorldMapScreen extends Screen {
 
     WorldMapScreen() { super(Component.translatable("map.ashen_frontier.title")); }
 
+    @Override public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
+
     @Override protected void init() {
         if (scale == 0) scale = Math.min(width - 24, height - 76) / 32768.0;
         mode = addRenderableWidget(Button.builder(MapClient.modeName(), button -> toggleMode())

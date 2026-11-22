@@ -14,11 +14,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.Comparator;
 
-/** CPUデータは最大128タイル。GPUへ置くのは現在の表示タイルだけで、IO完了の待機は行わない。 */
+/** 最大128タイル。表示の置換中は旧テクスチャを残し、IO完了の待機は行わない。 */
 final class MapTileCache {
     static final int LIMIT = 128;
-    static final int VIEW_LIMIT = 96;
+    static final int VIEW_LIMIT = 64;
     private final MapTileStorage storage;
     private final Map<MapTileKey, Entry> entries = new LinkedHashMap<>(16, 0.75f, true);
     private Set<MapTileKey> visible = Set.of();
@@ -30,6 +31,7 @@ final class MapTileCache {
         CompletableFuture<List<MapTileKey>> saving;
         boolean dirty;
         boolean upload;
+        boolean refresh;
         int savedAt;
         ResourceLocation texture;
         boolean textureBlocks;
@@ -47,7 +49,7 @@ final class MapTileCache {
             while (iterator.hasNext()) {
                 var candidate = iterator.next();
                 var value = candidate.getValue();
-                if (visible.contains(candidate.getKey()) || value.dirty || value.saving != null || value.loading != null) continue;
+                if (visible.contains(candidate.getKey()) || value.texture != null || value.dirty || value.saving != null || value.loading != null) continue;
                 release(value);
                 iterator.remove();
                 break;
@@ -68,16 +70,33 @@ final class MapTileCache {
 
     void view(Set<MapTileKey> keys) {
         visible = Set.copyOf(keys);
+        var ready = new HashSet<MapTileKey>();
+        entries.forEach((key, entry) -> {
+            if (entry.texture != null && !entry.refresh && entry.loading == null && !entry.upload) ready.add(key);
+        });
         for (var entry : entries.entrySet()) {
-            if (!visible.contains(entry.getKey())) release(entry.getValue());
+            if (visible.contains(entry.getKey()) || entry.getValue().texture == null) continue;
+            boolean covered = !entry.getValue().dirty && entry.getValue().saving == null
+                    && ready.stream().anyMatch(key -> key.level() > entry.getKey().level() && key.overlaps(entry.getKey()));
+            boolean needed = visible.stream().anyMatch(key -> key.overlaps(entry.getKey())
+                    && (entry.getValue().dirty || entry.getValue().saving != null || !ready.contains(key)));
+            if (covered || !needed) {
+                release(entry.getValue());
+                ready.remove(entry.getKey());
+            }
         }
     }
 
-    ResourceLocation texture(MapTileKey key, boolean blocks) {
+    List<MapTileKey> rendered() {
+        return entries.entrySet().stream().filter(entry -> entry.getValue().texture != null).map(Map.Entry::getKey)
+                .sorted(Comparator.comparingInt(MapTileKey::level).reversed()).toList();
+    }
+
+    ResourceLocation texture(MapTileKey key) {
         var data = get(key);
         if (data == null) return null;
         var entry = entries.get(key);
-        return entry.textureBlocks == blocks ? entry.texture : null;
+        return entry.texture;
     }
 
     private static void release(Entry entry) {
@@ -95,8 +114,8 @@ final class MapTileCache {
                 try {
                     entry.data = entry.loading.join();
                 } catch (CompletionException e) {
-                    LogUtils.getLogger().error("探索地図を読めません。再受信した範囲から再生成します: {}", item.getKey(), e);
-                    entry.data = new MapTileData();
+                    LogUtils.getLogger().error("探索地図を読めません。既存の表示を保持し、未記録範囲は再受信時に生成します: {}", item.getKey(), e);
+                    if (entry.data == null) entry.data = new MapTileData();
                 }
                 entry.loading = null;
                 entry.upload = true;
@@ -111,13 +130,19 @@ final class MapTileCache {
             }
         }
         for (var key : invalid) {
-            var entry = entries.remove(key);
-            if (entry != null) release(entry);
+            var entry = entries.get(key);
+            if (entry != null) entry.refresh = true;
         }
         int uploads = 0;
+        int loading = (int) entries.values().stream().filter(entry -> entry.loading != null).count();
         int saving = (int) entries.values().stream().filter(entry -> entry.saving != null).count();
         for (var item : entries.entrySet()) {
             var entry = item.getValue();
+            if (entry.refresh && entry.loading == null && loading < 4) {
+                entry.loading = storage.load(item.getKey());
+                entry.refresh = false;
+                loading++;
+            }
             if (entry.data == null) continue;
             if (entry.dirty && entry.saving == null && saving < 2 && tick - entry.savedAt >= 100) {
                 entry.saving = storage.save(item.getKey(), entry.data.copy());

@@ -168,14 +168,15 @@ public final class MapClient {
             for (int z = a.z(); z <= b.z(); z++) for (int x = a.x(); x <= b.x(); x++) visible.add(new MapTileKey(level, x, z));
         }
         cache.view(visible);
+        for (var key : visible) cache.texture(key);
         RenderSystem.enableBlend();
-        for (var key : visible) {
-            var texture = cache.texture(key, blocks);
+        for (var key : cache.rendered()) {
+            var texture = cache.texture(key);
             if (texture == null) continue;
             int x0 = (int) Math.floor(MapViewMath.screen(key.minX(), centerX, ox, scale));
             int z0 = (int) Math.floor(MapViewMath.screen(key.minZ(), centerZ, oz, scale));
-            int x1 = (int) Math.floor(MapViewMath.screen(key.minX() + (MapTileKey.SIZE << level), centerX, ox, scale));
-            int z1 = (int) Math.floor(MapViewMath.screen(key.minZ() + (MapTileKey.SIZE << level), centerZ, oz, scale));
+            int x1 = (int) Math.floor(MapViewMath.screen(key.minX() + (MapTileKey.SIZE << key.level()), centerX, ox, scale));
+            int z1 = (int) Math.floor(MapViewMath.screen(key.minZ() + (MapTileKey.SIZE << key.level()), centerZ, oz, scale));
             graphics.blit(texture, x0, z0, x1 - x0, z1 - z0, 0, 0, MapTileKey.SIZE, MapTileKey.SIZE, MapTileKey.SIZE, MapTileKey.SIZE);
         }
         RenderSystem.disableBlend();

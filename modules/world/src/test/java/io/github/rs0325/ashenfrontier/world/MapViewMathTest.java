@@ -4,6 +4,16 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class MapViewMathTest {
+    @Test void waterColumnUsesBlueDepthColors() {
+        int shallow = MapViewMath.blockColor(0x4040FF, 3, 0);
+        int deep = MapViewMath.blockColor(0x4040FF, 100, 0);
+        assertTrue((shallow & 255) > ((shallow >> 16) & 255));
+        assertTrue((deep & 255) > ((deep >> 16) & 255));
+        assertTrue((shallow & 255) > (deep & 255));
+        assertEquals(MapViewMath.color(63, 10, 0), MapViewMath.color(300, 10, 0),
+                "高地の湖も海と同じ実水深から色を決める");
+    }
+
     @Test void northUpAndZoomAnchorRoundTrip() {
         for (double scale : new double[]{0.002, 0.125, 1, 4}) {
             for (double value : new double[]{-16384, -8500.5, 0, 16383.99}) {
