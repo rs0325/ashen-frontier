@@ -29,7 +29,8 @@ public final class FixedMapData {
     private final RiverCourse river;
     private record Mountain(double[][] points, double radius) {}
     private final List<Mountain> mountains;
-    record MountainIsland(int peakY, int inlandDepth, int x, int z) {}
+    record IslandPeak(int x, int z, int y, double radius, double cos, double sin) {}
+    record MountainIsland(int peakY, int inlandDepth, int x, int z, List<IslandPeak> peaks) {}
     private final Map<Integer, MountainIsland> mountainIslands;
     private final TerrainWalkways walkways;
     private final OceanRelief ocean;
@@ -74,8 +75,15 @@ public final class FixedMapData {
             for (var value : index.getAsJsonArray("mountain_islands")) {
                 var island = value.getAsJsonObject();
                 var summit = island.getAsJsonArray("summit_xz");
+                var peaks = new ArrayList<IslandPeak>();
+                for (var definition : island.getAsJsonArray("summits")) {
+                    var point = definition.getAsJsonObject();var xz = point.getAsJsonArray("xz");
+                    double angle = Math.toRadians(point.get("axis_degrees").getAsDouble());
+                    peaks.add(new IslandPeak(xz.get(0).getAsInt(),xz.get(1).getAsInt(),point.get("peak_y").getAsInt(),
+                            point.get("radius_blocks").getAsDouble(),Math.cos(angle),Math.sin(angle)));
+                }
                 var peak = new MountainIsland(island.get("peak_y").getAsInt(), island.get("inland_depth_blocks").getAsInt(),
-                        summit.get(0).getAsInt(), summit.get(1).getAsInt());
+                        summit.get(0).getAsInt(), summit.get(1).getAsInt(),List.copyOf(peaks));
                 for (var row : island.getAsJsonArray("pixel_spans_y_x0_x1ex")) {
                     var span = row.getAsJsonArray();
                     for (int x = span.get(1).getAsInt(); x < span.get(2).getAsInt(); x++) {

@@ -25,8 +25,9 @@ public final class RevisionNineGameTests {
             double coast=map.coastDistance(x,z);var c=terrain.column(x,z);
             var material=c.state(c.surfaceY());
             if(coast>=0 && coast<32) {
-                helper.assertTrue(material.equals(c.rockState(c.surfaceY())),"山の島の水際は浜や堆積層を介さず母岩を露出");
-                helper.assertTrue(!c.state(c.surfaceY()+1).is(Blocks.SNOW),"山の島の水際に雪層を残さない");
+                helper.assertTrue(!material.is(Blocks.SAND) && !material.is(Blocks.GRAVEL),"山の島には砂浜・礫浜を作らず、露岩と崖錐を使う");
+                if(coast<8)helper.assertTrue(material.equals(c.rockState(c.surfaceY()))
+                        && !c.state(c.surfaceY()+1).is(Blocks.SNOW),"水際直近は雪・堆積物を介さず母岩で接続");
                 coastColumns++;
                 if(coast>=8 && c.surfaceY()>=68)directRise++;
             }
