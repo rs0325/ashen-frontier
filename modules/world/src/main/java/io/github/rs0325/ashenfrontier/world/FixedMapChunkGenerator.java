@@ -62,15 +62,19 @@ public final class FixedMapChunkGenerator extends ChunkGenerator {
         if (!MapCoordinates.contains(chunk.getPos().getMinBlockX(), chunk.getPos().getMinBlockZ())) {
             return CompletableFuture.completedFuture(chunk);
         }
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        int minY=Math.max(-128,chunk.getMinBuildHeight());
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
                 int blockX = chunk.getPos().getMinBlockX() + x;
                 int blockZ = chunk.getPos().getMinBlockZ() + z;
                 var column = terrain.column(blockX, blockZ);
-                for (int y = Math.max(-128, chunk.getMinBuildHeight()); y <= Math.min(column.topY(), chunk.getMaxBuildHeight() - 1); y++) {
-                    BlockState state = column.state(y);
-                    chunk.setBlockState(pos.set(blockX, y, blockZ), state, false);
+                int top=Math.min(column.topY(),chunk.getMaxBuildHeight()-1);
+                // NOISE段階は照明初期化前。高さマップは全列を書いた後にまとめて作る。
+                for(int base=minY;base<=top;base+=16) {
+                    var section=chunk.getSection(chunk.getSectionIndex(base));
+                    for(int y=base;y<=Math.min(base+15,top);y++) {
+                        section.setBlockState(x,y&15,z,column.state(y));
+                    }
                 }
             }
         }

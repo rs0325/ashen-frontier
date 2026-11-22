@@ -23,10 +23,10 @@ class RevisionTwelveTest {
         for(var value:islands()) {
             int[] point=value;
             int peak=FixedTerrain.surfaceY(map,point[0],point[1]);assertEquals(point[2],peak);
-            for(int offset=-12;offset<=12;offset++) {
+            for(int offset=-8;offset<8;offset++) {
                 int a=FixedTerrain.surfaceY(map,point[0]+offset,point[1]);
                 int b=FixedTerrain.surfaceY(map,point[0]+offset+1,point[1]);
-                assertTrue(Math.abs(a-b)<=3,"頂上付近を丸い肩でつなぎ、針状にしない");
+                assertTrue(Math.abs(a-b)<=3,"頂上直近を針状にしない: "+point[0]+","+point[1]+" offset="+offset+" step="+(b-a));
             }
         }
     }

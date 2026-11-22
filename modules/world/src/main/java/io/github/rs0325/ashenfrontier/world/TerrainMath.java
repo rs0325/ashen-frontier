@@ -100,12 +100,29 @@ final class TerrainMath {
 
     static double islandPeak(double dx, double dz, int peak, double radius, double cos, double sin, double detail) {
         double along=(dx*cos+dz*sin)/radius, across=(-dx*sin+dz*cos)/(radius*.65);
-        double r=Math.hypot(along,across);
-        double angle=Math.atan2(across,along);
-        r*=1+(.22*Math.sin(angle*3)+detail*.35)*smooth(r/.3);
-        double profile=Math.pow(1-smooth(r),.7);
-        double gully=Math.pow(Math.max(0,Math.sin(angle*4+detail*3)),6)*18*profile*(1-profile);
-        return 63+(peak-63)*profile-gully;
+        double shoulder=smooth((Math.abs(along)+Math.abs(across))/.3);
+        across-=shoulder*(.16*Math.sin(along*5)+detail*.3*smooth((Math.abs(along)+Math.abs(across))/.4));
+        double ridge=Math.max(0,1-.56*Math.abs(along)-.72*Math.abs(across)
+                -.22*Math.abs(across+along*.65));
+        double gully=Math.max(0,detail)*22*shoulder*ridge;
+        return 63+(peak-63)*ridge-gully;
+    }
+
+    static double rockRelief(long seed, double x, double z) {
+        double joint=noise(seed,"rock_joints",.8*x+.6*z,-.6*x+.8*z,24)*2-1;
+        double spur=1-Math.abs(joint);
+        double cleft=noise(seed,"rock_clefts",x+joint*12,z,9)*2-1;
+        double ledge=noise(seed,"rock_ledge",x,z,5)*2-1;
+        return (spur-.5)*24+cleft*8+ledge*2;
+    }
+
+    static double massifRelief(long seed, double x, double z) {
+        double bend=(noise(seed,"gully_bend",x,z,160)-.5)*48;
+        double channel=noise(seed,"massif_gully",x+bend,z*.28,48)*2-1;
+        double incision=smooth((.4-Math.abs(channel))/.4);
+        double joint=noise(seed,"massif_shoulder",.8*x+.6*z,-.6*x+.8*z,40)*2-1;
+        double blocks=noise(seed,"massif_blocks",x+joint*8,z,16)*2-1;
+        return (1-joint*joint-.65)*30-incision*36+blocks*9;
     }
     /** 静的な寒冷水面の判定。kindは湖1・川2・海3、水深はブロック数。 */
     static boolean freezes(double latitude, int water, int depth, int kind, double cold) {

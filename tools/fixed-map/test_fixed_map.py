@@ -16,10 +16,53 @@ from PIL import Image
 
 from generate import (LAYERS, MAP_RESOURCES, OUTPUT, RESOURCE_FILES, ROOT, SIZE, TOOL,
                       drainage, generate, island_component, island_relief, load_inputs, main, mountain_coordinates, neighbors, pixel,
-                      raster_line, sha, validate, write_json)
+                      raster_line, sha, termination_relief, validate, write_json)
 
 
 class FixedMapTests(unittest.TestCase):
+    def test_western_termination_has_separate_descending_ridges_and_valleys(self):
+        terminal=self.config["mountains"][0]["termination"]
+        self.assertEqual(terminal,self.index["mountains"][0]["termination"])
+        self.assertEqual(len(terminal["ridges"]),4)
+        self.assertEqual(len(terminal["valleys"]),3)
+        for ridge in terminal["ridges"]:
+            self.assertTrue(all(a[2]>b[2] for a,b in zip(ridge[1:],ridge[2:])))
+        x=np.array([-13500,-13740,-13920,-13600,-13200])
+        z=np.array([-11712,-11760,-11770,-11970,-12500])
+        height,weight=termination_relief(terminal,x,z)
+        self.assertGreater(height[0]-height[1],150)
+        self.assertGreater(height[1]-height[2],100)
+        self.assertLess(height[3],height[1]-100)
+        self.assertGreater(height[4],140)
+        np.testing.assert_array_equal(weight[:4],np.ones(4))
+        self.assertTrue(.8<weight[4]<1)
+
+    def test_underground_surface_controls_cover_centers_and_entries(self):
+        layout=json.loads((OUTPUT/"underground.json").read_text(encoding="utf-8"))
+        expected=set()
+        for deposit in layout["deposits"]:
+            x,z=deposit["x"],deposit["z"]
+            expected.add((x,z))
+            if not deposit["id"].startswith("oil_") and not deposit["vanilla"]:
+                expected.add((x-max(96,deposit["depth"]+24),z))
+        for space in layout["spaces"]:
+            x,z=space["x"],space["z"]
+            expected.add((x,z))
+            expected.add((x-int(np.sign(space["end_x"]-x))*(space["depth"]+16),z))
+        controls=self.config["underground_surface_controls"]
+        self.assertEqual(self.index["underground_surface_controls"],controls)
+        self.assertEqual(len(controls),77)
+        self.assertEqual({(x,z) for x,z,y in controls},expected)
+        contacts=self.config["underground_weathered_contacts"]
+        self.assertEqual(self.index["underground_weathered_contacts"],contacts)
+        self.assertEqual(len(contacts),22)
+        self.assertEqual(len({tuple(p) for p in contacts}),22)
+        self.assertTrue({tuple(p) for p in contacts}<={(v["x"],v["z"]) for v in layout["deposits"]})
+        for x,z,y in controls:
+            px,pz=pixel([x,z])
+            self.assertGreater(self.land[pz,px],0)
+            self.assertTrue(64<=y<=520)
+
     def test_small_island_summits_stay_inside_the_approved_components(self):
         for island in self.config["mountain_islands"]:
             component=island_component(self.land,island["anchor_xz"])
