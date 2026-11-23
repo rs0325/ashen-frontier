@@ -1,0 +1,23 @@
+{
+  "world": {
+    "name": "河川上流の撮影",
+    "preset": "ashen_frontier:fixed_map",
+    "seed": 0
+  },
+  "gameMode": "spectator",
+  "environment": { "time": 6000, "weather": "clear" },
+  "view": {
+    "width": 1280,
+    "height": 720,
+    "fov": 70,
+    "hud": false,
+    "debug": false,
+    "renderDistance": 8
+  },
+  "timeoutSeconds": 120,
+  "startupTimeoutSeconds": 300,
+  "points": [
+    { "name": "valley-head", "x": -4000, "y": 125, "z": -12100, "yaw": 0, "pitch": 40, "waitSeconds": 2 },
+    { "name": "river-step", "x": -4048, "y": 106, "z": -11520, "yaw": 180, "pitch": 15, "waitSeconds": 2 }
+  ]
+}
