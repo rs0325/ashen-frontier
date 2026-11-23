@@ -2,6 +2,55 @@ plugins {
     id("ashenfrontier.mod")
 }
 
+val screenshots = sourceSets.create("screenshots") {
+    java.srcDir(rootDir.resolve("tools/screenshots/src/main/java"))
+    resources.srcDir(rootDir.resolve("tools/screenshots/src/main/resources"))
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
+}
+configurations[screenshots.implementationConfigurationName].extendsFrom(configurations.implementation.get())
+sourceSets.test {
+    java.srcDir(rootDir.resolve("tools/screenshots/src/test/java"))
+    compileClasspath += screenshots.output
+    runtimeClasspath += screenshots.output
+}
+tasks.named("check") { dependsOn(screenshots.classesTaskName) }
+
+val planPath = providers.gradleProperty("plan").orElse("").get()
+val planFile = rootDir.resolve(planPath).absoluteFile
+val screenshotOutput = rootDir.resolve("build/screenshots/${planFile.nameWithoutExtension}")
+val prepareScreenshotRun = tasks.register("prepareScreenshotRun") {
+    val plan = planPath
+    val input = planFile
+    val clientDir = screenshotOutput.resolve("client")
+    doLast {
+        require(plan.isNotBlank() && input.isFile) { "-Pplan=<撮影計画JSON>を指定してください" }
+        require(input.nameWithoutExtension.matches(Regex("[a-zA-Z0-9_-]+"))) { "計画ファイル名には英数字・_・-を使ってください" }
+        clientDir.resolve("config").mkdirs()
+        clientDir.resolve("config/fml.toml").writeText("earlyWindowControl = false\n")
+        clientDir.resolve("options.txt").writeText("fullscreen:false\npauseOnLostFocus:false\nonboardAccessibility:false\n")
+    }
+}
+
+neoForge {
+    addModdingDependenciesTo(screenshots)
+    val captureMod = mods.register("ashen_frontier_screenshots") { sourceSet(screenshots) }
+    runs.configureEach {
+        if (name != "screenshots") {
+            loadedMods.set(provider { mods.filter { it.name != captureMod.name } })
+        }
+    }
+    runs.register("screenshots") {
+        client()
+        disableIdeRun()
+        sourceSet.set(screenshots)
+        gameDirectory.set(screenshotOutput.resolve("client"))
+        taskBefore(prepareScreenshotRun)
+        systemProperty("ashen_frontier.screenshotPlan", planFile.absolutePath)
+        systemProperty("ashen_frontier.screenshotOutput", screenshotOutput.absolutePath)
+    }
+}
+
 neoForge {
     unitTest {
         enable()

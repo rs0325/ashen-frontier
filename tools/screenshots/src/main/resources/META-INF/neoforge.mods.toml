@@ -1,0 +1,19 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "All Rights Reserved"
+
+[[mods]]
+modId = "ashen_frontier_screenshots"
+version = "1"
+displayName = "Ashen Frontier 開発用撮影"
+description = "撮影計画を実行する開発専用Mod。配布対象外。"
+
+[[dependencies.ashen_frontier_screenshots]]
+modId = "ashen_frontier_world"
+type = "required"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[mixins]]
+config = "ashen_frontier_screenshots.mixins.json"
