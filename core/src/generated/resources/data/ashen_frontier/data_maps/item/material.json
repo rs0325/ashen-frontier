@@ -117,9 +117,6 @@
     "ashen_frontier:concrete_wall": {
       "mass_kg": 1.0
     },
-    "ashen_frontier:contaminated_soil": {
-      "mass_kg": 1.0
-    },
     "ashen_frontier:contaminated_water_ice": {
       "mass_kg": 1.0
     },
@@ -700,9 +697,6 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:titanium_scrap": {
-      "mass_kg": 1.0
-    },
-    "ashen_frontier:toxic_soil": {
       "mass_kg": 1.0
     },
     "ashen_frontier:toxic_water_ice": {

@@ -401,7 +401,7 @@ public class CoreGameTests {
         }
         if (!ItemStack.isSameItemSameComponents(expected, stack)
                 || stack.get(ItemProperties.COMPOSITION).massFractions().get("iron") != 0.29
-                || stack.get(ItemProperties.CONTAMINATION).amounts().get("lead") != 0.07) {
+                || stack.get(ItemProperties.CONTAMINATION).amounts().get("lead") != 0.061) {
             helper.fail("ItemStack persistence changed rounded component values");
             return;
         }

@@ -20,7 +20,6 @@ public final class ItemProperties {
     public static final double TEMPERATURE_STEP_K = 5.0;
     public static final double WEAR_STEP = 1.0;
     public static final double COMPOSITION_STEP = 0.01;
-    public static final double CONTAMINATION_STEP = 0.01;
     public static final double ACTIVITY_STEP_BQ = 0.1;
     public static final long TIME_STEP_TICKS = 20;
     public static final double ROT_STEP_SECONDS = 600.0;
@@ -145,9 +144,10 @@ public final class ItemProperties {
     }
 
     public record Contamination(Map<String, Double> amounts) {
-        /** 汚染量を不利な側へ丸めて生成する。標準コンストラクターは値を丸めないため、設定時はこのメソッドを使う。 */
+        public Contamination { amounts = Map.copyOf(amounts); }
+        /** 指標別のSI値をdoubleの精度で保持する。キーと単位はSoilContaminationを参照。 */
         public static Contamination of(Map<String, Double> amounts) {
-            return new Contamination(quantizeMap(amounts, CONTAMINATION_STEP, true));
+            return new Contamination(amounts);
         }
         public static final Codec<Contamination> CODEC = Codec.unboundedMap(Codec.STRING, Codec.DOUBLE)
                 .xmap(Contamination::new, Contamination::amounts);

@@ -45,5 +45,21 @@
   "terminal.ashen_frontier.condition": "%s: %s",
   "terminal.ashen_frontier.prerequisites": "前提: %s",
   "terminal.ashen_frontier.complete": "達成",
-  "terminal.ashen_frontier.incomplete": "未達成"
+  "terminal.ashen_frontier.incomplete": "未達成",
+  "item.ashen_frontier.contamination_meter": "土壌汚染測定器",
+  "contamination.ashen_frontier.no_sample": "土・堆積物を測定してください。危険区域標識は直下のブロックを測定します。",
+  "contamination.ashen_frontier.position": "土壌測定 (%s, %s, %s)",
+  "contamination.ashen_frontier.result": "%s: %s (%s %s)",
+  "contamination.ashen_frontier.different_layers": "汚染値の異なる堆積層は積層できません。",
+  "contamination.ashen_frontier.lead": "重金属（Pb換算）",
+  "contamination.ashen_frontier.pcb": "有機化学物質（PCB換算）",
+  "contamination.ashen_frontier.conductivity": "塩類（ECe、25℃）",
+  "contamination.ashen_frontier.ph": "酸性（土:水=1:1）",
+  "contamination.ashen_frontier.caesium137": "放射性物質（Cs-137）",
+  "contamination.ashen_frontier.fecal_coliform": "生物（糞便性大腸菌群、乾燥固形物）",
+  "contamination.ashen_frontier.stage.0": "清浄",
+  "contamination.ashen_frontier.stage.1": "軽度",
+  "contamination.ashen_frontier.stage.2": "中度",
+  "contamination.ashen_frontier.stage.3": "高度",
+  "contamination.ashen_frontier.stage.4": "有毒"
 }

@@ -393,6 +393,13 @@ public final class FixedMapData {
 
     RiverCourse.Sample river(int x, int z) { return river.sample(x, z); }
 
+    boolean contaminationProtected(int x, int z) {
+        if (walkways.sample(x, z).distance() <= 4) return true;
+        for (var entrance : entrances.getOrDefault(key(x >> 7, z >> 7), List.of()))
+            if (Math.hypot(x - entrance.x, z - entrance.z) <= 12) return true;
+        return false;
+    }
+
     boolean hazardProtected(int x, int z) {
         if (isProtected(x, z) || walkways.sample(x, z).distance() <= 16) return true;
         for (var entrance : entrances.getOrDefault(key(x >> 7, z >> 7), List.of())) {
@@ -616,7 +623,7 @@ public final class FixedMapData {
         return category(1, sample.x(), sample.z());
     }
 
-    /** 土壌5段階のID。0は露岩・未割当て・範囲外で、境界の材料混合前の値。 */
+    /** 土の質3種類のID。0は露岩・未割当て・範囲外で、汚染とは独立した材料混合前の値。 */
     public int soilQuality(int x, int z) { return category(2, x, z); }
 
     /** geology_profiles.jsonを参照するID。範囲外は0なのでcontainsと併用する。 */

@@ -1,6 +1,9 @@
 package io.github.rs0325.ashenfrontier.world;
 
 import com.google.gson.JsonObject;
+import io.github.rs0325.ashenfrontier.core.SoilContamination;
+import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
+import io.github.rs0325.ashenfrontier.core.catalog.SedimentLayerBlock;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Blocks;
@@ -20,7 +23,8 @@ public final class FixedTerrain {
                            double gx, double gz, List<Fault> faults) {}
     private final FixedMapData map;
     private final Profile[] profiles = new Profile[6];
-    private final BlockState[] soils = new BlockState[6];
+    private final BlockState[] soils = new BlockState[4];
+    private final FixedContamination contamination;
     private final BlockState[] waters = new BlockState[9];
     private final BlockState[] waterIce = new BlockState[9];
     private final FixedUnderground underground;
@@ -35,6 +39,7 @@ public final class FixedTerrain {
 
     public FixedTerrain(MapVersion version) {
         map = FixedMapData.require(version);
+        contamination = new FixedContamination(map);
         clay = block("ashen_frontier:clay_sediment");
         talus = block("ashen_frontier:talus");
         riverGravel = block("ashen_frontier:river_gravel");
@@ -79,7 +84,7 @@ public final class FixedTerrain {
                     block(profile.get("basement").getAsString()), profile.get("reference_y").getAsDouble(), uplift, component(dip, "anchor_xz", 0), component(dip, "anchor_xz", 1),
                     component(dip, "gradient_xz", 0), component(dip, "gradient_xz", 1), List.copyOf(faults));
         }
-        String[] soilIds = {"fertile_soil", "poor_soil", "degraded_soil", "contaminated_soil", "toxic_soil"};
+        String[] soilIds = {"fertile_soil", "poor_soil", "degraded_soil"};
         String[] waterIds = {"ultrapure_water", "pure_water", "clean_water", "raw_water", "turbid_water",
                 "contaminated_water", "toxic_water", "polluted_seawater"};
         for (int i = 0; i < soilIds.length; i++) soils[i + 1] = block("ashen_frontier:" + soilIds[i]);
@@ -280,7 +285,7 @@ public final class FixedTerrain {
 
     /** 列ごとに地層境界を一度計算する。列は呼出し元専有で、全Yの照会に再利用できる。 */
     public Column column(int x, int z) {
-        if (!MapCoordinates.contains(x, z)) return new Column(-65, Integer.MIN_VALUE, null, null, new int[0], null, 0, 0, x, z, null, 0, null, false, null, 0,0,0,1, null, 575, false);
+        if (!MapCoordinates.contains(x, z)) return new Column(SoilContamination.CLEAN, -65, Integer.MIN_VALUE, null, null, new int[0], null, 0, 0, x, z, null, 0, null, false, null, 0,0,0,1, null, 575, false);
         var relief = sampleSurface(map, x, z);
         int surface = relief.height;
         var profile = profiles[relief.coast >= 0 && map.mountainIsland(x,z) != null ? 3 : map.category(3, x, z)];
@@ -391,12 +396,16 @@ public final class FixedTerrain {
                 if(capLayers>0)cap=sediment.setValue(SnowLayerBlock.LAYERS,capLayers);
             }
         }
-        if(walkway && cap!=null)
+        var pollution = contamination.surface(x, z, relief.coast, relief.river);
+        if (cap == null && !wet && surfaceMaterial != null && BlockContamination.isTarget(surfaceMaterial) && pollution.severe()
+                && TerrainMath.noise(map.seed(), "contamination_dead_bush", x, z, 1) < .08)
+            cap = NatureContent.block("dead_grass").defaultBlockState();
+        if(walkway && cap!=null && cap.hasProperty(SnowLayerBlock.LAYERS))
             cap=cap.setValue(SnowLayerBlock.LAYERS,Math.min(2,cap.getValue(SnowLayerBlock.LAYERS)));
         int waterKind = relief.coast < 0 ? 3 : relief.river.distance() < relief.river.width() ? 2 : 1;
         BlockState frozen = wet ? frozenWater(quality, x, z, relief.water, relief.water - surface, waterKind, boundary.cold()) : null;
         boolean contactWeathered=anchor!=null && anchor.weathered();
-        return new Column(surface, relief.water, surfaceMaterial, waters[quality], boundaries, profile, ice, snow, x, z, cell,
+        return new Column(pollution, surface, relief.water, surfaceMaterial, waters[quality], boundaries, profile, ice, snow, x, z, cell,
                 soilDepth, cap, powder, surfaceMaterial==null && (slope>.35 || mountain>.1) || contactWeathered ? weathered:null,
                 (int)(regionalFold*24+patch*3),geologyWeight,tilt+regionalFold*96+(island==null?0:displacement*3),
                 18+24*TerrainMath.noise(map.seed(),"rock_band_width",x,z,192), frozen, anchor == null ? 575 : (int) anchorY - 20, contactWeathered);
@@ -479,6 +488,7 @@ public final class FixedTerrain {
 
     /** 地面・雪層・水面と母岩を持つ不変の列。stateは生成範囲外で空気を返す。 */
     public static final class Column {
+        private final SoilContamination pollution;
         private final int surface, waterY;
         private final BlockState soil, water;
         private final BlockState frozenWater;
@@ -498,9 +508,10 @@ public final class FixedTerrain {
         private final int contactFloor;
         private final boolean contactWeathered;
 
-        private Column(int surface, int waterY, BlockState soil, BlockState water, int[] boundaries, Profile profile,
+        private Column(SoilContamination pollution, int surface, int waterY, BlockState soil, BlockState water, int[] boundaries, Profile profile,
                        int ice, int snow, int x, int z, FixedUnderground.Cell underground, int soilDepth, BlockState cover, boolean powder,
                        BlockState[] facing, int facingOffset, double geologyWeight, double fold, double bandWidth, BlockState frozenWater, int contactFloor, boolean contactWeathered) {
+            this.pollution = pollution;
             this.surface = surface;
             this.contactWeathered=contactWeathered;
             this.waterY = waterY;
@@ -524,6 +535,13 @@ public final class FixedTerrain {
             this.fold=fold;
             this.bandWidth=bandWidth;
             this.contactFloor = contactFloor;
+        }
+
+        /** 表層から離れた地下堆積物は清浄。薄層の上面を深さ0とする。 */
+        public SoilContamination contamination(int y) {
+            int top = cover != null && cover.getBlock() instanceof SedimentLayerBlock ? surface + 1 : surface;
+            if (y > top) return SoilContamination.CLEAN;
+            return pollution.atDepth(Math.max(0, top - y));
         }
 
         public int surfaceY() { return surface; }

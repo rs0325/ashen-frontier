@@ -42,6 +42,7 @@ public final class AshenFrontierWorld {
         GENERATORS.register(bus);
         BIOME_SOURCES.register(bus);
         BiomeAtmosphere.register(bus);
+        BlockContamination.register(bus);
         NeoForge.EVENT_BUS.addListener(AshenFrontierWorld::beforeStart);
         NeoForge.EVENT_BUS.addListener(AshenFrontierWorld::loadLevel);
         NeoForge.EVENT_BUS.addListener(AshenFrontierWorld::starting);

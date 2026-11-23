@@ -49,6 +49,7 @@ public final class AshenFrontierCore {
         LifeSupportLootModifiers.register(modEventBus);
         MaterialData.register(modEventBus);
         ItemProperties.register(modEventBus);
+        ContaminationTools.register(modEventBus);
         NatureProperties.register(modEventBus);
         NatureContent.register(modEventBus);
         RelicProperties.register(modEventBus);

@@ -235,32 +235,6 @@
       "color": "a58a69"
     },
     {
-      "id": "contaminated_soil",
-      "en": "Contaminated Soil",
-      "ja": "汚染土",
-      "kind": "soil",
-      "material": "soil",
-      "hardness": 0.5,
-      "recovery": "contaminated_soil",
-      "behavior": "採掘・再配置",
-      "domain": "agriculture",
-      "mass_kg": 1.0,
-      "color": "71634f"
-    },
-    {
-      "id": "toxic_soil",
-      "en": "Toxic Soil",
-      "ja": "有毒土",
-      "kind": "soil",
-      "material": "soil",
-      "hardness": 0.5,
-      "recovery": "toxic_soil",
-      "behavior": "採掘・再配置",
-      "domain": "agriculture",
-      "mass_kg": 1.0,
-      "color": "63594e"
-    },
-    {
       "id": "raw_hematite",
       "en": "Raw Hematite",
       "ja": "赤鉄鉱原鉱",

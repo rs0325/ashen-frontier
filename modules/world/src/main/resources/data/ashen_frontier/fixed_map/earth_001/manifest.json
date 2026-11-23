@@ -13,18 +13,18 @@
     "corrections.json": "02dba2460763d76c88d780aa21acfbcc25b5533855764ed86bee210279e74d82",
     "extraction.json": "46309f210a3177b27352e348985d5a7e54d99e53263fee5f83a3bf842041f60c",
     "geology.json": "6b8ccdbd12de01c3ca5c7b76eb72e376af2a7052c6824717878146c49ae86775",
-    "island_channels.json": "d01bca70ab06245eb50e4fd306f97e27be064e999177ef41d7a02ce9d18024ac",
+    "island_channels.json": "d2cde32c7f3da73c719221ff4ae9e72c24e14282c1a4d9b3cafc13017a47090c",
     "land.png": "fb668e97a8396f13cef32c68a8060cff743bf4e61a3af0c154960d975375dc0e",
     "layout.json": "2a416c04c03ed5c30fe0725a0fb76b58f197ff6850f5451d3a509c8565aa2a42"
   },
   "geology_profile_version": "geology_002",
   "tool": {
-    "version": "1.14.0",
+    "version": "1.15.0",
     "python": "3.12",
     "numpy": "2.2.6",
     "pillow": "11.2.1",
     "files": {
-      "tools/fixed-map/generate.py": "20215406d724bd872a3727be0559409ddb9f646e81a962833c237ffd923d3689",
+      "tools/fixed-map/generate.py": "c0caa1a908ff5b373272903043468e1eeabf4a96d05bd9cc4ca189284b439d86",
       "tools/fixed-map/extract_mask.py": "be06ce81562d53d6c1394b81f42b03d9aab0d2c402e5324e4928628aa553feb8",
       "tools/fixed-map/requirements.txt": "d25160758f6f0511b40d2788a949c86bb887869cba64c738e650e7d44fde471d",
       "tools/fixed-map/write_underground.py": "62783c7217e8c53a9813c10182d9cbc542fa2b12a5255501ed0a5b6e54999da9"
@@ -34,10 +34,10 @@
     "height.png": "289cb621a62b9208428adc180ddb5f4b570e3bcebace7249b51c6c0c811439bb",
     "region.png": "c9f3f1e1957ffb0a43b8b1bcfde5b8e1038d1058dfdb1c6131bcde181641eb47",
     "water.png": "c3986612965d12f4b2423f3f7ca86c9cfee626becd01c4ec7fcd15ecfea97598",
-    "soil.png": "d0c1b05f32aec0c55fc239c0bd239d2592f4f69c5b0442c1dcb75e5a1141861a",
+    "soil.png": "863693c51312166e766bf37d45b12c8ab776cb7855f4b940e6fe43f78a668f8a",
     "geology.png": "eaa23a2bf116eda61de3a05d1ea013c0fef15971f2961c8747d3bc9768f0c5a3",
     "coast_river.png": "f32499722f428ce43bbf2e6aa6c235b5a2ab34b998c4ade8c26d4c71ea73b25c",
-    "index.json": "5e6b823f3a69694a65d6e50c44600a1dc2c70a994394c70cba7249a190d6c17f",
+    "index.json": "e0ae13996194254aa19c68642cd7afde750e7b5957ab2c830a9fca7f6cd7cd6b",
     "geology_profiles.json": "84b7292cdd28feb3d74ef7cbe92ec9a708f52cd4230fed7d3860a360a23794e4",
     "underground.json": "3240dda60023894244d07bfaaa9773ac842fc3297a552559edb9309104dacd11"
   }

@@ -7,7 +7,7 @@ import java.util.Map;
 
 /** 承認済み中心線から水平な淵と短い早瀬を持つ距離場を復元する。 */
 final class RiverCourse {
-    record Sample(double distance, double surface, int x, int z, double riffle, double width, double bank, double depth, double grade) {}
+    record Sample(double distance, double surface, int x, int z, double riffle, double width, double bank, double depth, double grade, double station) {}
     private record Segment(double ax, double az, double ay, double bx, double bz, double by, double station, double bend) {}
     private record Drop(double station) {}
     private final Map<Long, List<Segment>> cells;
@@ -78,7 +78,7 @@ final class RiverCourse {
                 bank=-Math.signum(dx*(z-sz)-dz*(x-sx))*segment.bend;
             }
         }
-        if(distance==256*256)return new Sample(256,63,x,z,0,32,0,7,63);
+        if(distance==256*256)return new Sample(256,63,x,z,0,32,0,7,63,Double.NaN);
         double toDrop = 8;
         for (var drop : drops.getOrDefault(key(x >> 7, z >> 7), List.of())) {
             toDrop = Math.min(toDrop, Math.abs(station - drop.station));
@@ -86,6 +86,6 @@ final class RiverCourse {
         double reach=TerrainMath.noise(seed,"river_reach",nearestX,nearestZ,320);
         return new Sample(Math.sqrt(distance), surface, (int) Math.round(nearestX), (int) Math.round(nearestZ),
                 1 - TerrainMath.smooth(toDrop / 8), 22+reach*26+TerrainMath.noise(seed,"river_width",nearestX,nearestZ,96)*8,
-                bank,5+reach*4,grade);
+                bank,5+reach*4,grade,station);
     }
 }

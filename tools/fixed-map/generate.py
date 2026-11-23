@@ -23,7 +23,7 @@ OUTPUT = ROOT / MAP_RESOURCES / "earth_001"
 SIZE = 2048
 LAYERS = ("height", "region", "water", "soil", "geology", "coast_river")
 RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json", "underground.json")
-TOOL_VERSION = "1.14.0"
+TOOL_VERSION = "1.15.0"
 
 
 def sha(path):
@@ -572,7 +572,7 @@ def generate_assets(input_dir, output):
         if not nw[py,px] or geology[py,px] != deposit["geology_profile"]:
             raise ValueError(f"鉱床アンカーと地質プロファイルが一致しません: {deposit['id']}")
     soil = np.zeros(land.shape, np.uint8)
-    for rid, value in [(1,2),(2,3),(3,2),(4,3),(5,4),(6,5),(7,2)]:
+    for rid, value in [(1,2),(2,3),(3,2),(4,3),(5,3),(6,3),(7,2)]:
         soil[region==rid] = value
     water = np.where(land,0,8).astype(np.uint8)
     water[river_mask & land] = 4
@@ -608,7 +608,7 @@ def generate_assets(input_dir, output):
             previous = p
     tables = {
         "region": config["regions"],
-        "soil": {"0": ["露岩・未割当て", "Bare or unassigned"], "1": ["肥沃", "Fertile"], "2": ["貧栄養", "Poor"], "3": ["劣化", "Degraded"], "4": ["汚染", "Contaminated"], "5": ["有毒", "Toxic"]},
+        "soil": {"0": ["露岩・未割当て", "Bare or unassigned"], "1": ["肥沃", "Fertile"], "2": ["貧栄養", "Poor"], "3": ["劣化", "Degraded"]},
         "water": {str(i): name for i,name in enumerate(["dry", "ultrapure_water", "pure_water", "clean_water", "raw_water", "turbid_water", "contaminated_water", "toxic_water", "polluted_seawater"])},
         "geology": {"0": "ocean", "1": "unclassified_land", "2": "plain_profile", "3": "mountain_profile", "4": "arid_profile", "5": "coastal_profile"},
         "coast_river_bits": {"1": "land_coast", "2": "river", "4": "lake", "8": "ocean"}}
