@@ -1,9 +1,14 @@
 package io.github.rs0325.ashenfrontier.core.catalog;
 
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
+import io.github.rs0325.ashenfrontier.core.ItemProperties;
+import io.github.rs0325.ashenfrontier.core.SoilContamination;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import java.util.List;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -15,6 +20,7 @@ public final class NatureTooltips {
 
     @SubscribeEvent
     public static void tooltip(ItemTooltipEvent event) {
+        appendContamination(event.getItemStack(), event.getToolTip());
         var id = BuiltInRegistries.ITEM.getKey(event.getItemStack().getItem());
         if (!id.getNamespace().equals(AshenFrontierCore.NAMESPACE)) return;
         var stack = event.getItemStack();
@@ -43,5 +49,17 @@ public final class NatureTooltips {
             event.getToolTip().add(Component.translatable("tooltip.ashen_frontier.recovery",
                     Component.translatable(BuiltInRegistries.ITEM.get(recovery).getDescriptionId())));
         });
+    }
+
+    /** 土アイテムの清浄でない種類だけを、種類・段階の翻訳付きLoreとして末尾へ追加する。 */
+    public static void appendContamination(ItemStack stack, List<Component> tooltip) {
+        var stages = stack.get(ItemProperties.SOIL_CONTAMINATION);
+        if (stages == null) return;
+        for (var kind : SoilContamination.Kind.values()) {
+            int stage = stages.stage(kind);
+            if (stage > 0) tooltip.add(Component.translatable("tooltip.ashen_frontier.soil_contamination",
+                    Component.translatable("contamination.ashen_frontier." + kind.key),
+                    Component.translatable("contamination.ashen_frontier.stage." + stage)).withStyle(ChatFormatting.GRAY));
+        }
     }
 }

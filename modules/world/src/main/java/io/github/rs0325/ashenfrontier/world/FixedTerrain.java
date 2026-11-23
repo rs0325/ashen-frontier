@@ -393,6 +393,7 @@ public final class FixedTerrain {
                 if(sediment==talusLayer)edge*=TerrainMath.smooth((slope-.08)/.18)*TerrainMath.smooth((hollow+.1)/.8);
                 double scatter = TerrainMath.noise(map.seed(),"sediment_edge",x,z,1);
                 int capLayers = TerrainMath.depositLayers(edge,scatter);
+                capLayers = TerrainMath.snowCover(relief.continuous, surface, capLayers);
                 if(capLayers>0)cap=sediment.setValue(SnowLayerBlock.LAYERS,capLayers);
             }
         }

@@ -2,7 +2,6 @@ package io.github.rs0325.ashenfrontier.core;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import java.util.Map;
 
 /** 乾燥固形物の代表指標。質量分率kg/kg、導電率S/m、無次元pH、比放射能Bq/kg、菌数推定MPN/kg。 */
 public record SoilContamination(double lead, double pcb, double conductivity, double ph,
@@ -36,14 +35,23 @@ public record SoilContamination(double lead, double pcb, double conductivity, do
             this.thresholds = thresholds;
         }
 
-        /** 清浄0〜有毒4。pHは境界値を清浄側へ、それ以外は高段階へ含める。 */
+        /** 清浄0〜有毒4。境界値は高段階へ含め、pHは低いほど高段階とする。 */
         public int stage(double value) {
             int stage = 0;
-            while (stage < 4 && (this == ACIDITY ? value < thresholds[stage] : value >= thresholds[stage])) stage++;
+            while (stage < 4 && (this == ACIDITY ? value <= thresholds[stage] : value >= thresholds[stage])) stage++;
             return stage;
         }
 
         public double boundary(int stage) { return thresholds[stage - 1]; }
+
+        /** 清浄0〜有毒4の設置用SI代表値。有限区間は幾何平均（pHは算術平均）、有毒は境界の2倍（pHは-0.5）。 */
+        public double representative(int stage) {
+            if (stage == 0) return CLEAN.value(this);
+            double lower = boundary(stage);
+            if (stage == 4) return this == ACIDITY ? lower - .5 : lower * 2;
+            double upper = boundary(stage + 1);
+            return this == ACIDITY ? (lower + upper) / 2 : Math.sqrt(lower * upper);
+        }
     }
 
     public double value(Kind kind) {
@@ -77,17 +85,40 @@ public record SoilContamination(double lead, double pcb, double conductivity, do
 
     private static double blend(double a, double b, double t) { return t == 0 ? a : t == 1 ? b : a + (b - a) * t; }
 
-    /** 放射能は既存の核種付き総Bq成分へ分離する。他の5指標のキーと単位は本recordと共通。 */
-    public ItemProperties.Contamination itemContamination() {
-        return ItemProperties.Contamination.of(Map.of("lead", lead, "pcb", pcb, "conductivity", conductivity,
-                "ph", ph, "fecal_coliform", fecalColiform));
+    public Stages stages() {
+        return new Stages(stage(Kind.METALS), stage(Kind.ORGANICS), stage(Kind.SALTS),
+                stage(Kind.ACIDITY), stage(Kind.RADIOACTIVE), stage(Kind.BIOLOGICAL));
     }
 
-    /** Cs-137比放射能Bq/kgと成分から復元する。欠損キーは清浄値、単位はitemContaminationと共通。 */
-    public static SoilContamination fromItem(ItemProperties.Contamination chemical, double specificActivity) {
-        var values = chemical.amounts();
-        return new SoilContamination(values.getOrDefault("lead", CLEAN.lead), values.getOrDefault("pcb", CLEAN.pcb),
-                values.getOrDefault("conductivity", CLEAN.conductivity), values.getOrDefault("ph", CLEAN.ph),
-                specificActivity, values.getOrDefault("fecal_coliform", CLEAN.fecalColiform));
+    /** 土アイテムの6種類の段階。0は清浄で、保存時に省略する。位置の連続値とは分離する。 */
+    public record Stages(int lead, int pcb, int conductivity, int ph, int caesium137, int fecalColiform) {
+        public static final Stages CLEAN = new Stages(0, 0, 0, 0, 0, 0);
+        private static final Codec<Integer> STAGE = Codec.intRange(0, 4);
+        public static final Codec<Stages> CODEC = RecordCodecBuilder.create(i -> i.group(
+                STAGE.optionalFieldOf("lead", 0).forGetter(Stages::lead),
+                STAGE.optionalFieldOf("pcb", 0).forGetter(Stages::pcb),
+                STAGE.optionalFieldOf("conductivity", 0).forGetter(Stages::conductivity),
+                STAGE.optionalFieldOf("ph", 0).forGetter(Stages::ph),
+                STAGE.optionalFieldOf("caesium137", 0).forGetter(Stages::caesium137),
+                STAGE.optionalFieldOf("fecal_coliform", 0).forGetter(Stages::fecalColiform)
+        ).apply(i, Stages::new));
+
+        public int stage(Kind kind) {
+            return switch (kind) {
+                case METALS -> lead;
+                case ORGANICS -> pcb;
+                case SALTS -> conductivity;
+                case ACIDITY -> ph;
+                case RADIOACTIVE -> caesium137;
+                case BIOLOGICAL -> fecalColiform;
+            };
+        }
+
+        /** アイテム設置用の代表濃度を返す。元の連続値は復元しない。 */
+        public SoilContamination representative() {
+            return new SoilContamination(Kind.METALS.representative(lead), Kind.ORGANICS.representative(pcb),
+                    Kind.SALTS.representative(conductivity), Kind.ACIDITY.representative(ph),
+                    Kind.RADIOACTIVE.representative(caesium137), Kind.BIOLOGICAL.representative(fecalColiform));
+        }
     }
 }

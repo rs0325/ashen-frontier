@@ -53,26 +53,23 @@ public final class ContaminationTransportGameTests {
         var explosion = new Explosion(level, null, pos.getX(), pos.getY(), pos.getZ(), 4, false, Explosion.BlockInteraction.DESTROY);
         level.getBlockState(pos).onExplosionHit(level, pos, explosion, (stack, origin) -> drops.add(stack));
         helper.assertTrue(level.getBlockState(pos).isAir() && drops.size() == 1, "爆発の実ドロップ経路が土を回収");
-        helper.assertTrue(BlockContamination.readItem(drops.getFirst()).equals(FIRST), "爆発回収でも全指標が一致");
+        helper.assertTrue(BlockContamination.readItem(drops.getFirst()).stages().equals(FIRST.stages()), "爆発回収でも全指標が一致");
         helper.assertTrue(!recorded(level, pos), "爆発後の空気に記録を残さない");
         helper.succeed();
     }
 
     @GameTest(template = "empty", templateNamespace = AshenFrontierWorld.MOD_ID)
-    public static void partialItemMapsAndRadioactivityOnlyUseCleanDefaults(GameTestHelper helper) {
+    public static void numericM1ComponentsRemainIndependentOfSoilStages(GameTestHelper helper) {
+        var food = new ItemStack(Items.APPLE);
+        food.set(ItemProperties.CONTAMINATION, ItemProperties.Contamination.of(Map.of("lead", .0002)));
+        food.set(ItemProperties.RADIOACTIVITY, new ItemProperties.Radioactivity("cs137", 8000, 0));
+        var ops = helper.getLevel().registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
+        var saved = ItemStack.CODEC.parse(ops, ItemStack.CODEC.encodeStart(ops, food).getOrThrow()).getOrThrow();
+        helper.assertTrue(ItemStack.isSameItemSameComponents(food, saved), "食品の数値汚染・核種成分は従来のまま保存");
+        helper.assertTrue(saved.get(ItemProperties.CONTAMINATION).amounts().get("lead") == .0002
+                && saved.get(ItemProperties.RADIOACTIVITY).becquerels() == 8000, "M1成分の値を量子化しない");
         var stack = new ItemStack(Items.DIRT);
-        stack.set(ItemProperties.CONTAMINATION, ItemProperties.Contamination.of(Map.of("lead", .0002)));
-        var value = BlockContamination.readItem(stack);
-        helper.assertTrue(value.lead() == .0002 && value.pcb() == 0 && value.ph() == 6.5
-                && value.conductivity() == .05 && value.caesium137() == 20 && value.fecalColiform() == 0,
-                "M1の部分Mapは欠損キーを清浄値にする");
-        stack.remove(ItemProperties.CONTAMINATION);
-        stack.set(ItemProperties.RADIOACTIVITY, new ItemProperties.Radioactivity("cs137", 8000, 0));
-        helper.assertTrue(BlockContamination.readItem(stack).caesium137() == 8000, "化学成分なしでも核種付き放射能を保持");
-        var pos = helper.absolutePos(new BlockPos(3, 3, 3));
-        helper.getLevel().setBlockAndUpdate(pos, Blocks.DIRT.defaultBlockState());
-        BlockContamination.placed(helper.getLevel(), pos, stack);
-        helper.assertTrue(BlockContamination.get(helper.getLevel(), pos).orElseThrow().caesium137() == 8000, "設置でもNPEを起こさない");
+        helper.assertTrue(BlockContamination.readItem(stack).equals(SoilContamination.CLEAN), "土の段階成分がなければ背景値");
         helper.succeed();
     }
 
@@ -197,7 +194,7 @@ public final class ContaminationTransportGameTests {
         dying.setPos(death.getX() + .5, death.getY(), death.getZ() + .5);
         dying.hurt(level.damageSources().genericKill(), Float.MAX_VALUE);
         var drops = level.getEntitiesOfClass(ItemEntity.class, new AABB(death).inflate(2), entity -> entity.getItem().is(Items.DIRT));
-        helper.assertTrue(drops.size() == 1 && BlockContamination.readItem(drops.getFirst().getItem()).equals(FIRST), "運搬状態を保存した個体の死亡回収でも保持");
+        helper.assertTrue(drops.size() == 1 && BlockContamination.readItem(drops.getFirst().getItem()).stages().equals(FIRST.stages()), "運搬状態を保存した個体の死亡回収でも保持");
         helper.succeed();
     }
 
@@ -214,7 +211,7 @@ public final class ContaminationTransportGameTests {
         var drops = level.getEntitiesOfClass(ItemEntity.class, new AABB(pos).inflate(2));
         helper.assertTrue(level.getBlockState(pos).getFluidState().isSource() || !level.getFluidState(pos).isEmpty(), "実際の液体更新が薄層を破壊");
         helper.assertTrue(drops.stream().anyMatch(entity -> entity.getItem().is(layer.asItem())
-                && BlockContamination.readItem(entity.getItem()).equals(FIRST)), "液体破壊による回収を保持");
+                && BlockContamination.readItem(entity.getItem()).stages().equals(FIRST.stages())), "液体破壊による回収を保持");
         helper.assertTrue(!recorded(level, pos), "液体への置換後に土の記録なし");
         var dispenser = helper.absolutePos(new BlockPos(10, 4, 10));
         level.setBlockAndUpdate(dispenser, Blocks.DISPENSER.defaultBlockState().setValue(DispenserBlock.FACING, Direction.EAST));
@@ -224,7 +221,7 @@ public final class ContaminationTransportGameTests {
         inventory.setItem(0, stack);
         level.getBlockState(dispenser).tick(level, dispenser, level.random);
         var ejected = level.getEntitiesOfClass(ItemEntity.class, new AABB(dispenser).inflate(2), entity -> entity.getItem().is(Items.DIRT));
-        helper.assertTrue(ejected.size() == 1 && BlockContamination.readItem(ejected.getFirst().getItem()).equals(SECOND), "バニラの土のディスペンサー排出も成分を保持");
+        helper.assertTrue(ejected.size() == 1 && BlockContamination.readItem(ejected.getFirst().getItem()).stages().equals(SECOND.stages()), "バニラの土のディスペンサー排出も成分を保持");
         helper.succeed();
     }
 
@@ -239,7 +236,7 @@ public final class ContaminationTransportGameTests {
         var falling = FallingBlockEntity.fall(level, origin, level.getBlockState(origin));
         for (int i = 0; i < 80 && falling.isAlive(); i++) falling.tick();
         var drops = level.getEntitiesOfClass(ItemEntity.class, new AABB(origin.below(4)).inflate(2), entity -> entity.getItem().is(Items.SAND));
-        helper.assertTrue(drops.size() == 1 && BlockContamination.readItem(drops.getFirst().getItem()).equals(FIRST), "着地できず壊れた落下砂のドロップも保持");
+        helper.assertTrue(drops.size() == 1 && BlockContamination.readItem(drops.getFirst().getItem()).stages().equals(FIRST.stages()), "着地できず壊れた落下砂のドロップも保持");
         helper.succeed();
     }
 

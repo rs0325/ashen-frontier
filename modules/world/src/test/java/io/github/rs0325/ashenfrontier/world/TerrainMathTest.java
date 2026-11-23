@@ -5,6 +5,24 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TerrainMathTest {
     @Test
+    void denseSedimentFollowsFractionalHeightsAndEdgesStayThin() {
+        var layers=new java.util.HashSet<Integer>();double previous=Double.NaN;
+        for(int i=0;i<1024;i++) {
+            double height=80+i/64.0;int ground=(int)Math.round(height);
+            int thickness=TerrainMath.snowCover(height,ground,TerrainMath.depositLayers(1,.5));
+            layers.add(thickness);
+            double top=ground+1+thickness/8.0;
+            if(!Double.isNaN(previous))assertTrue(Math.abs(top-previous)<=.125,"丸め境界で1ブロックの段にしない");
+            previous=top;
+        }
+        assertEquals(java.util.Set.of(1,2,3,4,5,6,7,8),layers);
+        for(double coverage:new double[]{.1,.5,.9})for(double scatter:new double[]{.01,.05,.3,.6,.95}) {
+            int thickness=TerrainMath.snowCover(80.4,80,TerrainMath.depositLayers(coverage,scatter));
+            assertTrue(thickness<=2,"縁の散らしは0〜2層");
+        }
+    }
+
+    @Test
     void quartPositionsResolveToExpectedPixels() {
         assertEquals(0, TerrainMath.pixel(-4096 * 4));
         assertEquals(1023, TerrainMath.pixel(-1 * 4));

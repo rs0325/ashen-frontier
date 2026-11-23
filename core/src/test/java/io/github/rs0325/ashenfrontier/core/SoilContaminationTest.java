@@ -24,7 +24,7 @@ class SoilContaminationTest {
             for (int stage = 1; stage <= 4; stage++) {
                 double boundary = kind.boundary(stage);
                 if (kind == SoilContamination.Kind.ACIDITY) {
-                    assertEquals(stage - 1, kind.stage(boundary));
+                    assertEquals(stage, kind.stage(boundary));
                     assertEquals(stage, kind.stage(Math.nextDown(boundary)));
                     assertEquals(stage - 1, kind.stage(Math.nextUp(boundary)));
                 } else {

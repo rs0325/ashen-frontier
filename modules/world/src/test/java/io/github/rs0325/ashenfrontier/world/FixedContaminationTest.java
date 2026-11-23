@@ -34,9 +34,24 @@ class FixedContaminationTest {
     }
 
     @Test
-    void reserveIsCleanAndSpawnHasNoSpecialClearance() {
-        for (int x = -5728; x < -5472; x += 16) for (int z = -8320; z < -8064; z += 16)
-            assertEquals(SoilContamination.CLEAN, sample(x, z));
+    void reserveHasLowBackgroundAndSparseLightTraces() {
+        int light = 0, total = 0;
+        var traces = new java.util.HashSet<SoilContamination.Kind>();
+        for (int x = -5728; x < -5472; x++) for (int z = -8320; z < -8064; z++) {
+            var value = sample(x, z);
+            boolean marked = false;
+            for (var kind : SoilContamination.Kind.values()) {
+                assertTrue(value.value(kind) > 0, "背景をゼロにしない: " + kind);
+                assertTrue(value.stage(kind) <= 1, "予備地を中度以上にしない: " + kind);
+                if (value.stage(kind) == 1) { marked = true; traces.add(kind); }
+            }
+            if (marked) light++;
+            total++;
+        }
+        assertTrue(light > total / 100 && light < total / 3, "軽度の斑はまばら: " + light + "/" + total);
+        assertEquals(java.util.Set.of(SoilContamination.Kind.ORGANICS, SoilContamination.Kind.SALTS,
+                SoilContamination.Kind.BIOLOGICAL), traces);
+        assertNotEquals(sample(-5600,-8192), sample(-5616,-8192), "背景値にも空間変化");
         assertTrue(FixedContamination.reserve(-5728,-8320));
         assertTrue(FixedContamination.reserve(-5473,-8065));
         assertFalse(FixedContamination.reserve(-5472,-8065));

@@ -31,9 +31,21 @@ final class FixedContamination {
         return x >= -5728 && x < -5472 && z >= -8320 && z < -8064;
     }
 
+    private SoilContamination reserveValues(int x, int z) {
+        double background = TerrainMath.noise(map.seed(), "reserve_background", x, z, 48);
+        double organic = TerrainMath.smooth((TerrainMath.noise(map.seed(), "reserve_pesticides", x, z, 24) - .65) / .15);
+        double salts = TerrainMath.smooth((TerrainMath.noise(map.seed(), "reserve_irrigation", x, z, 32) - .65) / .15);
+        double biological = TerrainMath.smooth((TerrainMath.noise(map.seed(), "reserve_drainage", x, z, 20) - .65) / .15);
+        return new SoilContamination((12 + 14 * background) * 1e-6,
+                (.04 + .12 * background + 1.25 * organic) * 1e-6,
+                .07 + .05 * background + .15 * salts, 6.1 + .6 * background,
+                15 + 20 * background, 1e4 + 7e4 * background + 1.4e6 * biological);
+    }
+
     SoilContamination surface(int x, int z, double coast, RiverCourse.Sample river) {
         int region = map.region(x, z);
-        if (region < 1 || region > 7 || coast < 0 || reserve(x, z)) return SoilContamination.CLEAN;
+        if (region < 1 || region > 7 || coast < 0) return SoilContamination.CLEAN;
+        if (reserve(x, z)) return reserveValues(x, z);
         double[] values = {1e-5, 0, .05, 6.5, 20, 0};
         if (region == 5 || region == 6) {
             values[0] = 5e-5;

@@ -45,7 +45,7 @@ public final class ContaminationGameTests {
         helper.assertTrue(drops.size() == 1, "実際の破壊で土が1個落ちる");
         var stack = drops.getFirst().getItem().copy();
         drops.forEach(ItemEntity::discard);
-        helper.assertTrue(stack.get(ItemProperties.CONTAMINATION) != null, "採取イベントが成分を設定");
+        helper.assertTrue(stack.get(ItemProperties.SOIL_CONTAMINATION) != null, "採取イベントが成分を設定");
         var ops = level.registryAccess().createSerializationContext(JsonOps.INSTANCE);
         stack = ItemStack.CODEC.parse(ops, ItemStack.CODEC.encodeStart(ops, stack).getOrThrow()).getOrThrow();
         var destination = helper.absolutePos(new BlockPos(6, 3, 6));
@@ -55,12 +55,18 @@ public final class ContaminationGameTests {
         var hit = new BlockHitResult(Vec3.atCenterOf(destination.below()), Direction.UP, destination.below(), false);
         var result = CommonHooks.onPlaceItemIntoWorld(new UseOnContext(player, InteractionHand.OFF_HAND, hit));
         helper.assertTrue(result.consumesAction(), "オフハンドの最後の1個を実際に設置できる");
-        helper.assertTrue(BlockContamination.get(level, destination).orElseThrow().equals(SAMPLE), "設置後も6指標が一致");
+        helper.assertTrue(BlockContamination.get(level, destination).orElseThrow().equals(SAMPLE.stages().representative()), "設置時は同じ段階の代表値を記録");
         var chunk = level.getChunkAt(destination);
         var saved = ChunkSerializer.write(level, chunk);
         var loaded = ChunkSerializer.read(level, level.getPoiManager(),
                 new RegionStorageInfo("contamination_test", level.dimension(), "chunk"), chunk.getPos(), saved);
-        helper.assertTrue(loaded.getData(BlockContamination.CHANGES).get(destination.asLong()).equals(SAMPLE), "チャンク保存・読込みで保持");
+        helper.assertTrue(loaded.getData(BlockContamination.CHANGES).get(destination.asLong()).equals(SAMPLE.stages().representative()), "チャンク保存・読込みで代表値を保持");
+        level.destroyBlock(destination, true);
+        var recovered = level.getEntitiesOfClass(ItemEntity.class, new AABB(destination).inflate(1));
+        helper.assertTrue(recovered.size() == 1 && recovered.getFirst().getItem().get(ItemProperties.SOIL_CONTAMINATION).equals(SAMPLE.stages()),
+                "保存・設置後の再採取でも段階が一致");
+        recovered.forEach(ItemEntity::discard);
+        level.setBlockAndUpdate(destination, Blocks.DIRT.defaultBlockState());
         BlockContamination.set(level, destination, SoilContamination.CLEAN);
         helper.assertTrue(level.getChunkAt(destination).getData(BlockContamination.CHANGES).containsKey(destination.asLong()), "清浄化も明示保存");
         var cleanStack = new ItemStack(Items.DIRT);
@@ -88,7 +94,11 @@ public final class ContaminationGameTests {
             var pos = new BlockPos(x, column.surfaceY(), z);
             helper.assertTrue(BlockContamination.isTarget(chunk.getBlockState(pos)), "生成された土・堆積物が汚染対象: " + pos);
             helper.assertTrue(!chunk.hasData(BlockContamination.CHANGES), "未改変チャンクには汚染保存なし");
-            if (x == -5600) helper.assertTrue(column.contamination(pos.getY()).equals(SoilContamination.CLEAN), "予備地の実生成列は清浄");
+            if (x == -5600) {
+                var value = column.contamination(pos.getY());
+                for (var kind : SoilContamination.Kind.values())
+                    helper.assertTrue(value.value(kind) > 0 && value.stage(kind) <= 1, "予備地の実生成列は低濃度〜軽度");
+            }
             else helper.assertTrue(column.contamination(pos.getY()).severe(), "発生源の実生成列は高段階");
         }
         for (String old : Set.of("contaminated_soil", "toxic_soil")) {
@@ -112,9 +122,9 @@ public final class ContaminationGameTests {
                         kind == SoilContamination.Kind.BIOLOGICAL ? value : SAMPLE.fecalColiform());
                 var stack = new ItemStack(layer);
                 BlockContamination.writeItem(stack, sample);
-                helper.assertTrue(stack.get(ItemProperties.RADIOACTIVITY).becquerels() == sample.caesium137() * .125,
-                        "薄層1アイテムの総Bqは0.125 kg分");
-                helper.assertTrue(BlockContamination.readItem(stack).equals(sample), "薄層0.125 kgのBq換算・境界精度を保持");
+                helper.assertTrue(stack.get(ItemProperties.RADIOACTIVITY) == null && stack.get(ItemProperties.CONTAMINATION) == null,
+                        "土アイテムは数値の化学成分や総Bqを持たない");
+                helper.assertTrue(BlockContamination.readItem(stack).stages().equals(sample.stages()), "薄層でも境界の段階を保持");
             }
         }
         helper.succeed();
@@ -142,7 +152,7 @@ public final class ContaminationGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = AshenFrontierWorld.MOD_ID)
-    public static void differentLayerConcentrationsCannotBeMixed(GameTestHelper helper) {
+    public static void differentLayerStagesCannotBeMixed(GameTestHelper helper) {
         var level = helper.getLevel();
         var pos = helper.absolutePos(new BlockPos(10, 3, 4));
         var layer = BuiltInRegistries.BLOCK.get(AshenFrontierCore.id("silt_layer"));
@@ -160,8 +170,8 @@ public final class ContaminationGameTests {
         BlockContamination.writeItem(stack, SAMPLE);
         player.gameMode.useItemOn(player, level, stack, InteractionHand.MAIN_HAND, hit);
         helper.assertTrue(level.getBlockState(pos).getValue(net.minecraft.world.level.block.SnowLayerBlock.LAYERS) == 2,
-                "同じ濃度なら積層できる");
-        helper.assertTrue(BlockContamination.get(level, pos).orElseThrow().equals(SAMPLE), "積層で濃度は不変");
+                "連続値が異なっても同じ段階なら積層できる");
+        helper.assertTrue(BlockContamination.get(level, pos).orElseThrow().equals(SAMPLE.stages().representative()), "積層時に同段階の代表値を記録");
         player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         helper.succeed();
     }

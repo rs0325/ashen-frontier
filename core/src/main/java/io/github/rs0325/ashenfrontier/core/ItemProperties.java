@@ -34,6 +34,7 @@ public final class ItemProperties {
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Wear>> WEAR = COMPONENTS.registerComponentType("wear", builder -> builder.persistent(Wear.CODEC).networkSynchronized(Wear.STREAM_CODEC));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Composition>> COMPOSITION = COMPONENTS.registerComponentType("composition", builder -> builder.persistent(Composition.CODEC).networkSynchronized(Composition.STREAM_CODEC));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Contamination>> CONTAMINATION = COMPONENTS.registerComponentType("contamination", builder -> builder.persistent(Contamination.CODEC).networkSynchronized(Contamination.STREAM_CODEC));
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<SoilContamination.Stages>> SOIL_CONTAMINATION = COMPONENTS.registerComponentType("soil_contamination", builder -> builder.persistent(SoilContamination.Stages.CODEC).networkSynchronized(ByteBufCodecs.fromCodec(SoilContamination.Stages.CODEC)));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Radioactivity>> RADIOACTIVITY = COMPONENTS.registerComponentType("radioactivity", builder -> builder.persistent(Radioactivity.CODEC).networkSynchronized(Radioactivity.STREAM_CODEC));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Rot>> ROT = COMPONENTS.registerComponentType("rot", builder -> builder.persistent(Rot.CODEC).networkSynchronized(Rot.STREAM_CODEC));
 
@@ -145,7 +146,7 @@ public final class ItemProperties {
 
     public record Contamination(Map<String, Double> amounts) {
         public Contamination { amounts = Map.copyOf(amounts); }
-        /** 指標別のSI値をdoubleの精度で保持する。キーと単位はSoilContaminationを参照。 */
+        /** 物質別のSI値をdoubleの精度で保持する。土アイテムは別の段階成分を使う。 */
         public static Contamination of(Map<String, Double> amounts) {
             return new Contamination(amounts);
         }

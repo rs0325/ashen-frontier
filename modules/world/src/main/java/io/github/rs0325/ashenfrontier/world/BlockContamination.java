@@ -3,7 +3,6 @@ package io.github.rs0325.ashenfrontier.world;
 import com.mojang.serialization.Codec;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import io.github.rs0325.ashenfrontier.core.ItemProperties;
-import io.github.rs0325.ashenfrontier.core.MaterialData;
 import io.github.rs0325.ashenfrontier.core.SoilContamination;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureCatalog;
 import net.minecraft.core.BlockPos;
@@ -119,20 +118,14 @@ public final class BlockContamination {
         values.forEach((pos, value) -> record(level, pos.relative(direction), value));
     }
 
-    /** 1アイテムの代表乾燥質量。バニラ土もcoreカタログの土と同じ1 kg基準を使う。 */
-    static double dryMass(ItemStack stack) { return MaterialData.get(stack.getItem()).map(MaterialData::massKg).orElse(1.0); }
-
     static void writeItem(ItemStack stack, SoilContamination value) {
-        stack.set(ItemProperties.CONTAMINATION, value.itemContamination());
-        stack.set(ItemProperties.RADIOACTIVITY, new ItemProperties.Radioactivity("cs137", value.caesium137() * dryMass(stack), 0));
+        var stages = value.stages();
+        if (stages.equals(SoilContamination.Stages.CLEAN)) stack.remove(ItemProperties.SOIL_CONTAMINATION);
+        else stack.set(ItemProperties.SOIL_CONTAMINATION, stages);
     }
 
     static SoilContamination readItem(ItemStack stack) {
-        var chemical = stack.get(ItemProperties.CONTAMINATION);
-        var radioactive = stack.get(ItemProperties.RADIOACTIVITY);
-        double activity = radioactive == null || !radioactive.nuclide().equals("cs137")
-                ? SoilContamination.CLEAN.caesium137() : radioactive.becquerels() / dryMass(stack);
-        return SoilContamination.fromItem(chemical == null ? ItemProperties.Contamination.of(Map.of()) : chemical, activity);
+        return stack.getOrDefault(ItemProperties.SOIL_CONTAMINATION, SoilContamination.Stages.CLEAN).representative();
     }
 
     /** 爆発・押し壊し・流体破壊を含む共通lootと、エンダーマンの運搬ブロックの回収に適用する。 */

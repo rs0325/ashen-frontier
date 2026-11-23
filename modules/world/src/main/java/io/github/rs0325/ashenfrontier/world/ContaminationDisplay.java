@@ -58,7 +58,7 @@ final class ContaminationDisplay {
         var state = level.getBlockState(pos);
         if (state.is(item.getBlock()) && state.hasProperty(BlockStateProperties.LAYERS)
                 && BlockContamination.isTarget(state)
-                && !BlockContamination.get(level, pos).orElseThrow().equals(BlockContamination.readItem(event.getItemStack()))) {
+                && !BlockContamination.get(level, pos).orElseThrow().stages().equals(BlockContamination.readItem(event.getItemStack()).stages())) {
             event.cancelWithResult(ItemInteractionResult.FAIL);
             if (event.getPlayer() != null)
                 event.getPlayer().sendSystemMessage(Component.translatable("contamination.ashen_frontier.different_layers"));
