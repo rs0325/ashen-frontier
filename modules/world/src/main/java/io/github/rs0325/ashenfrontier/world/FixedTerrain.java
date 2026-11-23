@@ -176,21 +176,16 @@ public final class FixedTerrain {
         var island = map.mountainIsland(x, z);
         if (island != null && coast >= 0) {
             double rocks=TerrainMath.rockRelief(map.seed(),x,z);
-            double height = 63+Math.max(0,4+rocks*.5);
             double detail = TerrainMath.fbm(map.seed(), "island_gullies", x,z,32);
-            for (var peak : island.peaks()) {
-                height = Math.max(height, TerrainMath.islandPeak(x-peak.x(),z-peak.z(),peak.y(),
-                        peak.radius(),peak.cos(),peak.sin(),detail));
-            }
-            double peakDistance=Double.MAX_VALUE;
-            for(var peak:island.peaks())peakDistance=Math.min(peakDistance,Math.hypot(x-peak.x(),z-peak.z()));
-            double relief=rocks*TerrainMath.smooth((peakDistance-16)/24);
-            double lower=TerrainMath.smooth((63+island.peakY()*.65-height)/32);
-            relief+=TerrainMath.massifRelief(map.seed(),x,z)*.55*lower
-                    *TerrainMath.smooth((peakDistance-24)/32)*TerrainMath.smooth(coast/24);
-            height=Math.min(island.peakY(),height+relief*TerrainMath.smooth((height-63)/24));
-            double rise=8+8*TerrainMath.smooth((peakDistance-12)/20);
-            return 63 + (height-63)*TerrainMath.smooth(coast/rise);
+            double massif=TerrainMath.massifRelief(map.seed(),x,z),strait=map.islandStraitWeight(x,z);
+            var junction=map.islandJunction(x,z);
+            if(junction==null)return islandHeight(island,x,z,coast,rocks,detail,massif,strait);
+            return TerrainMath.bilinear(
+                    islandHeight(junction.nw(),x,z,coast,rocks,detail,massif,strait),
+                    islandHeight(junction.ne(),x,z,coast,rocks,detail,massif,strait),
+                    islandHeight(junction.sw(),x,z,coast,rocks,detail,massif,strait),
+                    islandHeight(junction.se(),x,z,coast,rocks,detail,massif,strait),
+                    TerrainMath.smooth(TerrainMath.fraction(x)),TerrainMath.smooth(TerrainMath.fraction(z)));
         }
         double wx = (TerrainMath.noise(map.seed(), "relief_x", x, z, 256) - 0.5) * 24 * weight;
         double wz = (TerrainMath.noise(map.seed(), "relief_z", x, z, 256) - 0.5) * 24 * weight;
@@ -222,6 +217,23 @@ public final class FixedTerrain {
         height=Math.min(height,ceiling);
         double blend = TerrainMath.smooth(coast / ((180-80*shore.rock())*(1-terminal)+48*terminal));
         return map.walkways().height(x, z, Math.max(coast < 16 ? 63 : 64, shoreHeight + (height - shoreHeight) * blend));
+    }
+
+    static double islandHeight(FixedMapData.MountainIsland island,int x,int z,double coast,
+                                       double rocks,double detail,double massif,double strait) {
+        double height=63+Math.max(0,4+rocks*.5),peakDistance=Double.MAX_VALUE;
+        for(var peak:island.peaks()) {
+            height=Math.max(height,TerrainMath.islandPeak(x-peak.x(),z-peak.z(),peak.y(),peak.radius(),peak.cos(),peak.sin(),detail));
+            peakDistance=Math.min(peakDistance,Math.hypot(x-peak.x(),z-peak.z()));
+        }
+        double relief=rocks*TerrainMath.smooth((peakDistance-16)/24);
+        double lower=TerrainMath.smooth((63+island.peakY()*.65-height)/32);
+        relief+=massif*.55*lower*TerrainMath.smooth((peakDistance-24)/32)*TerrainMath.smooth(coast/24);
+        double margin=strait*TerrainMath.smooth((peakDistance-20)/32)*(1-TerrainMath.smooth((coast-24)/24));
+        relief+=massif*.5*margin;
+        height=Math.min(island.peakY(),height+relief*TerrainMath.smooth((height-63)/24));
+        double rise=8+8*TerrainMath.smooth((peakDistance-12)/20)+margin*(20+detail*8);
+        return 63+(height-63)*TerrainMath.smooth(coast/rise);
     }
 
     static int biomeIndex(FixedMapData map, int x, int z, int surface) {

@@ -55,6 +55,12 @@ final class OceanRelief {
             double rock=5*distance/(distance+8)-TerrainMath.rockRelief(map.seed(),x,z)*.2*TerrainMath.smooth(distance/8);
             height-=rock*island;
         }
+        double strait=map.islandStraitWeight(x,z);
+        if(strait>0) {
+            double rock=TerrainMath.rockRelief(map.seed(),x,z);
+            double cut=distance*(1+rock*.015)+TerrainMath.smooth(distance/10)*(3+rock*.15);
+            height-=cut*strait*(1-TerrainMath.smooth((distance-32)/16));
+        }
         for (var feature : features) {
             double px=x,pz=z;
             if(feature.relief<0) {

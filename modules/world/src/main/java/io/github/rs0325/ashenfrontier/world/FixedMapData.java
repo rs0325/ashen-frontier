@@ -37,6 +37,10 @@ public final class FixedMapData {
     record MountainIsland(int peakY, int inlandDepth, int x, int z, List<IslandPeak> peaks) {}
     private final Map<Integer, MountainIsland> mountainIslands;
     private final List<MountainIsland> islandCoasts;
+    record IslandJunction(MountainIsland nw, MountainIsland ne, MountainIsland sw, MountainIsland se) {}
+    private final Map<Integer, IslandJunction> islandJunctions;
+    private final Map<Integer, Float> islandStraits;
+    private final int straitMinX,straitMaxX,straitMinZ,straitMaxZ;
     private record SurfaceCorrection(int x,int z,double displacement) {}
     private final Map<Long,List<SurfaceCorrection>> surfaceCorrections;
     private final TerrainWalkways walkways;
@@ -120,6 +124,13 @@ public final class FixedMapData {
             }
             mountainIslands = Map.copyOf(shorePixels);
             this.islandCoasts=List.copyOf(islandCoasts);
+            var junctions=new HashMap<Integer,IslandJunction>();
+            for(int at:shorePixels.keySet()) {
+                var nw=shorePixels.get(at);var ne=shorePixels.get(at+1);
+                var sw=shorePixels.get(at+SIZE);var se=shorePixels.get(at+SIZE+1);
+                if(ne==null || sw==null || se==null || nw==ne && nw==sw && nw==se)continue;
+                junctions.put(at,new IslandJunction(nw,ne,sw,se));
+            }
             var mountains = new ArrayList<Mountain>();
             for (var value : index.getAsJsonArray("mountains")) {
                 var mountain = value.getAsJsonObject();
@@ -200,6 +211,38 @@ public final class FixedMapData {
             }
             var underground = UndergroundLayout.read(version);
             coastDistance = smoothDistance(distances(true));
+            var straits=new HashMap<Integer,Float>();
+            var activeJunctions=new HashMap<Integer,IslandJunction>();
+            var criticalContacts=new HashSet<Set<MountainIsland>>();
+            for(int at:junctions.keySet()) {
+                int px=at%SIZE,pz=at/SIZE;
+                int x=px*16+MapCoordinates.MIN,z=pz*16+MapCoordinates.MIN;
+                var junction=junctions.get(at);
+                for(int offset=2;offset<16;offset+=4) {
+                    var a=offset<8?junction.nw:junction.sw;var b=offset<8?junction.ne:junction.se;
+                    if(discontinuousIslandEdge(a,b,x+8,z+offset))criticalContacts.add(Set.of(a,b));
+                    a=offset<8?junction.nw:junction.ne;b=offset<8?junction.sw:junction.se;
+                    if(discontinuousIslandEdge(a,b,x+offset,z+8))criticalContacts.add(Set.of(a,b));
+                }
+            }
+            for(int at:junctions.keySet()) {
+                var junction=junctions.get(at);
+                if(!criticalContacts.contains(Set.copyOf(List.of(junction.nw,junction.ne,junction.sw,junction.se))))continue;
+                activeJunctions.put(at,junction);
+                int px=at%SIZE,pz=at/SIZE;
+                if(coastDistance(px*16+MapCoordinates.MIN+8,pz*16+MapCoordinates.MIN+8)<=0)continue;
+                for(int dz=-2;dz<=2;dz++)for(int dx=-2;dx<=2;dx++) {
+                    int cell=(pz+dz)*SIZE+px+dx;
+                    float weight=(3-Math.abs(dx))*(3-Math.abs(dz))/9f;
+                    straits.merge(cell,weight,Math::max);
+                }
+            }
+            islandJunctions=Map.copyOf(activeJunctions);
+            islandStraits=Map.copyOf(straits);
+            straitMinX=(straits.keySet().stream().mapToInt(at->at%SIZE).min().orElseThrow()-1)*16+MapCoordinates.MIN;
+            straitMaxX=(straits.keySet().stream().mapToInt(at->at%SIZE).max().orElseThrow()+1)*16+MapCoordinates.MIN;
+            straitMinZ=(straits.keySet().stream().mapToInt(at->at/SIZE).min().orElseThrow()-1)*16+MapCoordinates.MIN;
+            straitMaxZ=(straits.keySet().stream().mapToInt(at->at/SIZE).max().orElseThrow()+1)*16+MapCoordinates.MIN;
             protectionDistance = distances(false);
             var entrances = new HashMap<Long, List<Entrance>>();
             var geologyAnchors = new HashMap<Long, List<Entrance>>();
@@ -424,6 +467,27 @@ public final class FixedMapData {
     TerrainWalkways walkways() { return walkways; }
     MountainIsland mountainIsland(int x, int z) {
         return MapCoordinates.contains(x, z) ? mountainIslands.get(at(x, z)) : null;
+    }
+
+    IslandJunction islandJunction(int x,int z) {
+        return islandJunctions.get(TerrainMath.pixel(z)*SIZE+TerrainMath.pixel(x));
+    }
+
+    private boolean discontinuousIslandEdge(MountainIsland a,MountainIsland b,int x,int z) {
+        if(a==b)return false;
+        double coast=coastDistance(x,z);if(coast<=0)return false;
+        double rocks=TerrainMath.rockRelief(seed,x,z),detail=TerrainMath.fbm(seed,"island_gullies",x,z,32);
+        double massif=TerrainMath.massifRelief(seed,x,z);
+        return Math.abs(FixedTerrain.islandHeight(a,x,z,coast,rocks,detail,massif,0)
+                -FixedTerrain.islandHeight(b,x,z,coast,rocks,detail,massif,0))>4;
+    }
+
+    double islandStraitWeight(int x,int z) {
+        if(x<straitMinX || x>straitMaxX || z<straitMinZ || z>straitMaxZ)return 0;
+        int at=TerrainMath.pixel(z)*SIZE+TerrainMath.pixel(x);
+        return TerrainMath.bilinear(islandStraits.getOrDefault(at,0f),islandStraits.getOrDefault(at+1,0f),
+                islandStraits.getOrDefault(at+SIZE,0f),islandStraits.getOrDefault(at+SIZE+1,0f),
+                TerrainMath.smooth(TerrainMath.fraction(x)),TerrainMath.smooth(TerrainMath.fraction(z)));
     }
 
     double islandOffshoreWeight(int x,int z) {
