@@ -35,8 +35,8 @@ public final class RevisionNineGameTests {
                     .append(coast).append(',').append(BuiltInRegistries.BLOCK.getKey(material.getBlock())).append(',').append(c.topY()).append('\n');
         }
         helper.assertTrue(coastColumns>500 && directRise>200,"海から直接立ち上がる山の島の確認数");
-        int x=-4000,z=-12100,water=map.waterSurface(x,z);var source=terrain.column(x,z);
-        helper.assertTrue(water>=63 && water<=110 && water-source.surfaceY()>=2,"源流の谷頭と水深");
+        var center=map.river(-4000,-12100);int x=center.x(),z=center.z(),water=map.waterSurface(x,z);var source=terrain.column(x,z);
+        helper.assertTrue(water>=63 && water<=110 && water-source.surfaceY()==1,"源流の谷頭は浅い沢");
         helper.assertTrue(!source.state(water).getFluidState().isEmpty(),"源流が山で埋まらず水を持つ");
         LogUtils.getLogger().info("REVISION9_ISLAND coastal_columns={} direct_rise={} source_bed={} source_water={}",coastColumns,directRise,source.surfaceY(),water);
         if(ReliefRevisionGameTests.output()!=null)Files.writeString(ReliefRevisionGameTests.output().resolve("island-walls.csv"),rows);

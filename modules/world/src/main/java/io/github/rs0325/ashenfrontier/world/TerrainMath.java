@@ -135,6 +135,32 @@ final class TerrainMath {
         double blocks=noise(seed,"massif_blocks",x+joint*8,z,16)*2-1;
         return (1-joint*joint-.65)*30-incision*36+blocks*9;
     }
+    static double valleyHead(long seed,int x,int z,RiverCourse.Sample source,double ground) {
+        double north=source.z()-z,cross=x-source.x();
+        double axis=.15*north+34*(noise(seed,"head_gully_axis",source.x(),z,56)
+                -noise(seed,"head_gully_axis",source.x(),source.z(),56))*smooth(north/24);
+        double shoulder=fbm(seed,"brook_shoulder",x,z,36),cut=ground;
+        for(int branch=0;branch<3;branch++) {
+            double join=branch==0?0:branch==1?65:110;
+            if(north<join)continue;
+            double t=north-join,offset=0,strength=1;
+            if(branch>0) {
+                double turn=1-Math.cos(t/(branch==1?55:43));
+                offset=(branch==1?-1:1)*(t*.55+turn*12)*smooth(t/24);
+                strength=smooth(t/28)*(branch==1?.85:.65);
+            }
+            double d=Math.max(0,Math.abs(cross-axis-offset)-source.width());
+            if(d>=48)continue;
+            double floor=source.surface()+1.05*north+.001*north*north+(branch==0?0:t*.35);
+            double target=floor+.35+d*.35+Math.pow(Math.max(0,d-.8),1.25)*(1.8+shoulder*.35);
+            double rocks=d>3?(massifRelief(seed,x,z)+12)*.9*smooth((d-3)/10):0;
+            target=Math.max(floor+.35+d*.35,target+rocks);
+            double influence=1-smooth((d-8)/40);
+            cut=Math.min(cut,ground-Math.max(0,ground-target)*influence*strength);
+        }
+        return cut;
+    }
+
     /** 静的な寒冷水面の判定。kindは湖1・川2・海3、水深はブロック数。 */
     static boolean freezes(double latitude, int water, int depth, int kind, double cold) {
         double score = Math.abs(latitude) + (water - 63) / 32.0 + cold * 12;

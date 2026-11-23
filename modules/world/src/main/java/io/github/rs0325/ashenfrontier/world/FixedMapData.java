@@ -30,6 +30,7 @@ public final class FixedMapData {
     private final Set<Long> weatheredContacts;
     private final List<Facility> facilities;
     private final RiverCourse river;
+    private final RiverCourse.Sample riverSource;
     private record Mountain(double[][] points, double radius, int peakY) {}
     private int terminationJoin, terminationTransition;
     private final List<Mountain> mountains;
@@ -261,7 +262,7 @@ public final class FixedMapData {
             smoothRegionHeights();
             // 元の河床を埋め戻し、連続した谷の断面で彫り直す。
             for (int i = 0; i < heights.length; i++) {
-                if ((categories[4][i] & 2) != 0 && !protectedArea[i]) heights[i] = (short) (waterSurface[i] + 6);
+                if ((categories[4][i] & 2) != 0 && !protectedArea[i]) heights[i] = (short) Math.max(heights[i],waterSurface[i]+6);
             }
             var centerline = index.getAsJsonArray("water_bodies").get(1).getAsJsonObject()
                     .getAsJsonArray("centerline_pixel_x_y_surface");
@@ -280,6 +281,7 @@ public final class FixedMapData {
                 if (i > 0) points[i][2] = Math.min(points[i][2], points[i - 1][2]);
             }
             river = new RiverCourse(points, seed);
+            riverSource=river.sample((int)points[0][0],(int)points[0][1]);
             var corrections=new HashMap<Long,List<SurfaceCorrection>>();
             for(var value:index.getAsJsonArray("underground_surface_controls")) {
                 var control=value.getAsJsonArray();int x=control.get(0).getAsInt(),z=control.get(1).getAsInt();
@@ -392,6 +394,8 @@ public final class FixedMapData {
     }
 
     RiverCourse.Sample river(int x, int z) { return river.sample(x, z); }
+    RiverCourse.Sample riverBankAlternative(int x,int z) { return river.bankAlternative(x,z); }
+    RiverCourse.Sample riverSource() { return riverSource; }
 
     boolean contaminationProtected(int x, int z) {
         if (walkways.sample(x, z).distance() <= 4) return true;
@@ -620,7 +624,7 @@ public final class FixedMapData {
     }
 
     int riverQuality(RiverCourse.Sample sample) {
-        return category(1, sample.x(), sample.z());
+        return sample.tributary() ? 4 : category(1, sample.x(), sample.z());
     }
 
     /** 土の質3種類のID。0は露岩・未割当て・範囲外で、汚染とは独立した材料混合前の値。 */

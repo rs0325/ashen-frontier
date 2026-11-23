@@ -23,7 +23,7 @@ OUTPUT = ROOT / MAP_RESOURCES / "earth_001"
 SIZE = 2048
 LAYERS = ("height", "region", "water", "soil", "geology", "coast_river")
 RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json", "underground.json")
-TOOL_VERSION = "1.15.0"
+TOOL_VERSION = "1.17.0"
 
 
 def sha(path):
@@ -205,6 +205,25 @@ def mountain_coordinates(mountain, bx, bz):
     return np.sqrt(squared),station,cross
 
 
+def headwater_relief(bx, bz, source_x, source_z, rough):
+    """山の基盤を残し、源流の隙間へ集まる短い沢筋だけを下げる。"""
+    height = np.full(bx.shape,np.inf)
+    weight = np.zeros(bx.shape)
+    for points in [[[-95,-240],[-65,-150],[-28,-65],[0,0]],
+                   [[45,-280],[65,-160],[12,-70],[0,0]],
+                   [[120,-150],[75,-95],[30,-45],[0,0]]]:
+        distance,station,side = mountain_coordinates({"points":points},bx-source_x,bz-source_z)
+        length = sum(math.dist(a,b) for a,b in zip(points,points[1:]))
+        channel = 114+(length-station)*.75+distance*(1.9+np.where(side>0,.4,0))+rough*3
+        influence = np.clip(1-distance/(28+rough*4),0,1)
+        influence = influence*influence*(3-2*influence)
+        replace = influence>weight
+        height = np.where(replace,channel,height)
+        weight = np.maximum(weight,influence)
+    height = np.where(weight>0,height,0)
+    return height,weight
+
+
 def ridge_variation(station, scale, seed):
     rng = np.random.Generator(np.random.PCG64(seed))
     values = rng.random(math.ceil(float(station.max())/scale)+2)
@@ -246,6 +265,10 @@ def mountain_relief(config, bx, bz, height, nw):
     rugged = np.clip(1-np.abs(noise(config["fixed_seed"]+91)/12),0,1)**2
     warp = noise(config["fixed_seed"]+92)/12
     influence = np.zeros(height.shape,bool)
+    river = config["river"]["points"]
+    valley_x = np.interp(bz,[p[1] for p in river],[p[0] for p in river])
+    upper = np.clip((380-np.abs(bx-valley_x))/180,0,1)*np.clip((bz+12650)/240,0,1)*np.clip((-10000-bz)/300,0,1)
+    upper = upper*upper*(3-2*upper)
     for i,mountain in enumerate(config["mountains"]):
         distance,station,cross = mountain_coordinates(mountain,bx,bz)
         radius = mountain["radius_blocks"]
@@ -253,6 +276,8 @@ def mountain_relief(config, bx, bz, height, nw):
         envelope = np.clip(1-distance/radius,0,1)
         phase = station/230+2.2*ridge_variation(station,600,config["fixed_seed"]+i+96)+distance/180+np.sign(cross)*.8+warp*2
         spurs = np.clip(1-np.abs(np.sin(phase))/(.18+.20*rugged),0,1)*(.5+.5*rugged)
+        irregular = np.clip(1-np.abs(warp+(rugged-.5)*.6)/(.3+.2*rugged),0,1)*(.5+.5*rugged)
+        spurs += (irregular-spurs)*upper
         terminal = np.clip(station/900,0,1) if i==0 else np.ones_like(station)
         target = 110+60*terminal+(55+50*terminal)*envelope+55*spurs*envelope
         for summit in mountain["summits"]:
@@ -425,11 +450,10 @@ def generate_assets(input_dir, output):
     print("標高ノイズ → 山脈 → 海岸", flush=True)
     height = np.where(land, config["terrain_base_y"] + noise(config["fixed_seed"])*.65, 40).astype(np.float32)
     height,mountain_mask = mountain_relief(config,bx,bz,height,nw)
-    # 源流は主脈と分岐に挟まれる谷頭。北で閉じ、南へ開く谷にする。
+    # 16ブロック格子には山の基盤を残し、細い渓谷は実ブロックで彫る。
     source_x,source_z = config["river"]["points"][0]
-    head = np.abs(bx-source_x+40*np.sin((bz-source_z)/160))*.8
-    head += np.maximum(0,source_z-bz)*.4+np.maximum(0,bz-source_z)*.06
-    height = np.where(nw,np.minimum(height,110+head),height)
+    head_height,head_weight = headwater_relief(bx,bz,source_x,source_z,noise(config["fixed_seed"]+177)/12)
+    height += np.clip(head_height-height,-8,0)*head_weight*nw
     coast = land & neighbors(~land)
     # 海岸の平滑な遷移。元の陸海輪郭は変えない。
     shore = np.array(Image.fromarray((~land).astype("uint8")*255).filter(ImageFilter.GaussianBlur(5)), dtype=np.float32)/255
@@ -467,9 +491,13 @@ def generate_assets(input_dir, output):
     valley_image = Image.new("L",(SIZE,SIZE))
     ImageDraw.Draw(valley_image).line([pixel(p) for p in points],fill=255,width=25)
     valley = np.array(valley_image.filter(ImageFilter.GaussianBlur(10)),dtype=np.float32)/255
+    opening = np.clip((bz-source_z-650)/650,0,1)
+    opening = opening*opening*(3-2*opening)
+    valley *= opening
     valley_y = np.interp(bz[:,0],[p[1] for p in river["points"]],np.linspace(110,63,len(river["points"])))[:,None]+6
     height = np.where(land,height*(1-valley)+np.minimum(height,valley_y)*valley,height)
-    height[river_mask & land] = surface[river_mask & land]-2
+    raster_bed = river_mask & land & (opening>=1)
+    height[raster_bed] = surface[raster_bed]-2
     # 固定入口を高い峰で塞がず、既存の短い地下経路へ下りられる谷口を残す。
     underground = underground_document()
     approaches = []
