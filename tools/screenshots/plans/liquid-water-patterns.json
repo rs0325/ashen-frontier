@@ -1,0 +1,334 @@
+{
+  "world": {
+    "name": "液体テクスチャ比較",
+    "preset": "ashen_frontier:fixed_map",
+    "seed": 0
+  },
+  "gameMode": "spectator",
+  "environment": {
+    "time": 6000,
+    "weather": "clear"
+  },
+  "view": {
+    "width": 1600,
+    "height": 900,
+    "fov": 70,
+    "hud": false,
+    "debug": false,
+    "renderDistance": 8
+  },
+  "timeoutSeconds": 120,
+  "startupTimeoutSeconds": 300,
+  "setupCommands": [
+    "fill -4050 230 -12000 -4043 234 -11991 minecraft:stone",
+    "fill -4049 234 -11999 -4045 234 -11995 minecraft:air",
+    "fill -4049 231 -11999 -4045 233 -11995 ashen_frontier:ultrapure_water",
+    "fill -4048 231 -11994 -4046 234 -11992 minecraft:air",
+    "fill -4048 233 -11995 -4046 234 -11995 minecraft:air",
+    "fill -4040 230 -12000 -4033 234 -11991 minecraft:stone",
+    "fill -4039 234 -11999 -4035 234 -11995 minecraft:air",
+    "fill -4039 231 -11999 -4035 233 -11995 ashen_frontier:pure_water",
+    "fill -4038 231 -11994 -4036 234 -11992 minecraft:air",
+    "fill -4038 233 -11995 -4036 234 -11995 minecraft:air",
+    "fill -4030 230 -12000 -4023 234 -11991 minecraft:stone",
+    "fill -4029 234 -11999 -4025 234 -11995 minecraft:air",
+    "fill -4029 231 -11999 -4025 233 -11995 ashen_frontier:clean_water",
+    "fill -4028 231 -11994 -4026 234 -11992 minecraft:air",
+    "fill -4028 233 -11995 -4026 234 -11995 minecraft:air",
+    "fill -4020 230 -12000 -4013 234 -11991 minecraft:stone",
+    "fill -4019 234 -11999 -4015 234 -11995 minecraft:air",
+    "fill -4019 231 -11999 -4015 233 -11995 ashen_frontier:raw_water",
+    "fill -4018 231 -11994 -4016 234 -11992 minecraft:air",
+    "fill -4018 233 -11995 -4016 234 -11995 minecraft:air",
+    "fill -4010 230 -12000 -4003 234 -11991 minecraft:stone",
+    "fill -4009 234 -11999 -4005 234 -11995 minecraft:air",
+    "fill -4009 231 -11999 -4005 233 -11995 ashen_frontier:turbid_water",
+    "fill -4008 231 -11994 -4006 234 -11992 minecraft:air",
+    "fill -4008 233 -11995 -4006 234 -11995 minecraft:air",
+    "fill -4000 230 -12000 -3993 234 -11991 minecraft:stone",
+    "fill -3999 234 -11999 -3995 234 -11995 minecraft:air",
+    "fill -3999 231 -11999 -3995 233 -11995 ashen_frontier:contaminated_water",
+    "fill -3998 231 -11994 -3996 234 -11992 minecraft:air",
+    "fill -3998 233 -11995 -3996 234 -11995 minecraft:air",
+    "fill -3990 230 -12000 -3983 234 -11991 minecraft:stone",
+    "fill -3989 234 -11999 -3985 234 -11995 minecraft:air",
+    "fill -3989 231 -11999 -3985 233 -11995 ashen_frontier:toxic_water",
+    "fill -3988 231 -11994 -3986 234 -11992 minecraft:air",
+    "fill -3988 233 -11995 -3986 234 -11995 minecraft:air",
+    "fill -4050 230 -11988 -4043 234 -11979 minecraft:stone",
+    "fill -4049 234 -11987 -4045 234 -11983 minecraft:air",
+    "fill -4049 231 -11987 -4045 233 -11983 ashen_frontier:polluted_seawater",
+    "fill -4048 231 -11982 -4046 234 -11980 minecraft:air",
+    "fill -4048 233 -11983 -4046 234 -11983 minecraft:air",
+    "fill -4040 230 -11988 -4033 234 -11979 minecraft:stone",
+    "fill -4039 234 -11987 -4035 234 -11983 minecraft:air",
+    "fill -4039 231 -11987 -4035 233 -11983 ashen_frontier:light_low_sulfur_crude_oil",
+    "fill -4038 231 -11982 -4036 234 -11980 minecraft:air",
+    "fill -4038 233 -11983 -4036 234 -11983 minecraft:air",
+    "fill -4030 230 -11988 -4023 234 -11979 minecraft:stone",
+    "fill -4029 234 -11987 -4025 234 -11983 minecraft:air",
+    "fill -4029 231 -11987 -4025 233 -11983 ashen_frontier:light_high_sulfur_crude_oil",
+    "fill -4028 231 -11982 -4026 234 -11980 minecraft:air",
+    "fill -4028 233 -11983 -4026 234 -11983 minecraft:air",
+    "fill -4020 230 -11988 -4013 234 -11979 minecraft:stone",
+    "fill -4019 234 -11987 -4015 234 -11983 minecraft:air",
+    "fill -4019 231 -11987 -4015 233 -11983 ashen_frontier:heavy_low_sulfur_crude_oil",
+    "fill -4018 231 -11982 -4016 234 -11980 minecraft:air",
+    "fill -4018 233 -11983 -4016 234 -11983 minecraft:air",
+    "fill -4010 230 -11988 -4003 234 -11979 minecraft:stone",
+    "fill -4009 234 -11987 -4005 234 -11983 minecraft:air",
+    "fill -4009 231 -11987 -4005 233 -11983 ashen_frontier:heavy_high_sulfur_crude_oil",
+    "fill -4008 231 -11982 -4006 234 -11980 minecraft:air",
+    "fill -4008 233 -11983 -4006 234 -11983 minecraft:air",
+    "fill -4000 230 -11988 -3993 234 -11979 minecraft:stone",
+    "fill -3999 234 -11987 -3995 234 -11983 minecraft:air",
+    "fill -3999 231 -11987 -3995 233 -11983 minecraft:water",
+    "fill -3998 231 -11982 -3996 234 -11980 minecraft:air",
+    "fill -3998 233 -11983 -3996 234 -11983 minecraft:air"
+  ],
+  "points": [
+    {
+      "name": "00-overview",
+      "x": -4015,
+      "y": 292,
+      "z": -11988,
+      "yaw": 0,
+      "pitch": 90,
+      "waitSeconds": 12
+    },
+    {
+      "name": "01-ultrapure_water-surface-flow",
+      "x": -4046.5,
+      "y": 241,
+      "z": -11990,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "02-pure_water-surface-flow",
+      "x": -4036.5,
+      "y": 241,
+      "z": -11990,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "03-clean_water-surface-flow",
+      "x": -4026.5,
+      "y": 241,
+      "z": -11990,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "04-raw_water-surface-flow",
+      "x": -4016.5,
+      "y": 241,
+      "z": -11990,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "05-turbid_water-surface-flow",
+      "x": -4006.5,
+      "y": 241,
+      "z": -11990,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "06-contaminated_water-surface-flow",
+      "x": -3996.5,
+      "y": 241,
+      "z": -11990,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "07-toxic_water-surface-flow",
+      "x": -3986.5,
+      "y": 241,
+      "z": -11990,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "08-polluted_seawater-surface-flow",
+      "x": -4046.5,
+      "y": 241,
+      "z": -11978,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "09-light_low_sulfur_crude_oil-surface-flow",
+      "x": -4036.5,
+      "y": 241,
+      "z": -11978,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "10-light_high_sulfur_crude_oil-surface-flow",
+      "x": -4026.5,
+      "y": 241,
+      "z": -11978,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "11-heavy_low_sulfur_crude_oil-surface-flow",
+      "x": -4016.5,
+      "y": 241,
+      "z": -11978,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "12-heavy_high_sulfur_crude_oil-surface-flow",
+      "x": -4006.5,
+      "y": 241,
+      "z": -11978,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "13-water-surface-flow",
+      "x": -3996.5,
+      "y": 241,
+      "z": -11978,
+      "yaw": 180,
+      "pitch": 50,
+      "waitSeconds": 5
+    },
+    {
+      "name": "01-ultrapure_water-underwater",
+      "x": -4047,
+      "y": 231,
+      "z": -11998,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "02-pure_water-underwater",
+      "x": -4037,
+      "y": 231,
+      "z": -11998,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "03-clean_water-underwater",
+      "x": -4027,
+      "y": 231,
+      "z": -11998,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "04-raw_water-underwater",
+      "x": -4017,
+      "y": 231,
+      "z": -11998,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "05-turbid_water-underwater",
+      "x": -4007,
+      "y": 231,
+      "z": -11998,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "06-contaminated_water-underwater",
+      "x": -3997,
+      "y": 231,
+      "z": -11998,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "07-toxic_water-underwater",
+      "x": -3987,
+      "y": 231,
+      "z": -11998,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "08-polluted_seawater-underwater",
+      "x": -4047,
+      "y": 231,
+      "z": -11986,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "09-light_low_sulfur_crude_oil-underwater",
+      "x": -4037,
+      "y": 231,
+      "z": -11986,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "10-light_high_sulfur_crude_oil-underwater",
+      "x": -4027,
+      "y": 231,
+      "z": -11986,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "11-heavy_low_sulfur_crude_oil-underwater",
+      "x": -4017,
+      "y": 231,
+      "z": -11986,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "12-heavy_high_sulfur_crude_oil-underwater",
+      "x": -4007,
+      "y": 231,
+      "z": -11986,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    },
+    {
+      "name": "13-water-underwater",
+      "x": -3997,
+      "y": 231,
+      "z": -11986,
+      "yaw": 0,
+      "pitch": -20,
+      "waitSeconds": 3
+    }
+  ]
+}
