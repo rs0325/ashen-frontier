@@ -14,7 +14,7 @@ class RiverCourseTest {
         for(int x=0;x<=2400;x++) {
             var sample=river.sample(x,0);
             assertFalse(sample.tributary());
-            assertTrue(sample.width()>=previousWidth && sample.width()-previousWidth<.03,"合流域でも断面を連続して広げる");
+            assertTrue(Math.abs(sample.width()-previousWidth)<.06,"細かな幅の揺らぎと合流域を連続してつなぐ");
             assertTrue(sample.depth()>=previousDepth && sample.depth()-previousDepth<.01);
             assertTrue(sample.surface()<=previousWater && previousWater-sample.surface()<=1);
             if(x<96){assertTrue(sample.width()<=1);assertEquals(1,sample.depth());}

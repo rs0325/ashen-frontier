@@ -82,10 +82,12 @@ public final class HeadwaterRevisionGameTests {
     @GameTest(template="empty",templateNamespace=AshenFrontierWorld.MOD_ID,timeoutTicks=12000)
     public static void exportHeadwaterRevision(GameTestHelper helper) throws Exception {
         String phase=System.getenv("ASHEN_HEADWATERS_PREVIEW");
-        if(phase==null || !phase.startsWith("r2-")){helper.succeed();return;}
+        if(phase==null || !(phase.startsWith("r2-") || phase.startsWith("r3-"))){helper.succeed();return;}
         var terrain=TerrainPreviewGameTests.generator(helper).terrain();
         var output=Path.of("../../../../../tools/fixed-map/preview/headwaters",phase).normalize();Files.createDirectories(output);
-        for(var point:new int[][]{{-4000,-12100},{-4468,-10800}}) {
+        var areas=new java.util.ArrayList<int[]>(java.util.List.of(new int[]{-4000,-12100},new int[]{-4468,-10800}));
+        if(phase.startsWith("r3-"))areas.add(new int[]{-4075,-11250});
+        for(var point:areas) {
             int size=641;var image=new BufferedImage(size,size,BufferedImage.TYPE_INT_RGB);
             for(int z=0;z<size;z++)for(int x=0;x<size;x++) {
                 int bx=point[0]+x-size/2,bz=point[1]+z-size/2;

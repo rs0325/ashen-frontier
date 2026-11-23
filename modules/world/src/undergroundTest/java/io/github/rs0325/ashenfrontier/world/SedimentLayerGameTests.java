@@ -33,7 +33,7 @@ public final class SedimentLayerGameTests {
     public static void generatedSedimentsHaveFractionalSlopes(GameTestHelper helper) {
         var generator=TerrainPreviewGameTests.generator(helper);
         var distribution=new FixedContamination(generator.terrain().map());
-        int[][] sites={{-12400,-5400},{-4684,-10452},{-4924,-15132}};
+        int[][] sites={{-12400,-5400},{-4708,-10668},{-4924,-15132}};
         String[] ids={"loess_layer","silt_layer","talus_layer"};
         for(int site=0;site<sites.length;site++) {
             var thicknesses=new HashSet<Integer>();int[] counts=new int[9];

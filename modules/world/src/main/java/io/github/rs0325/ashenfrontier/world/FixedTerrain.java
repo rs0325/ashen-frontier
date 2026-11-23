@@ -156,8 +156,9 @@ public final class FixedTerrain {
                     double distance=river.tributary()?Math.max(dx,dz)+.5*Math.min(dx,dz):river.distance();
                     double d=Math.max(0,distance-river.width());
                     double shoulder=TerrainMath.fbm(map.seed(),"brook_shoulder",x,z,36);
+                    double detail=1-TerrainMath.smooth((river.station()-1600)/400);
                     double v=river.surface()+.35+d*(.32+shoulder*.12)+Math.pow(d,1.35)*.02
-                            +shoulder*3*TerrainMath.smooth(d/8);
+                            +shoulder*(3+3*detail*TerrainMath.smooth(d/32))*TerrainMath.smooth(d/8);
                     if(river.tributary() && d<3)v+=.8*TerrainMath.smooth((TerrainMath.noise(map.seed(),"brook_boulders",x,z,9)-.65)/.2)
                             *(1-TerrainMath.smooth(d/3));
                     double bank=Math.min(height,v)+(height-Math.min(height,v))*TerrainMath.smooth((d-20)/100);
@@ -170,7 +171,7 @@ public final class FixedTerrain {
                 double lip=TerrainMath.smooth((river.distance()-river.width())/4);
                 double rim=river.surface()+1-headwater*.65;
                 height=Math.min(height,rim+(height-rim)*lip);
-                double bankFloor=river.surface()+(river.riffle()>0 || river.tributary()?1:0);
+                double bankFloor=river.surface()+(river.riffle()>0?1:0);
                 height+=(Math.max(height,bankFloor)-height)*headwater
                         *(1-TerrainMath.smooth((river.distance()-river.width()-2)/6));
             }
@@ -233,6 +234,10 @@ public final class FixedTerrain {
         double headwater=TerrainMath.smooth((z+12650)/240.0)*TerrainMath.smooth((-10000-z)/300.0)
                 *TerrainMath.smooth((x+5100)/240.0)*TerrainMath.smooth((-3500-x)/240.0);
         if(headwater>0 && mountain>0)rough+=(TerrainMath.massifRelief(map.seed(),x,z)-rough)*headwater;
+        if(headwater>0 && mountain>0 && mountain<.35) {
+            double lowland=(TerrainMath.noise(map.seed(),"lowland_rills",x+wx,z+wz,12)*2-1)*3;
+            rough+=(lowland-rough)*headwater*(1-TerrainMath.smooth(mountain/.35));
+        }
         double steep=mountain>0?TerrainMath.smooth((Math.abs(map.height(x+16.0,z)-base)
                 +Math.abs(map.height((double)x,z+16)-base))/16):0;
         double bedding=(base+x*.12-z*.08)/8;
@@ -386,6 +391,9 @@ public final class FixedTerrain {
             double edge=TerrainMath.smooth((relief.continuous-line+16)/32)*margin;
             double scatter=TerrainMath.noise(map.seed(),"snow_edge",x,z,1);
             layers=Math.min(layers,TerrainMath.depositLayers(edge,scatter));
+            double bankDistance=relief.river.distance()-relief.river.width();
+            if(bankDistance>=0 && bankDistance<4 && (relief.river.tributary() || relief.river.station()<2400))
+                layers=Math.min(layers,Math.max(1,(int)Math.ceil(bankDistance*1.3)));
             aboveLine = relief.continuous-line;
         }
         if (island != null) layers = Math.min(layers,4);
