@@ -221,9 +221,10 @@ public final class SurfaceDetailGameTests {
                     }
                     if (sample.distance() < sample.width()) {
                         int level = map.waterSurface(sx, sz);
-                        helper.assertTrue(level - column.surfaceY() >= 2, "最浅部にも2ブロックの水深");
-                        helper.assertTrue(!column.state(level).getFluidState().isEmpty() && !column.state(level - 1).getFluidState().isEmpty(), "水のないへこみを作らない");
-                        if (center.riffle() == 0 && Math.abs(offset) < 20) {
+                        int minimum=sample.tributary() || sample.station()<=1000?1:2;
+                        helper.assertTrue(level - column.surfaceY() >= minimum, "源流・支沢は浅く、中下流には2ブロック以上の水深");
+                        helper.assertTrue(!column.state(level).getFluidState().isEmpty() && !column.state(level-minimum+1).getFluidState().isEmpty(), "水のないへこみを作らない");
+                        if (!sample.tributary() && center.riffle() == 0 && Math.abs(offset) < 20) {
                             helper.assertTrue(level == water, "淵の横断方向の水面は水平"); pools++;
                         }
                         wet++;

@@ -147,13 +147,19 @@ public final class FixedTerrain {
             } else if (river.distance() < 256) {
                 double reach=TerrainMath.noise(map.seed(), "river_bank", river.x(), river.z(), 192);
                 double slope = .07 + .12*reach + .3*Math.max(0,river.bank());
+                double headwater=river.tributary()?1:1-TerrainMath.smooth((river.station()-2400)/1800);
+                slope+=(.65-slope)*headwater;
                 double cut=TerrainMath.valleyHeight(height,river.grade()+1,river.distance(),river.width(),slope);
+                double narrow=TerrainMath.smooth((river.distance()-river.width()-12)/36);
+                cut+=(height-cut)*narrow*headwater;
                 double terrace=(1-TerrainMath.smooth(Math.abs(river.distance()-river.width()-65)/32))
                         *TerrainMath.smooth((reach-.45)/.3)*(1-Math.max(0,river.bank()));
                 double bench=river.grade()+8+(river.distance()-river.width()-50)*.025;
                 height = Math.min(height,cut+(Math.min(cut,bench)-cut)*terrace);
                 double lip=TerrainMath.smooth((river.distance()-river.width())/4);
                 height=Math.min(height,river.surface()+1+(height-river.surface()-1)*lip);
+                height+=(Math.max(height,river.surface()+1)-height)*headwater
+                        *(1-TerrainMath.smooth((river.distance()-river.width()-2)/6));
             }
             if (river.distance() >= river.width() && (map.category(4, x, z) & 4) != 0) {
                 water = map.waterSurface(x, z); quality = map.waterQuality(x, z);
@@ -162,13 +168,14 @@ public final class FixedTerrain {
         if (coast < 0 && river.distance() < river.width()) height = Math.min(height, riverBed(river));
         if(controlled)height+=map.surfaceCorrection(x,z);
         int rounded = (int) Math.round(height);
-        if (water != Integer.MIN_VALUE) rounded = Math.min(rounded, water - (coast >= 0 && river.distance() < river.width() ? 2 : 1));
+        if (water != Integer.MIN_VALUE) rounded = Math.min(rounded, water - (coast >= 0 && river.distance() < river.width() ? (int)Math.min(2,Math.ceil(river.depth()-.5)) : 1));
         else rounded = Math.max(coast < 16 ? 63 : 64, rounded);
         return new Surface(Math.clamp(rounded, -127, 520), water, quality, coast, river, shore, Math.clamp(height,-127,520));
     }
 
     private static double riverBed(RiverCourse.Sample river) {
-        double depth = 2 + (river.depth()-2-1.2*river.riffle()) * (1-Math.pow(river.distance()/river.width(),2));
+        double edge=Math.min(2,river.depth());
+        double depth = edge + (Math.max(edge,river.depth()-1.2*river.riffle())-edge) * (1-Math.pow(river.distance()/river.width(),2));
         return river.surface() - depth;
     }
 
@@ -350,6 +357,8 @@ public final class FixedTerrain {
             double line = TerrainMath.snowline(map.seed(), x, z, Math.abs(MapCoordinates.latitude(z)), sx, sz, false);
             line+=(45-(230-Math.max(0,Math.abs(MapCoordinates.latitude(z))-45)*3))*boundary.cold();
             line -= Math.clamp(reference - relief.continuous, 0, 80) * .5 * mountain;
+            if(!relief.river.tributary() && relief.river.station()<240)
+                line-=100*(1-TerrainMath.smooth(relief.river.station()/240))*(1-TerrainMath.smooth(relief.river.distance()/96));
             layers = rock ? 0 : TerrainMath.snowLayers(surface, line, slope);
             double margin=TerrainMath.smooth((relief.coast-8)/48);
             double edge=TerrainMath.smooth((relief.continuous-line+16)/32)*margin;

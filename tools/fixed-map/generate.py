@@ -23,7 +23,7 @@ OUTPUT = ROOT / MAP_RESOURCES / "earth_001"
 SIZE = 2048
 LAYERS = ("height", "region", "water", "soil", "geology", "coast_river")
 RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json", "underground.json")
-TOOL_VERSION = "1.15.0"
+TOOL_VERSION = "1.16.0"
 
 
 def sha(path):
@@ -430,6 +430,13 @@ def generate_assets(input_dir, output):
     head = np.abs(bx-source_x+40*np.sin((bz-source_z)/160))*.8
     head += np.maximum(0,source_z-bz)*.4+np.maximum(0,bz-source_z)*.06
     height = np.where(nw,np.minimum(height,110+head),height)
+    # 谷頭の底は雪を溜める浅いカール。水面は細い河道だけで決める。
+    source_distance = np.hypot(bx-source_x,bz-source_z)
+    cirque = 114+(bx-source_x)**2/500+np.maximum(0,source_z-bz)**2/300
+    cirque += np.maximum(0,bz-source_z)*.025
+    cirque_weight = np.clip((400-source_distance)/200,0,1)
+    cirque_weight = cirque_weight**2*(3-2*cirque_weight)*nw
+    height += (cirque-height)*cirque_weight
     coast = land & neighbors(~land)
     # 海岸の平滑な遷移。元の陸海輪郭は変えない。
     shore = np.array(Image.fromarray((~land).astype("uint8")*255).filter(ImageFilter.GaussianBlur(5)), dtype=np.float32)/255

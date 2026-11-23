@@ -5,6 +5,33 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class RiverCourseTest {
     @Test
+    void headwatersGrowFromShallowBrooksAndReceiveNarrowTributaries() {
+        double[][] points=new double[1201][3];
+        for(int i=0;i<points.length;i++)points[i]=new double[]{i*4,0,110-i/256.0};
+        var river=new RiverCourse(points,520026);
+        double previousWidth=river.sample(0,0).width(),previousDepth=1,previousWater=110;
+        for(int x=0;x<=2400;x++) {
+            var sample=river.sample(x,0);
+            assertFalse(sample.tributary());
+            assertTrue(sample.width()>=previousWidth && sample.width()-previousWidth<.03,"合流域でも断面を連続して広げる");
+            assertTrue(sample.depth()>=previousDepth && sample.depth()-previousDepth<.01);
+            assertTrue(sample.surface()<=previousWater && previousWater-sample.surface()<=1);
+            if(x<96){assertTrue(sample.width()<=1);assertEquals(1,sample.depth());}
+            previousWidth=sample.width();previousDepth=sample.depth();previousWater=sample.surface();
+        }
+        assertTrue(river.sample(2400,0).width()>8);
+        assertTrue(river.sample(4200,0).depth()>=5);
+        int branches=0;
+        for(int x=200;x<2100;x+=4)for(int z=-160;z<=160;z++) {
+            var sample=river.sample(x,z);
+            if(sample.tributary() && sample.distance()<sample.width()) {
+                assertEquals(.8,sample.width());assertEquals(1,sample.depth());branches++;
+            }
+        }
+        assertTrue(branches>100,"両岸から細い支沢が接続する");
+    }
+
+    @Test
     void poolsStayLevelAndDropsHaveShortRiffles() {
         double[][] points = new double[97][3];
         for (int i = 0; i < points.length; i++) points[i] = new double[]{i * 4, 0, 110 - i / 16.0};

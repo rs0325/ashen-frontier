@@ -620,7 +620,7 @@ public final class FixedMapData {
     }
 
     int riverQuality(RiverCourse.Sample sample) {
-        return category(1, sample.x(), sample.z());
+        return sample.tributary() ? 4 : category(1, sample.x(), sample.z());
     }
 
     /** 土の質3種類のID。0は露岩・未割当て・範囲外で、汚染とは独立した材料混合前の値。 */

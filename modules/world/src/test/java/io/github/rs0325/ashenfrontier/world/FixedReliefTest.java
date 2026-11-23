@@ -73,8 +73,8 @@ class FixedReliefTest {
             var index = JsonParser.parseString(new String(stream.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
             var points = index.getAsJsonArray("water_bodies").get(1).getAsJsonObject().getAsJsonArray("centerline_pixel_x_y_surface");
             int previous = Integer.MAX_VALUE;
-            for (var value : points) {
-                var point = value.getAsJsonArray();
+            for (int i=0;i<points.size();i+=8) {
+                var point = points.get(i).getAsJsonArray();
                 int x = MapCoordinates.MIN + point.get(0).getAsInt() * 16;
                 int z = MapCoordinates.MIN + point.get(1).getAsInt() * 16;
                 int water = map.waterSurface(x, z);

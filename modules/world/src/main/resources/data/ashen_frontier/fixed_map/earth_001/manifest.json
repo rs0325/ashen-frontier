@@ -19,19 +19,19 @@
   },
   "geology_profile_version": "geology_002",
   "tool": {
-    "version": "1.15.0",
+    "version": "1.16.0",
     "python": "3.12",
     "numpy": "2.2.6",
     "pillow": "11.2.1",
     "files": {
-      "tools/fixed-map/generate.py": "c0caa1a908ff5b373272903043468e1eeabf4a96d05bd9cc4ca189284b439d86",
+      "tools/fixed-map/generate.py": "03d15c1eed83d7ac72c8904bb49d4e02652c091bae412025de7cddc986a57b94",
       "tools/fixed-map/extract_mask.py": "be06ce81562d53d6c1394b81f42b03d9aab0d2c402e5324e4928628aa553feb8",
       "tools/fixed-map/requirements.txt": "d25160758f6f0511b40d2788a949c86bb887869cba64c738e650e7d44fde471d",
       "tools/fixed-map/write_underground.py": "62783c7217e8c53a9813c10182d9cbc542fa2b12a5255501ed0a5b6e54999da9"
     }
   },
   "files": {
-    "height.png": "289cb621a62b9208428adc180ddb5f4b570e3bcebace7249b51c6c0c811439bb",
+    "height.png": "d004d5fe6a2377f51b0b080a421d6cfd030455589d01f91fc6497448810c6bff",
     "region.png": "c9f3f1e1957ffb0a43b8b1bcfde5b8e1038d1058dfdb1c6131bcde181641eb47",
     "water.png": "c3986612965d12f4b2423f3f7ca86c9cfee626becd01c4ec7fcd15ecfea97598",
     "soil.png": "863693c51312166e766bf37d45b12c8ab776cb7855f4b940e6fe43f78a668f8a",
