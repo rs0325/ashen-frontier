@@ -14,6 +14,17 @@ import static org.junit.jupiter.api.Assertions.*;
 class MapTileTest {
     @TempDir Path directory;
 
+    @Test void levelIsNotUsedAfterShutdown() {
+        boolean shuttingDown = MapClient.shuttingDown;
+        try {
+            MapClient.shuttingDown = true;
+            assertFalse(MapClient.available());
+            assertDoesNotThrow(() -> MapClient.useLevel(null));
+        } finally {
+            MapClient.shuttingDown = shuttingDown;
+        }
+    }
+
     @Test void blockTileAndPixelCoordinates() {
         for (int level = 0; level <= MapTileKey.MAX_LEVEL; level++) {
             for (int x : new int[]{-16385, -16384, -16257, -16256, -1, 0, 127, 128, 16383}) {
