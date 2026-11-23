@@ -30,6 +30,36 @@ POSIXでは仮想環境の実行ファイルを`.venv/bin/python`へ読み替え
 
 通常の再生成は入力PNGを読み、参考図の再抽出は行わない。`--update-preset`を指定した場合だけworldプリセットの版とmanifestハッシュを同期する。プレビューと仮想環境は`.gitignore`で除外している。PNGとJSONは通常のGit対象とする。
 
+## 実地形の全体図
+
+ユーザーから現状の全体図を求められたとき、バイオーム・地形配置の案を作るとき、大規模な地形変更の確認・比較に使う。Claude Codeでは[fixed-map-renderスキル](../../.claude/skills/fixed-map-render/SKILL.md)にも同じ入口を記載している。Codexも以下を直接利用できる。
+
+上記のPython 3.12仮想環境とハッシュ固定依存を使い、対象worktreeのルートで実行する。適用される`run_logged.py`でコマンド全体を記録する。
+
+```powershell
+# 全域16ブロック/画素＋北西大陸8ブロック/画素、詳細版と淡い版の計4枚
+& .\tools\fixed-map\.venv\Scripts\python.exe -X utf8 tools/fixed-map/render_map.py
+
+# 全域または北西だけ（省略時の間隔はworld=16、northwest=8）
+& .\tools\fixed-map\.venv\Scripts\python.exe -X utf8 tools/fixed-map/render_map.py --preset world --step 16
+& .\tools\fixed-map\.venv\Scripts\python.exe -X utf8 tools/fixed-map/render_map.py --preset northwest --step 8
+
+# 任意範囲: X0 Z0 X1 Z1。上限を含まず、各辺がstepで割り切れること
+& .\tools\fixed-map\.venv\Scripts\python.exe -X utf8 tools/fixed-map/render_map.py --bounds -6000 -15000 -2000 -11000 --step 8
+```
+
+出力先は省略時`preview/maps/<日時>-<commit>/`。`--output <新規または空のディレクトリ>`で変更できる。リポジトリ内ではignoredの場所だけを受け付け、既存ファイルのある出力先を上書きしない。`--font <日本語フォントのttf/otf/ttc>`でフォントを指定できる。Windowsの游ゴシック、LinuxのNoto Sans CJKの標準パスを自動検出する。POSIXでは`.venv/bin/python`へ読み替える。
+
+専用initスクリプト`map-render.init.gradle`が開発用ソースセットと`runFixedMapRender`をその実行だけに追加する。Javaの`FixedTerrain.column`でセル中心の地面Y・最上面Y・地表材・水面材を標本化し、地表・水面・雪氷を判定する。配置図の高さPNGだけでは描かない。専用GameTest名前空間・テンプレートと`build/map-render-run`を使い、通常のGameTestを走らせず、配布jar・通常の`runClient`・`gameTest`の登録や結果を変えない。実行後は単発Gradleデーモンも終了する。開発クライアントは起動しない。同じworktreeで他のGradle実行・編集と重ねない。
+
+詳細版`*-detail.png`は標高段彩、北西からの陰影、海底の水深、水域、雪氷、施設アンカー名、配置上の山脈軸と固定峰を表示する。描き込み版`*-sketch.png`は同じ範囲・座標格子を持つ淡い図。1000ブロックごとの格子、北が上・X東・Z南、縮尺、凡例、基準commitを付ける。未コミット差分がある実行は図にも明記する。施設の地面Yは正確なアンカー座標で別途標本化し、`anchors.csv`へ記録する。
+
+`request.json`は基準commit・未コミット差分の有無・manifestのSHA-256・入力配置・範囲と間隔、`metadata.json`は同じ基準と標本数に相当する格子サイズ・地面Y範囲・標本化時間を記録する。`sampling.log`にJava側の進捗とエラーを保存する。失敗時はそのログを確認し、修正後は別の新規出力先で再実行する。完了記録のない中間データを図として提示しない。`.bin`は24バイトのbig-endianヘッダ（magic、X0、Z0、step、横標本数、縦標本数）と、各9バイトの標本（地面Y・最上面Yはsigned short、地表材・最上面材はpaletteのunsigned short番号、flagsはbyte）からなる。flagsは1=海、2=内陸水面、4=雪、8=氷河、16=凍結水面。
+
+全域はX/Zとも`[-16384,16384)`、北西大陸と周辺海域はX`[-16384,7168)`・Z`[-16384,1024)`。標本数は合計約1,060万列。標本化は数分、初回のコンパイル・描画込みでは数分〜十数分を見込む。Javaと描画に数GiBのメモリの余裕を持つ。間隔を半分にすると標本数は約4倍となる。表示上は地図部分の横幅を最大3072画素へ拡大するが、実データの解像度は標本間隔のまま。
+
+出力を目で見て、海岸・水域・山脈・施設ラベルが実データと整合することを確認する。配置案は詳細版を現状確認の下図とし、淡い版に案を重ね、AGENTS.mdで指定されたGPT imageの地図と併用する。変更前後は各commit/worktreeで同じ範囲・間隔を使い、出力の基準を添える。標本間隔より細い河川・微地形は省略され得る。テクスチャ・実際の光・霧・空・建物・植生は再現せず、見た目は#85の自動撮影で確認する。画像・中間データ・キャッシュは公開対象に含めない。
+
 ## 入力の編集と由来
 
 - `input/land.png`: 2048²の8bitラベルPNG。0=海、1=北西大陸、2=東大陸、3=南大陸、4=島嶼。色補正せず整数値で編集する。
