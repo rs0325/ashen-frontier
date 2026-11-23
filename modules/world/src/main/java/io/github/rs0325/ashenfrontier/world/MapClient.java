@@ -43,6 +43,7 @@ public final class MapClient {
     private static final Set<Long> DIRTY = new LinkedHashSet<>();
     private static ClientLevel mapLevel;
     private static MapTileCache cache;
+    static boolean shuttingDown;
     static boolean blocks;
 
     private MapClient() {}
@@ -68,6 +69,7 @@ public final class MapClient {
     }
 
     static boolean available() {
+        if (shuttingDown) return false;
         var level = Minecraft.getInstance().level;
         return level != null && level.dimension() == Level.OVERWORLD
                 && level.dimensionTypeRegistration().is(AshenFrontierCore.id("fixed_map"));
@@ -93,7 +95,8 @@ public final class MapClient {
         }
     }
 
-    private static void useLevel(ClientLevel level) {
+    static void useLevel(ClientLevel level) {
+        if (shuttingDown) return;
         if (mapLevel == level) return;
         clear();
         mapLevel = level;
@@ -222,6 +225,7 @@ public final class MapClient {
 
         @SubscribeEvent
         public static void shutdown(GameShuttingDownEvent event) {
+            shuttingDown = true;
             clear();
             MapTileStorage.shutdown();
         }
