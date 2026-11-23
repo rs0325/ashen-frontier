@@ -49,9 +49,10 @@ public final class AtmosphereGameTests {
             helper.assertTrue(bundled.size() == 12 && BiomeAtmosphere.values().size() == 12,
                     "実リロードで12件の大気定義が読み込まれる");
             var id = AshenFrontierCore.id("polluted_ocean");
-            var override = JsonParser.parseString("{\"density\":0.25,\"dust_color\":1193046}");
+            var override = JsonParser.parseString("{\"density\":0.25,\"dust_particle\":\"white_ash\"}");
             loader.apply(Map.of(id, override), resources, InactiveProfiler.INSTANCE);
-            helper.assertTrue(BiomeAtmosphere.values().equals(Map.of(id, new BiomeAtmosphere.Values(0.25, 0x123456))),
+            helper.assertTrue(BiomeAtmosphere.values().equals(Map.of(id,
+                            new BiomeAtmosphere.Values(0.25, BiomeAtmosphere.DustParticle.WHITE_ASH))),
                     "データパックの上書き値へ置き換え、削除された定義を残さない");
             NeoForge.EVENT_BUS.post(new OnDatapackSyncEvent(server.getPlayerList(), first.player));
             helper.assertTrue(first.updates().size() == 1 && second.updates().isEmpty(),

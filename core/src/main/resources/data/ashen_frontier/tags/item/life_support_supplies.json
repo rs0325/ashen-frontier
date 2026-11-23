@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "ashen_frontier:canned_food",
+    "ashen_frontier:preserved_rations",
+    "ashen_frontier:sealed_water_container"
+  ]
+}

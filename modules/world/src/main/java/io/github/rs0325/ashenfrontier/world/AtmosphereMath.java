@@ -1,7 +1,7 @@
 package io.github.rs0325.ashenfrontier.world;
 
 public final class AtmosphereMath {
-    public static final double EDGE_WIDTH = 256.0;
+    public static final double EDGE_WIDTH = 1024.0;
 
     private AtmosphereMath() {}
 
@@ -9,7 +9,7 @@ public final class AtmosphereMath {
         return clamp(1.0 - distanceToEdge / EDGE_WIDTH);
     }
 
-    /** 元の開始距離 < 終了距離を前提に、両方を縮める。端の256ブロック以内では外縁までに不透明にする。 */
+    /** 元の開始距離 < 終了距離を前提に両方を縮め、外縁より手前で不透明にする。 */
     public static FogRange fogRange(double near, double far, double biomeDensity, double distanceToEdge) {
         double scale = 1.0 - clamp(biomeDensity) * 0.68;
         scale *= 1.0 - edgeDensity(distanceToEdge) * 0.92;

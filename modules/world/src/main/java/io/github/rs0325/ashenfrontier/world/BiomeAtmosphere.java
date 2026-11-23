@@ -2,6 +2,8 @@ package io.github.rs0325.ashenfrontier.world;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
@@ -13,11 +15,12 @@ import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /** バイオームIDに対応する静的な大気定義を読み込み、参加時とリロード時に同期する。 */
 final class BiomeAtmosphere {
-    static final Values CLEAR = new Values(0, 0xA49C88);
+    static final Values CLEAR = new Values(0, DustParticle.NONE);
     private static Map<ResourceLocation, Values> values = Map.of();
 
     private BiomeAtmosphere() {}
@@ -42,15 +45,27 @@ final class BiomeAtmosphere {
             json.forEach((id, element) -> {
                 var value = element.getAsJsonObject();
                 double density = value.get("density").getAsDouble();
-                int color = value.get("dust_color").getAsInt();
-                if (!Double.isFinite(density) || density < 0 || density > 1 || color < 0 || color > 0xFFFFFF) {
-                    throw new IllegalArgumentException("バイオーム大気の濃度または色が範囲外です: " + id);
+                DustParticle dustParticle = DustParticle.valueOf(value.get("dust_particle").getAsString().toUpperCase(Locale.ROOT));
+                if (!Double.isFinite(density) || density < 0 || density > 1) {
+                    throw new IllegalArgumentException("バイオーム大気の濃度が範囲外です: " + id);
                 }
-                loaded.put(id, new Values(density, color));
+                loaded.put(id, new Values(density, dustParticle));
             });
             values = Map.copyOf(loaded);
         }
     }
 
-    record Values(double density, int dustColor) {}
+    record Values(double density, DustParticle dustParticle) {}
+
+    enum DustParticle {
+        NONE, ASH, WHITE_ASH;
+
+        ParticleOptions options() {
+            return switch (this) {
+                case ASH -> ParticleTypes.ASH;
+                case WHITE_ASH -> ParticleTypes.WHITE_ASH;
+                case NONE -> throw new IllegalStateException("砂塵のないバイオームです");
+            };
+        }
+    }
 }

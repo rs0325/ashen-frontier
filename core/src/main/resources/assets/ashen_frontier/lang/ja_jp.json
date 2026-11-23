@@ -1,4 +1,5 @@
 {
+  "config.ashen_frontier_core.loot.lifeSupportMultiplier": "建物の生命維持消耗品loot倍率",
   "command.ashen_frontier.team.created": "チームを作成しました。",
   "command.ashen_frontier.team.invited": "チームへの招待が届いています。",
   "command.ashen_frontier.team.invite_sent": "招待を送りました。",

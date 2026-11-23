@@ -49,10 +49,74 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.LootTable;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import io.github.rs0325.ashenfrontier.core.loot.LifeSupportLoot;
+import io.github.rs0325.ashenfrontier.core.loot.LifeSupportLootModifier;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicContent;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicProperties;
+import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
 
 @GameTestHolder(AshenFrontierCore.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class CoreGameTests {
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 40)
+    public static void lifeSupportLootScalingPreservesQualityAndExclusions(GameTestHelper helper) {
+        var food = new ItemStack(RelicContent.item("canned_food"), 3);
+        LifeSupportLoot.scale(food, 0);
+        if (!food.isEmpty()) {
+            helper.fail("倍率0で任意食料が残った: " + food);
+            return;
+        }
+        var rations = new ItemStack(RelicContent.item("preserved_rations"), 3);
+        LifeSupportLoot.scale(rations, 1);
+        if (rations.getCount() != 3) {
+            helper.fail("既定倍率で数量が変化した: " + rations);
+            return;
+        }
+        var water = RelicProperties.container("sealed_water_container", AshenFrontierCore.id("clean_water"), 0.5);
+        LifeSupportLoot.scale(water, 4);
+        if (water.getCount() != 4 || water.get(RelicProperties.CONTENT_MASS) != 0.5
+                || !AshenFrontierCore.id("clean_water").equals(water.get(NatureProperties.QUALITY))) {
+            helper.fail("最大倍率で水量または品質が不正: " + water);
+            return;
+        }
+        if (!LifeSupportLootModifier.appliesTo(AshenFrontierCore.id("buildings/shelter/supplies"))
+                || LifeSupportLootModifier.appliesTo(AshenFrontierCore.id("buildings/guaranteed/first_aid"))
+                || LifeSupportLootModifier.appliesTo(AshenFrontierCore.id("loot_table/blocks/damaged_boiler"))) {
+            helper.fail("建物任意lootの適用範囲が不正");
+            return;
+        }
+        AshenFrontierCore.LOGGER.info("生命維持loot倍率GameTest: 3ケース成功");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 40)
+    public static void buildingLifeSupportLootTableScalesAtResolution(GameTestHelper helper) throws IOException {
+        var id = AshenFrontierCore.id("buildings/shelter/supplies");
+        var resource = helper.getLevel().getServer().getResourceManager().getResource(
+                AshenFrontierCore.id("loot_table/buildings/shelter/supplies.json"));
+        if (resource.isEmpty()) {
+            helper.fail("代表建物loot tableが読み込まれていない");
+            return;
+        }
+        var ops = RegistryOps.create(JsonOps.INSTANCE, helper.getLevel().registryAccess());
+        LootTable table;
+        try (var reader = resource.orElseThrow().openAsReader()) {
+            table = LootTable.DIRECT_CODEC.parse(ops, JsonParser.parseReader(reader))
+                    .resultOrPartial(helper::fail).orElse(null);
+        }
+        if (table == null) return;
+        table.setLootTableId(id);
+        var params = new LootParams.Builder(helper.getLevel()).create(LootContextParamSets.EMPTY);
+        var loot = table.getRandomItems(params, 1L);
+        if (loot.size() != 1 || !loot.getFirst().is(RelicContent.item("canned_food"))
+                || loot.getFirst().getCount() != 3) {
+            helper.fail("建物lootの既定倍率が不一致: " + loot);
+            return;
+        }
+        AshenFrontierCore.LOGGER.info("建物生命維持loot解決: 1件成功");
+        helper.succeed();
+    }
+
     @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID, timeoutTicks = 40)
     public static void netherPortalDoesNotForm(GameTestHelper helper) {
         for (int x = 0; x <= 3; x++) {
