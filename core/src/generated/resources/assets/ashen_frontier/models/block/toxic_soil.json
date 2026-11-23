@@ -1,6 +1,0 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "ashen_frontier:block/toxic_soil"
-  }
-}

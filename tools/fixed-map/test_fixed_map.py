@@ -20,6 +20,12 @@ from generate import (LAYERS, MAP_RESOURCES, OUTPUT, RESOURCE_FILES, ROOT, SIZE,
 
 
 class FixedMapTests(unittest.TestCase):
+    def test_soil_quality_has_no_contaminated_or_toxic_category(self):
+        self.assertLessEqual(int(self.layers["soil"].max()), 3)
+        self.assertEqual(set(self.index["tables"]["soil"]), {"0", "1", "2", "3"})
+        for region in (5, 6):
+            self.assertTrue(np.all(self.layers["soil"][self.layers["region"] == region] == 3))
+
     def test_western_termination_has_separate_descending_ridges_and_valleys(self):
         terminal=self.config["mountains"][0]["termination"]
         self.assertEqual(terminal,self.index["mountains"][0]["termination"])

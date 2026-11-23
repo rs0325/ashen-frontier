@@ -2,6 +2,19 @@
   "required": true,
   "package": "io.github.rs0325.ashenfrontier.world.mixin",
   "compatibilityLevel": "JAVA_21",
-  "client": ["client.ClientLevelMapMixin"],
-  "injectors": {"defaultRequire": 1}
+  "client": [
+    "client.ClientLevelMapMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "ContaminationPlacementMixin",
+    "ContaminationFallingMixin",
+    "ContaminationLootMixin",
+    "ContaminationPistonMixin",
+    "ContaminationEndermanTakeMixin",
+    "ContaminationEndermanPlaceMixin",
+    "ContaminationFluidMixin"
+  ]
 }

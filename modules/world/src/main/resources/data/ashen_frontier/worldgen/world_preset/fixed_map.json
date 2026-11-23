@@ -7,7 +7,7 @@
         "map": {
           "map_version": "earth_001",
           "format_version": 1,
-          "manifest_hash": "cec5efacc41283b5909d5bbc2708c7a8e487e28f5942dad4d2a2bc3010e9de52"
+          "manifest_hash": "228c29df1ec4e3a49155d03d3f3e84d9987fd5882670a0456c042d18b999f72e"
         },
         "biome_source": {
           "biomes": [
@@ -27,7 +27,7 @@
           "map": {
             "map_version": "earth_001",
             "format_version": 1,
-            "manifest_hash": "cec5efacc41283b5909d5bbc2708c7a8e487e28f5942dad4d2a2bc3010e9de52"
+            "manifest_hash": "228c29df1ec4e3a49155d03d3f3e84d9987fd5882670a0456c042d18b999f72e"
           }
         }
       }

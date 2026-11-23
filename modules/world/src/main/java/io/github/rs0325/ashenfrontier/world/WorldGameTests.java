@@ -264,6 +264,7 @@ public final class WorldGameTests {
             }
             Arrays.sort(times);
             Arrays.sort(cpuTimes);
+            helper.assertTrue(times[949] <= 25_000_000, "地形生成のp95が25 ms以内: " + area);
             helper.assertTrue(!frozen || iceChunks > 0, "雪氷の計測対象に実際の氷層がある");
             LogUtils.getLogger().info("TERRAIN_BENCHMARK area={} count=1000 warmup=100 parallelism=1 ice_chunks={} wall_p50_ms={} wall_p95_ms={} cpu_p95_ms={} max_ms={} heap_max_MiB={} java={} processors={}",
                     area, iceChunks, times[499] / 1e6, times[949] / 1e6, cpuTimes[949] / 1e6, times[999] / 1e6,

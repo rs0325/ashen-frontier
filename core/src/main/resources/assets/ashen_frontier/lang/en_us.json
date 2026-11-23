@@ -45,5 +45,22 @@
   "terminal.ashen_frontier.condition": "%s: %s",
   "terminal.ashen_frontier.prerequisites": "Requires: %s",
   "terminal.ashen_frontier.complete": "Complete",
-  "terminal.ashen_frontier.incomplete": "Incomplete"
+  "terminal.ashen_frontier.incomplete": "Incomplete",
+  "item.ashen_frontier.contamination_meter": "Soil Contamination Meter",
+  "contamination.ashen_frontier.no_sample": "Measure soil or sediment; warning signs read the block directly below.",
+  "contamination.ashen_frontier.position": "Soil sample (%s, %s, %s)",
+  "contamination.ashen_frontier.result": "%s: %s (%s %s)",
+  "tooltip.ashen_frontier.soil_contamination": "%s: %s",
+  "contamination.ashen_frontier.different_layers": "Layers with different contamination stages cannot be combined.",
+  "contamination.ashen_frontier.lead": "Heavy metals (Pb equivalent)",
+  "contamination.ashen_frontier.pcb": "Organic chemicals (PCB equivalent)",
+  "contamination.ashen_frontier.conductivity": "Salts (ECe, 25 C)",
+  "contamination.ashen_frontier.ph": "Acidity (soil:water 1:1)",
+  "contamination.ashen_frontier.caesium137": "Radioactive material (Cs-137)",
+  "contamination.ashen_frontier.fecal_coliform": "Biological (fecal coliform, dry solids)",
+  "contamination.ashen_frontier.stage.0": "Clean",
+  "contamination.ashen_frontier.stage.1": "Light",
+  "contamination.ashen_frontier.stage.2": "Moderate",
+  "contamination.ashen_frontier.stage.3": "High",
+  "contamination.ashen_frontier.stage.4": "Toxic"
 }

@@ -20,7 +20,6 @@ public final class ItemProperties {
     public static final double TEMPERATURE_STEP_K = 5.0;
     public static final double WEAR_STEP = 1.0;
     public static final double COMPOSITION_STEP = 0.01;
-    public static final double CONTAMINATION_STEP = 0.01;
     public static final double ACTIVITY_STEP_BQ = 0.1;
     public static final long TIME_STEP_TICKS = 20;
     public static final double ROT_STEP_SECONDS = 600.0;
@@ -35,6 +34,7 @@ public final class ItemProperties {
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Wear>> WEAR = COMPONENTS.registerComponentType("wear", builder -> builder.persistent(Wear.CODEC).networkSynchronized(Wear.STREAM_CODEC));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Composition>> COMPOSITION = COMPONENTS.registerComponentType("composition", builder -> builder.persistent(Composition.CODEC).networkSynchronized(Composition.STREAM_CODEC));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Contamination>> CONTAMINATION = COMPONENTS.registerComponentType("contamination", builder -> builder.persistent(Contamination.CODEC).networkSynchronized(Contamination.STREAM_CODEC));
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<SoilContamination.Stages>> SOIL_CONTAMINATION = COMPONENTS.registerComponentType("soil_contamination", builder -> builder.persistent(SoilContamination.Stages.CODEC).networkSynchronized(ByteBufCodecs.fromCodec(SoilContamination.Stages.CODEC)));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Radioactivity>> RADIOACTIVITY = COMPONENTS.registerComponentType("radioactivity", builder -> builder.persistent(Radioactivity.CODEC).networkSynchronized(Radioactivity.STREAM_CODEC));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Rot>> ROT = COMPONENTS.registerComponentType("rot", builder -> builder.persistent(Rot.CODEC).networkSynchronized(Rot.STREAM_CODEC));
 
@@ -145,9 +145,10 @@ public final class ItemProperties {
     }
 
     public record Contamination(Map<String, Double> amounts) {
-        /** 汚染量を不利な側へ丸めて生成する。標準コンストラクターは値を丸めないため、設定時はこのメソッドを使う。 */
+        public Contamination { amounts = Map.copyOf(amounts); }
+        /** 物質別のSI値をdoubleの精度で保持する。土アイテムは別の段階成分を使う。 */
         public static Contamination of(Map<String, Double> amounts) {
-            return new Contamination(quantizeMap(amounts, CONTAMINATION_STEP, true));
+            return new Contamination(amounts);
         }
         public static final Codec<Contamination> CODEC = Codec.unboundedMap(Codec.STRING, Codec.DOUBLE)
                 .xmap(Contamination::new, Contamination::amounts);
