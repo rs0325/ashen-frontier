@@ -98,6 +98,17 @@ final class TerrainMath {
                 : Math.clamp((int) Math.ceil((coverage - .92) / .08 * 8), 2, 8);
     }
 
+    /** 地面ブロック底面からの天面を1/8単位で返す。0は散布なし。 */
+    static int sedimentCover(double height, int ground, double coverage, double scatter, double slope, double hollow) {
+        int layers = depositLayers(coverage, coverage >= .92 ? 0 : scatter);
+        if (layers == 0) return 0;
+        double inside = smooth((coverage - .92) / .08);
+        double depth = .125 + .375 * smooth((.24 - slope) / .18) * smooth((hollow + .4) / .8);
+        double edge = 1 + Math.min(2, layers) / 8.0;
+        double top = Math.clamp(height - ground, -.5, .5) + 1 + depth;
+        return (int) Math.round((edge + (top - edge) * inside) * 8);
+    }
+
     static double islandPeak(double dx, double dz, int peak, double radius, double cos, double sin, double detail) {
         double along=(dx*cos+dz*sin)/radius, across=(-dx*sin+dz*cos)/(radius*.65);
         double shoulder=smooth((Math.abs(along)+Math.abs(across))/.3);

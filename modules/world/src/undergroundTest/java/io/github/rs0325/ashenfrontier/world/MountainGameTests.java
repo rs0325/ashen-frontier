@@ -94,8 +94,9 @@ public final class MountainGameTests {
                         int x=(int)Math.round(ax+dx*j/steps),z=(int)Math.round(az+dz*j/steps);
                         var column=terrain.column(x,z);int ground=column.surfaceY();var floor=column.state(ground);var cover=column.state(ground+1);
                         helper.assertTrue(!floor.isAir() && floor.getFluidState().isEmpty() && !floor.is(Blocks.POWDER_SNOW),"徒歩経路の固体の床: "+route.get("id")+" "+x+","+z);
+                        helper.assertTrue(!floor.hasProperty(SnowLayerBlock.LAYERS),"徒歩路の床には薄層を埋め込まず、従来の支持面を維持");
                         helper.assertTrue(column.state(ground+2).isAir() && column.state(ground+3).isAir(),"峠と歩行路の頭上の余裕");
-                        double top=ground+1+(cover.is(Blocks.SNOW)?cover.getValue(SnowLayerBlock.LAYERS)/8.0:0);
+                        double top=ground+1+(cover.hasProperty(SnowLayerBlock.LAYERS)?cover.getValue(SnowLayerBlock.LAYERS)/8.0:0);
                         helper.assertTrue(Double.isNaN(previous) || Math.abs(top-previous)<=1.25,"雪を含む徒歩の段差: "+x+","+z+" "+previous+" -> "+top);
                         previous=top;count++;
                     }

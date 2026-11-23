@@ -34,22 +34,7 @@ public final class SedimentPreviewGameTests {
         Files.createDirectories(output);
         var generator = TerrainPreviewGameTests.generator(helper);
         var terrain = generator.terrain();
-        int coastX = -12400, coastZ = -5400;
-        double best = -Double.MAX_VALUE;
-        for (int z = -7800; z <= -4200; z += 64) for (int x = -15000; x <= -9000; x += 64) {
-            double coast = terrain.map().coastDistance(x,z);
-            if (terrain.map().region(x,z) != 4 || coast < 24 || coast > 120) continue;
-            var column = terrain.column(x,z);
-            if (!BuiltInRegistries.BLOCK.getKey(column.state(column.surfaceY()).getBlock()).getPath().equals("loess")) continue;
-            int loess = 0;
-            for (int dz = -32; dz <= 32; dz += 16) for (int dx = -32; dx <= 32; dx += 16) {
-                var c = terrain.column(x+dx,z+dz);
-                if (BuiltInRegistries.BLOCK.getKey(c.state(c.surfaceY()).getBlock()).getPath().equals("loess")) loess++;
-            }
-            double score = loess * 10 - Math.abs(coast-60) - Math.abs(column.surfaceY()-80);
-            if (score > best) { best=score; coastX=x; coastZ=z; }
-        }
-        for (var area : new int[][]{{coastX,coastZ},{-12400,-5400}}) {
+        for (var area : new int[][]{{-13976,-6008},{-12400,-5400}}) {
             int x0=(area[0]>>4)*16-192, z0=(area[1]>>4)*16-192, width=384, depth=384;
             var chunks = new HashMap<ChunkPos,ProtoChunk>();
             for (int z=z0;z<z0+depth;z+=16) for(int x=x0;x<x0+width;x+=16) {

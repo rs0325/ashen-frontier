@@ -46,9 +46,9 @@ public final class SedimentGameTests {
                 counts.merge(id.getPath(),1,Integer::sum);
                 if (sample>=y && !c.state(sample).isAir()) points.putIfAbsent(id.getPath(),new int[]{x,sample,z});
                 if (state.hasProperty(BlockStateProperties.LAYERS)) {
-                    helper.assertTrue(sample==y+1 && c.state(y).isCollisionShapeFullBlock(helper.getLevel(),BlockPos.ZERO),
+                    helper.assertTrue(sample==c.topY() && c.state(sample-1).isCollisionShapeFullBlock(helper.getLevel(),BlockPos.ZERO),
                             "堆積層は地面の上で支持される");
-                    helper.assertTrue(c.topY()==y+1,"堆積層を含む列の高さ");
+                    helper.assertTrue(c.topY()==sample,"堆積層を含む列の高さ");
                 }
             }
         }
