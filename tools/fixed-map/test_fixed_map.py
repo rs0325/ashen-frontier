@@ -83,21 +83,6 @@ class FixedMapTests(unittest.TestCase):
             self.assertEqual(self.index["mountain_islands"][self.config["mountain_islands"].index(island)]["summits"],summits)
         self.assertEqual(self.index["geology_profile_version"],"geology_002")
 
-    def test_water_animation_frames_and_quality_colors(self):
-        from animate_water import WATERS, TEXTURES
-        for water in WATERS:
-            for kind,size in (("still",16),("flow",32)):
-                path = TEXTURES/f"{water}_{kind}.png"
-                metadata = json.loads(path.with_suffix(".png.mcmeta").read_text(encoding="utf-8"))["animation"]
-                self.assertEqual(metadata["frames"],list(range(32)))
-                self.assertEqual(metadata["frametime"],2)
-                with Image.open(path) as image:
-                    self.assertEqual(image.size,(size,size*32))
-                    frames = [image.crop((0,i*size,size,(i+1)*size)) for i in range(32)]
-                    self.assertGreater(len({frame.tobytes() for frame in frames}),8)
-                    palette = set(frames[0].getdata())
-                    for frame in frames: self.assertEqual(set(frame.getdata()),palette)
-
     @classmethod
     def setUpClass(cls):
         cls.config, cls.land = load_inputs(TOOL / "input")

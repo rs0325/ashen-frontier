@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -89,6 +90,30 @@ class ScreenshotPlanTest {
     @ValueSource(strings = {"null", "{", "{}", "[]"})
     void rejectsMalformedOrEmptyPlan(String json) {
         assertThrows(IllegalArgumentException.class, () -> load(json));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"say unsafe", "stop", "execute run stop"})
+    void rejectsUnsafeSetupCommands(String command) {
+        var json = JsonParser.parseString(VALID).getAsJsonObject();
+        json.add("setupCommands", JsonParser.parseString("[\"" + command + "\"]"));
+        assertThrows(IllegalArgumentException.class, () -> load(json.toString()));
+    }
+
+    @Test
+    void acceptsOptionalSetupWithoutChangingExistingPlans() throws Exception {
+        assertTrue(load(VALID).setupCommands().isEmpty());
+        var json = JsonParser.parseString(VALID).getAsJsonObject();
+        json.add("setupCommands", JsonParser.parseString("[\"setblock ~ ~ ~ minecraft:stone\"]"));
+        assertEquals(List.of("setblock ~ ~ ~ minecraft:stone"), load(json.toString()).setupCommands());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "{}", "[1]", "[null]"})
+    void rejectsInvalidSetupTypes(String setup) {
+        var json = JsonParser.parseString(VALID).getAsJsonObject();
+        json.add("setupCommands", JsonParser.parseString(setup));
+        assertThrows(IllegalArgumentException.class, () -> load(json.toString()));
     }
 
     private ScreenshotPlan load(String json) throws Exception {

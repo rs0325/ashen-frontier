@@ -2,6 +2,7 @@ package io.github.rs0325.ashenfrontier.screenshots;
 
 import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.rs0325.ashenfrontier.screenshots.mixin.LevelRendererAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -15,6 +16,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.levelgen.WorldOptions;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.common.Mod;
@@ -43,6 +45,7 @@ public final class ScreenshotRunner {
     private boolean creating;
     private boolean finished;
     private boolean saving;
+    private boolean setupApplied;
     private int index = -1;
     private long pointStarted;
     private long readySince;
@@ -104,12 +107,36 @@ public final class ScreenshotRunner {
                 return;
             }
             if (secondsSince(pointStarted) > plan.timeoutSeconds()) {
+                if (index == 0 && !plan.setupCommands().isEmpty() && (!setupApplied || !movement.isDone())) {
+                    finish("撮影用セットアップの待機が上限時間を超えました");
+                    return;
+                }
                 record(minecraft, false, saving ? "PNGの保存が上限時間を超えました" : "移動・チャンク生成・描画待ちが上限時間を超えました");
                 next(minecraft);
                 return;
             }
             if (movement.isCompletedExceptionally()) {
                 movement.join();
+            }
+            if (index == 0 && !setupApplied && !plan.setupCommands().isEmpty()) {
+                if (!movement.isDone()) return;
+                var point = plan.points().get(index);
+                if (minecraft.player.position().distanceToSqr(new Vec3(point.x(), point.y(), point.z())) > 0.01) return;
+                if (!chunksReady(minecraft)) return;
+                setupApplied = true;
+                readySince = 0;
+                var server = minecraft.getSingleplayerServer();
+                movement = CompletableFuture.runAsync(() -> {
+                    var source = server.createCommandSourceStack().withSuppressedOutput();
+                    for (var command : plan.setupCommands()) {
+                        try {
+                            server.getCommands().getDispatcher().execute(command, source);
+                        } catch (CommandSyntaxException e) {
+                            throw new IllegalArgumentException("撮影用セットアップに失敗: " + command + " (" + e.getMessage() + ")", e);
+                        }
+                    }
+                }, server);
+                return;
             }
             if (minecraft.player != null) {
                 minecraft.player.setNoGravity(true);
@@ -187,6 +214,7 @@ public final class ScreenshotRunner {
     }
 
     private boolean ready(Minecraft minecraft) {
+        if (index == 0 && !setupApplied && !plan.setupCommands().isEmpty()) return false;
         if (!movement.isDone() || movement.isCompletedExceptionally() || minecraft.player == null
                 || minecraft.level == null || minecraft.screen != null || minecraft.getOverlay() != null) return false;
         var point = plan.points().get(index);
@@ -195,19 +223,24 @@ public final class ScreenshotRunner {
                 || Math.abs(minecraft.player.getXRot() - point.pitch()) > 0.1) return false;
         var target = minecraft.getMainRenderTarget();
         if (target.width != plan.view().width() || target.height != plan.view().height()) return false;
-        var center = minecraft.player.chunkPosition();
-        int distance = plan.view().renderDistance();
-        for (int x = center.x - distance - 1; x <= center.x + distance + 1; x++) {
-            for (int z = center.z - distance - 1; z <= center.z + distance + 1; z++) {
-                if (ChunkTrackingView.isInViewDistance(center.x, center.z, distance, x, z)
-                        && !minecraft.level.hasChunk(x, z)) return false;
-            }
-        }
+        if (!chunksReady(minecraft)) return false;
         if (minecraft.level.getLightEngine().hasLightWork() || !minecraft.levelRenderer.hasRenderedAllSections()) return false;
         var sections = ((LevelRendererAccessor) minecraft.levelRenderer).visibleSections();
         if (sections.isEmpty()) return false;
         for (var section : sections) {
             if (section.isDirty() || section.getCompiled() == SectionRenderDispatcher.CompiledSection.UNCOMPILED) return false;
+        }
+        return true;
+    }
+
+    private boolean chunksReady(Minecraft minecraft) {
+        var center = minecraft.player.chunkPosition();
+        int distance = plan.view().renderDistance();
+        for (int x = center.x - distance - 1; x <= center.x + distance + 1; x++) {
+            for (int z = center.z - distance - 1; z <= center.z + distance + 1; z++) {
+                if (ChunkTrackingView.isInViewDistance(center.x, center.z, distance, x, z)
+                        && minecraft.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) return false;
+            }
         }
         return true;
     }

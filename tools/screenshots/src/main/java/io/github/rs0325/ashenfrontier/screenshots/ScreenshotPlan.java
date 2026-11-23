@@ -14,7 +14,8 @@ import java.util.Set;
 
 /** 撮影専用ワールドとカメラの設定。座標はプレイヤーの足元、角度はMinecraftの度単位。 */
 public record ScreenshotPlan(World world, String gameMode, Environment environment, View view,
-                             double timeoutSeconds, double startupTimeoutSeconds, List<Point> points) {
+                             double timeoutSeconds, double startupTimeoutSeconds, List<String> setupCommands,
+                             List<Point> points) {
     public ScreenshotPlan {
         require(world != null && environment != null && view != null, "world・environment・viewは必須です");
         require(Set.of("spectator", "creative", "survival", "adventure").contains(gameMode == null ? "" : gameMode),
@@ -22,6 +23,9 @@ public record ScreenshotPlan(World world, String gameMode, Environment environme
         range(timeoutSeconds, 1, 3600, "timeoutSeconds");
         range(startupTimeoutSeconds, 1, 3600, "startupTimeoutSeconds");
         require(points != null && !points.isEmpty(), "pointsを1件以上指定してください");
+        setupCommands = setupCommands == null ? List.of() : List.copyOf(setupCommands);
+        require(setupCommands.stream().allMatch(command -> command.startsWith("fill ") || command.startsWith("setblock ")),
+                "setupCommandsはfillまたはsetblockコマンドで指定してください");
         var names = new HashSet<String>();
         for (var point : points) {
             require(point != null, "地点にnullは指定できません");
@@ -45,6 +49,11 @@ public record ScreenshotPlan(World world, String gameMode, Environment environme
                 require(point.isJsonObject(), "地点はJSONオブジェクトで指定してください");
                 fields(point.getAsJsonObject(), "name", "x", "y", "z", "yaw", "pitch", "waitSeconds");
             }
+            if (root.has("setupCommands")) {
+                fields(root, "setupCommands");
+                require(root.getAsJsonArray("setupCommands").asList().stream().allMatch(value -> value.isJsonPrimitive()
+                        && value.getAsJsonPrimitive().isString()), "setupCommandsは文字列の配列で指定してください");
+            }
             return new Gson().fromJson(root, ScreenshotPlan.class);
         } catch (RuntimeException e) {
             throw new IllegalArgumentException("撮影計画を読めません: " + path, e);
@@ -57,7 +66,7 @@ public record ScreenshotPlan(World world, String gameMode, Environment environme
             var value = object.get(name);
             boolean valid = switch (name) {
                 case "world", "environment", "view" -> value.isJsonObject();
-                case "points" -> value.isJsonArray();
+                case "points", "setupCommands" -> value.isJsonArray();
                 case "hud", "debug" -> value.isJsonPrimitive() && value.getAsJsonPrimitive().isBoolean();
                 case "name", "preset", "gameMode", "weather" -> value.isJsonPrimitive() && value.getAsJsonPrimitive().isString();
                 default -> value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber();
