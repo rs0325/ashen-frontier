@@ -5,9 +5,11 @@ import io.github.rs0325.ashenfrontier.core.SoilContamination;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
 import io.github.rs0325.ashenfrontier.core.catalog.SedimentLayerBlock;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SnowLayerBlock;
+import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import java.util.ArrayList;
 import java.util.List;
@@ -148,17 +150,28 @@ public final class FixedTerrain {
                 double reach=TerrainMath.noise(map.seed(), "river_bank", river.x(), river.z(), 192);
                 double slope = .07 + .12*reach + .3*Math.max(0,river.bank());
                 double headwater=river.tributary()?1:1-TerrainMath.smooth((river.station()-2400)/1800);
-                slope+=(.65-slope)*headwater;
                 double cut=TerrainMath.valleyHeight(height,river.grade()+1,river.distance(),river.width(),slope);
-                double narrow=TerrainMath.smooth((river.distance()-river.width()-12)/36);
-                cut+=(height-cut)*narrow*headwater;
+                if(headwater>0) {
+                    double dx=Math.abs(x-river.x()),dz=Math.abs(z-river.z());
+                    double distance=river.tributary()?Math.max(dx,dz)+.5*Math.min(dx,dz):river.distance();
+                    double d=Math.max(0,distance-river.width());
+                    double shoulder=TerrainMath.fbm(map.seed(),"brook_shoulder",x,z,36);
+                    double v=river.surface()+.35+d*(.32+shoulder*.12)+Math.pow(d,1.35)*.02
+                            +shoulder*3*TerrainMath.smooth(d/8);
+                    if(river.tributary() && d<3)v+=.8*TerrainMath.smooth((TerrainMath.noise(map.seed(),"brook_boulders",x,z,9)-.65)/.2)
+                            *(1-TerrainMath.smooth(d/3));
+                    double bank=Math.min(height,v)+(height-Math.min(height,v))*TerrainMath.smooth((d-20)/100);
+                    cut+=(bank-cut)*headwater;
+                }
                 double terrace=(1-TerrainMath.smooth(Math.abs(river.distance()-river.width()-65)/32))
                         *TerrainMath.smooth((reach-.45)/.3)*(1-Math.max(0,river.bank()));
                 double bench=river.grade()+8+(river.distance()-river.width()-50)*.025;
                 height = Math.min(height,cut+(Math.min(cut,bench)-cut)*terrace);
                 double lip=TerrainMath.smooth((river.distance()-river.width())/4);
-                height=Math.min(height,river.surface()+1+(height-river.surface()-1)*lip);
-                height+=(Math.max(height,river.surface()+1)-height)*headwater
+                double rim=river.surface()+1-headwater*.65;
+                height=Math.min(height,rim+(height-rim)*lip);
+                double bankFloor=river.surface()+(river.riffle()>0 || river.tributary()?1:0);
+                height+=(Math.max(height,bankFloor)-height)*headwater
                         *(1-TerrainMath.smooth((river.distance()-river.width()-2)/6));
             }
             if (river.distance() >= river.width() && (map.category(4, x, z) & 4) != 0) {
@@ -217,11 +230,14 @@ public final class FixedTerrain {
         double rough=mountain>0?TerrainMath.rockRelief(map.seed(),x,z)
                 :(TerrainMath.noise(map.seed(),"lowland_rills",x+wx,z+wz,12)*2-1)*3;
         if(terminal>0)rough+=(TerrainMath.massifRelief(map.seed(),x,z)-rough)*terminal*mountain;
+        double headwater=TerrainMath.smooth((z+12650)/240.0)*TerrainMath.smooth((-10000-z)/300.0)
+                *TerrainMath.smooth((x+5100)/240.0)*TerrainMath.smooth((-3500-x)/240.0);
+        if(headwater>0 && mountain>0)rough+=(TerrainMath.massifRelief(map.seed(),x,z)-rough)*headwater;
         double steep=mountain>0?TerrainMath.smooth((Math.abs(map.height(x+16.0,z)-base)
                 +Math.abs(map.height((double)x,z+16)-base))/16):0;
         double bedding=(base+x*.12-z*.08)/8;
         double fraction=bedding-Math.floor(bedding);
-        double ledge=(TerrainMath.smooth((fraction-.2)/.6)-fraction)*8*Math.max(0,rough/16)*mountain*steep;
+        double ledge=(TerrainMath.smooth((fraction-.2)/.6)-fraction)*8*Math.max(0,rough/16)*mountain*steep*(1-headwater);
         int ceiling=base>350?map.mountainCeiling(x,z):520;
         double variation=(detail+rough*(.3+.3*terminal+(1.6-.4*terminal)*mountain*steep)+ledge)*weight
                 + TerrainMath.fbm(map.seed(), "terrace_detail", x, z, 32) * 1.4 * weight * TerrainMath.smooth(coast / 32);
@@ -292,7 +308,7 @@ public final class FixedTerrain {
 
     /** 列ごとに地層境界を一度計算する。列は呼出し元専有で、全Yの照会に再利用できる。 */
     public Column column(int x, int z) {
-        if (!MapCoordinates.contains(x, z)) return new Column(SoilContamination.CLEAN, -65, Integer.MIN_VALUE, null, null, new int[0], null, 0, 0, x, z, null, 0, null, -64, false, null, 0,0,0,1, null, 575, false);
+        if (!MapCoordinates.contains(x, z)) return new Column(SoilContamination.CLEAN, -65, Integer.MIN_VALUE, null, null, new int[0], null, 0, 0, x, z, null, 0, null, -64, false, null, 0,0,0,1, null, 575, false, Integer.MIN_VALUE);
         var relief = sampleSurface(map, x, z);
         int surface = relief.height;
         var profile = profiles[relief.coast >= 0 && map.mountainIsland(x,z) != null ? 3 : map.category(3, x, z)];
@@ -357,8 +373,14 @@ public final class FixedTerrain {
             double line = TerrainMath.snowline(map.seed(), x, z, Math.abs(MapCoordinates.latitude(z)), sx, sz, false);
             line+=(45-(230-Math.max(0,Math.abs(MapCoordinates.latitude(z))-45)*3))*boundary.cold();
             line -= Math.clamp(reference - relief.continuous, 0, 80) * .5 * mountain;
-            if(!relief.river.tributary() && relief.river.station()<240)
-                line-=100*(1-TerrainMath.smooth(relief.river.station()/240))*(1-TerrainMath.smooth(relief.river.distance()/96));
+            if(x>-4400 && x<-3600 && z>-12750 && z<-11750) {
+                double drift=TerrainMath.fbm(map.seed(),"headwater_snow",x,z,48);
+                double along=-12100-z,across=x+4000;
+                double catchment=Math.min(Math.min(TerrainMath.smooth((along+180+drift*50)/120),TerrainMath.smooth((540-along+drift*70)/160)),
+                        Math.min(TerrainMath.smooth((220-across+drift*60)/100),TerrainMath.smooth((across+260+drift*80)/120)));
+                catchment*=TerrainMath.smooth((190-relief.continuous+drift*20)/60);
+                line-=(80+drift*35+Math.clamp(hollow+sz*4,0,8)*3)*catchment;
+            }
             layers = rock ? 0 : TerrainMath.snowLayers(surface, line, slope);
             double margin=TerrainMath.smooth((relief.coast-8)/48);
             double edge=TerrainMath.smooth((relief.continuous-line+16)/32)*margin;
@@ -424,11 +446,19 @@ public final class FixedTerrain {
         }
         int waterKind = relief.coast < 0 ? 3 : relief.river.distance() < relief.river.width() ? 2 : 1;
         BlockState frozen = wet ? frozenWater(quality, x, z, relief.water, relief.water - surface, waterKind, boundary.cold()) : null;
+        int spill=relief.water;
+        if(frozen==null && relief.coast>=0 && relief.river.distance()<relief.river.width()
+                && (relief.river.riffle()>0 || relief.river.tributary())) {
+            for(var direction:Direction.Plane.HORIZONTAL) {
+                var neighbor=map.river(x+direction.getStepX(),z+direction.getStepZ());
+                if(neighbor.distance()<neighbor.width())spill=Math.max(spill,(int)neighbor.surface());
+            }
+        }
         boolean contactWeathered=anchor!=null && anchor.weathered();
         return new Column(pollution, surface, relief.water, surfaceMaterial, waters[quality], boundaries, profile, ice, snow, x, z, cell,
                 soilDepth, cap, coverY, powder, surfaceMaterial==null && (slope>.35 || mountain>.1) || contactWeathered ? weathered:null,
                 (int)(regionalFold*24+patch*3),geologyWeight,tilt+regionalFold*96+(island==null?0:displacement*3),
-                18+24*TerrainMath.noise(map.seed(),"rock_band_width",x,z,192), frozen, anchor == null ? 575 : (int) anchorY - 20, contactWeathered);
+                18+24*TerrainMath.noise(map.seed(),"rock_band_width",x,z,192), frozen, anchor == null ? 575 : (int) anchorY - 20, contactWeathered, spill);
     }
 
     BlockState frozenWater(int quality, int x, int z, int water, int depth, int kind, double cold) {
@@ -450,6 +480,8 @@ public final class FixedTerrain {
         BlockState material = soils[soil];
         double beachWidth = relief.shore.beachWidth();
         var river = relief.river;
+        if(river.tributary() && relief.water==Integer.MIN_VALUE && river.distance()<river.width()+2
+                && TerrainMath.noise(map.seed(),"brook_boulders",x,z,9)>.65)return Blocks.COBBLESTONE.defaultBlockState();
         double scatter = TerrainMath.noise(map.seed(), "material_edge", x, z, 1);
         boolean beach = relief.coast >= 0 && scatter < TerrainMath.smooth((beachWidth - relief.coast + 6) / 12);
         boolean bank = scatter < TerrainMath.smooth((river.width() + 12 + beachWidth * .4 - river.distance() + 5) / 10);
@@ -510,6 +542,7 @@ public final class FixedTerrain {
     public static final class Column {
         private final SoilContamination pollution;
         private final int surface, waterY;
+        private final int spillY;
         private final BlockState soil, water;
         private final BlockState frozenWater;
         private final int[] boundaries;
@@ -531,11 +564,12 @@ public final class FixedTerrain {
 
         private Column(SoilContamination pollution, int surface, int waterY, BlockState soil, BlockState water, int[] boundaries, Profile profile,
                        int ice, int snow, int x, int z, FixedUnderground.Cell underground, int soilDepth, BlockState cover, int coverY, boolean powder,
-                       BlockState[] facing, int facingOffset, double geologyWeight, double fold, double bandWidth, BlockState frozenWater, int contactFloor, boolean contactWeathered) {
+                       BlockState[] facing, int facingOffset, double geologyWeight, double fold, double bandWidth, BlockState frozenWater, int contactFloor, boolean contactWeathered, int spillY) {
             this.pollution = pollution;
             this.surface = surface;
             this.contactWeathered=contactWeathered;
             this.waterY = waterY;
+            this.spillY = spillY;
             this.frozenWater = frozenWater;
             this.soil = soil;
             this.water = water;
@@ -568,13 +602,14 @@ public final class FixedTerrain {
 
         /** 地質・施設用の基準Y。堆積薄層はこの最上段内または直上に収まり、実際の最上ブロックはtopYで得る。 */
         public int surfaceY() { return surface; }
-        public int topY() { return Math.max(cover == null ? surface : coverY, waterY); }
+        public int topY() { return Math.max(cover == null ? surface : coverY, spillY); }
 
         public BlockState state(int y) {
             if (profile == null || y < -128 || y > 575 || y > topY()) return Blocks.AIR.defaultBlockState();
             if (y == -128) return Blocks.BEDROCK.defaultBlockState();
             if (FixedUnderground.carved(passageFloors, y)) return Blocks.AIR.defaultBlockState();
-            if (y > surface) return frozenWater != null && y == waterY ? frozenWater : cover != null && y == coverY ? cover : water;
+            if (y > surface) return frozenWater != null && y == waterY ? frozenWater : cover != null && y == coverY ? cover
+                    : y>waterY ? water.setValue(LiquidBlock.LEVEL,8) : water;
             if (cover != null && y == coverY) return cover;
             if (powder && y >= surface - 1) return Blocks.POWDER_SNOW.defaultBlockState();
             if (snow > 0 && y > surface - snow) return Blocks.SNOW_BLOCK.defaultBlockState();

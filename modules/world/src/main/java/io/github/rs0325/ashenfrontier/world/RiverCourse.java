@@ -52,11 +52,16 @@ final class RiverCourse {
             double az=join.az-dz/length*run+dx/length*across*side;
             double branchLength=Math.hypot(join.ax-ax,join.az-az),base=Math.ceil(join.ay-1e-8)-.75;
             int steps=(int)Math.ceil(branchLength/4);
+            double px=ax,pz=az;
             for(int step=0;step<steps;step++) {
                 double t=step/(double)steps,u=(step+1)/(double)steps;
-                index(cells,drops,new Segment(ax+(join.ax-ax)*t,az+(join.az-az)*t,base+branchLength*(1-t)*.004,
-                        ax+(join.ax-ax)*u,az+(join.az-az)*u,base+branchLength*(1-u)*.004,
+                double bend=Math.sin(Math.PI*u)*(Math.sin(u*7+i)*9+TerrainMath.fbm(seed,"brook_bend",ax+(join.ax-ax)*u,az+(join.az-az)*u,48)*14);
+                double bx=ax+(join.ax-ax)*u-(join.az-az)/branchLength*bend;
+                double bz=az+(join.az-az)*u+(join.ax-ax)/branchLength*bend;
+                index(cells,drops,new Segment(px,pz,base+branchLength*(1-t)*.004,
+                        bx,bz,base+branchLength*(1-u)*.004,
                         join.station-branchLength*(1-t),0,true));
+                px=bx;pz=bz;
             }
         }
         cells.replaceAll((key, value) -> List.copyOf(value));
@@ -73,7 +78,7 @@ final class RiverCourse {
             double crossing=(segment.ay-Math.ceil(segment.by-1e-8))/(segment.ay-segment.by);
             drop=new Drop(segment.station+Math.hypot(segment.bx-segment.ax,segment.bz-segment.az)*Math.clamp(crossing,0,1));
         }
-        int radius=segment.tributary?48:256;
+        int radius=segment.tributary?144:256;
         for(int cx=(int)Math.floor((Math.min(segment.ax,segment.bx)-radius)/128);cx<=(int)Math.floor((Math.max(segment.ax,segment.bx)+radius)/128);cx++) {
             for(int cz=(int)Math.floor((Math.min(segment.az,segment.bz)-radius)/128);cz<=(int)Math.floor((Math.max(segment.az,segment.bz)+radius)/128);cz++) {
                 cells.computeIfAbsent(key(cx,cz),ignored->new ArrayList<>()).add(segment);
@@ -116,9 +121,10 @@ final class RiverCourse {
         double depth=1+.5*TerrainMath.smooth((station-400)/600)+TerrainMath.smooth((station-1000)/1700);
         width+=(22+reach*26+TerrainMath.noise(seed,"river_width",nearestX,nearestZ,96)*8-width)*growth;
         depth+=(5+reach*4-depth)*growth;
-        if(Math.sqrt(branchDistance)-.8<Math.sqrt(distance)-width && branchDistance<48*48)
+        double branchWidth=branchDistance<144*144?.72+.25*TerrainMath.noise(seed,"brook_width",branchX,branchZ,18):.8;
+        if(Math.sqrt(branchDistance)-branchWidth<Math.sqrt(distance)-width && branchDistance<144*144)
             return new Sample(Math.sqrt(branchDistance),Math.ceil(branchGrade-1e-8),(int)Math.round(branchX),(int)Math.round(branchZ),
-                    0,.8,0,1,branchGrade,branchStation,true);
+                    0,branchWidth,0,1,branchGrade,branchStation,true);
         return new Sample(Math.sqrt(distance), surface, (int) Math.round(nearestX), (int) Math.round(nearestZ),
                 1 - TerrainMath.smooth(toDrop / 8),width,bank,depth,grade,station,false);
     }

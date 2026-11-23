@@ -16,10 +16,19 @@ from PIL import Image
 
 from generate import (LAYERS, MAP_RESOURCES, OUTPUT, RESOURCE_FILES, ROOT, SIZE, TOOL,
                       drainage, generate, island_component, island_relief, load_inputs, main, mountain_coordinates, neighbors, pixel,
-                      raster_line, sha, termination_relief, validate, write_json)
+                      raster_line, sha, termination_relief, headwater_relief, validate, write_json)
 
 
 class FixedMapTests(unittest.TestCase):
+    def test_headwater_has_asymmetric_shoulders_and_joining_gullies(self):
+        x=np.array([-160,-220,-100,280,-280,300])
+        z=np.array([-260,-260,-260,40,40,-500])
+        height,weight=headwater_relief(x,z,0,0,np.zeros(6))
+        self.assertLess(height[0],min(height[1],height[2])-5)
+        self.assertGreater(height[3]-height[4],8)
+        self.assertGreater(weight[5],0)
+        np.testing.assert_allclose(headwater_relief(np.array([0]),np.array([0]),0,0,np.array([0]))[0],[114])
+
     def test_soil_quality_has_no_contaminated_or_toxic_category(self):
         self.assertLessEqual(int(self.layers["soil"].max()), 3)
         self.assertEqual(set(self.index["tables"]["soil"]), {"0", "1", "2", "3"})

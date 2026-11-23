@@ -23,7 +23,7 @@ OUTPUT = ROOT / MAP_RESOURCES / "earth_001"
 SIZE = 2048
 LAYERS = ("height", "region", "water", "soil", "geology", "coast_river")
 RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json", "underground.json")
-TOOL_VERSION = "1.16.0"
+TOOL_VERSION = "1.17.0"
 
 
 def sha(path):
@@ -205,6 +205,27 @@ def mountain_coordinates(mountain, bx, bz):
     return np.sqrt(squared),station,cross
 
 
+def headwater_relief(bx, bz, source_x, source_z, rough):
+    """非対称な岩の肩と、谷頭へ集まる折れた浅い沢筋。"""
+    north = source_z-bz
+    cross = bx-source_x+rough*28
+    margin = np.minimum.reduce([(cross+320+rough*65)/110,(380-cross+rough*40)/130,
+                                (north+230+rough*35)/120,(650-north+rough*75)/180])
+    weight = np.clip(margin,0,1)
+    weight = weight*weight*(3-2*weight)
+    height = 114+np.maximum(0,north)*.11+np.maximum(0,-cross)*.28+np.maximum(0,cross)*.53
+    height += rough*7+np.maximum(0,cross+north*.65-130)*.12
+    for points in [[[-220,-430],[-160,-260],[-70,-100],[0,0]],
+                   [[60,-520],[110,-340],[25,-170],[0,0]],
+                   [[280,-310],[210,-190],[90,-85],[0,0]]]:
+        distance,station,side = mountain_coordinates({"points":points},bx-source_x,bz-source_z)
+        length = sum(math.dist(a,b) for a,b in zip(points,points[1:]))
+        floor = 114+(length-station)*.065
+        channel = floor+distance*(.35+np.where(side>0,.12,0))+rough*3
+        height = np.minimum(height,channel)
+    return height,weight
+
+
 def ridge_variation(station, scale, seed):
     rng = np.random.Generator(np.random.PCG64(seed))
     values = rng.random(math.ceil(float(station.max())/scale)+2)
@@ -246,6 +267,10 @@ def mountain_relief(config, bx, bz, height, nw):
     rugged = np.clip(1-np.abs(noise(config["fixed_seed"]+91)/12),0,1)**2
     warp = noise(config["fixed_seed"]+92)/12
     influence = np.zeros(height.shape,bool)
+    river = config["river"]["points"]
+    valley_x = np.interp(bz,[p[1] for p in river],[p[0] for p in river])
+    upper = np.clip((380-np.abs(bx-valley_x))/180,0,1)*np.clip((bz+12650)/240,0,1)*np.clip((-10000-bz)/300,0,1)
+    upper = upper*upper*(3-2*upper)
     for i,mountain in enumerate(config["mountains"]):
         distance,station,cross = mountain_coordinates(mountain,bx,bz)
         radius = mountain["radius_blocks"]
@@ -253,6 +278,8 @@ def mountain_relief(config, bx, bz, height, nw):
         envelope = np.clip(1-distance/radius,0,1)
         phase = station/230+2.2*ridge_variation(station,600,config["fixed_seed"]+i+96)+distance/180+np.sign(cross)*.8+warp*2
         spurs = np.clip(1-np.abs(np.sin(phase))/(.18+.20*rugged),0,1)*(.5+.5*rugged)
+        irregular = np.clip(1-np.abs(warp+(rugged-.5)*.6)/(.3+.2*rugged),0,1)*(.5+.5*rugged)
+        spurs += (irregular-spurs)*upper
         terminal = np.clip(station/900,0,1) if i==0 else np.ones_like(station)
         target = 110+60*terminal+(55+50*terminal)*envelope+55*spurs*envelope
         for summit in mountain["summits"]:
@@ -430,13 +457,8 @@ def generate_assets(input_dir, output):
     head = np.abs(bx-source_x+40*np.sin((bz-source_z)/160))*.8
     head += np.maximum(0,source_z-bz)*.4+np.maximum(0,bz-source_z)*.06
     height = np.where(nw,np.minimum(height,110+head),height)
-    # 谷頭の底は雪を溜める浅いカール。水面は細い河道だけで決める。
-    source_distance = np.hypot(bx-source_x,bz-source_z)
-    cirque = 114+(bx-source_x)**2/500+np.maximum(0,source_z-bz)**2/300
-    cirque += np.maximum(0,bz-source_z)*.025
-    cirque_weight = np.clip((400-source_distance)/200,0,1)
-    cirque_weight = cirque_weight**2*(3-2*cirque_weight)*nw
-    height += (cirque-height)*cirque_weight
+    head_height,head_weight = headwater_relief(bx,bz,source_x,source_z,noise(config["fixed_seed"]+177)/12)
+    height += (head_height-height)*head_weight*nw
     coast = land & neighbors(~land)
     # 海岸の平滑な遷移。元の陸海輪郭は変えない。
     shore = np.array(Image.fromarray((~land).astype("uint8")*255).filter(ImageFilter.GaussianBlur(5)), dtype=np.float32)/255
