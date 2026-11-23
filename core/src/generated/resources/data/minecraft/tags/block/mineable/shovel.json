@@ -1,0 +1,17 @@
+{
+  "replace": false,
+  "values": [
+    "ashen_frontier:talus",
+    "ashen_frontier:talus_layer",
+    "ashen_frontier:river_gravel",
+    "ashen_frontier:glacial_till",
+    "ashen_frontier:silt",
+    "ashen_frontier:silt_layer",
+    "ashen_frontier:loess",
+    "ashen_frontier:loess_layer",
+    "ashen_frontier:black_sand",
+    "ashen_frontier:tidal_mud",
+    "ashen_frontier:organic_mud",
+    "ashen_frontier:cracked_mud"
+  ]
+}

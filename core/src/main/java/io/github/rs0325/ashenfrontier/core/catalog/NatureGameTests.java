@@ -21,6 +21,11 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.level.block.FallingBlock;
+import net.minecraft.world.level.block.SnowLayerBlock;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.phys.HitResult;
@@ -38,6 +43,68 @@ import java.util.UUID;
 @PrefixGameTestTemplate(false)
 public final class NatureGameTests {
     private NatureGameTests() {}
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    public static void creativeTabContainsEveryCoreItemOnce(GameTestHelper helper) {
+        var tab = CoreCreativeTab.CONTENTS.get();
+        tab.buildContents(new net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters(
+                net.minecraft.world.flag.FeatureFlags.VANILLA_SET, true, helper.getLevel().registryAccess()));
+        var displayed = tab.getDisplayItems().stream().map(ItemStack::getItem).toList();
+        var expected = BuiltInRegistries.ITEM.stream()
+                .filter(item -> BuiltInRegistries.ITEM.getKey(item).getNamespace().equals(AshenFrontierCore.NAMESPACE)).toList();
+        helper.assertTrue(displayed.size() == expected.size() && new java.util.HashSet<>(displayed).containsAll(expected),
+                "coreの登録済みアイテムを重複・欠落なく専用タブへ表示");
+        helper.assertTrue(displayed.stream().noneMatch(item -> item.getDefaultInstance().is(
+                net.minecraft.tags.ItemTags.create(AshenFrontierCore.id("removed_items")))), "削除対象のバニラ要素を追加しない");
+        AshenFrontierCore.LOGGER.info("CREATIVE_CONTENTS count={} ids={}", displayed.size(),
+                displayed.stream().map(item -> BuiltInRegistries.ITEM.getKey(item).toString()).toList());
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    public static void mudCollisionMatchesItsDepositionalType(GameTestHelper helper) {
+        for (String id : new String[]{"tidal_mud", "organic_mud", "peat", "cracked_mud"}) {
+            var block = NatureContent.block(id);
+            var shape = block.defaultBlockState().getCollisionShape(helper.getLevel(), BlockPos.ZERO);
+            double expected = id.equals("tidal_mud") || id.equals("organic_mud") ? 14 / 16.0 : 1;
+            helper.assertTrue(shape.max(Direction.Axis.Y) == expected, "泥の沈み込み: " + id);
+            helper.assertTrue(!(block instanceof FallingBlock), "泥は落下しない: " + id);
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    public static void sedimentLayersStackAndRecoverEveryLayer(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var pos = helper.absolutePos(new BlockPos(0, 2, 0));
+        var player = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "sediment-test"));
+        int count = 0;
+        for (var entry : NatureCatalog.entries()) {
+            if (!entry.sediment()) continue;
+            var block = NatureContent.block(entry.id());
+            helper.assertTrue((block instanceof FallingBlock) == entry.kind().equals("falling_sediment"), "堆積物の落下特性: " + entry.id());
+            if (!entry.layer()) continue;
+            level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+            for (int layers = 1; layers <= 8; layers++) {
+                var state = block.defaultBlockState().setValue(SnowLayerBlock.LAYERS, layers);
+                level.setBlock(pos, state, Block.UPDATE_CLIENTS);
+                helper.assertTrue(state.canSurvive(level, pos), "堆積層の支持");
+                helper.assertTrue(state.getShape(level, pos).max(Direction.Axis.Y) == layers / 8.0, "堆積層の形状");
+                var drops = Block.getDrops(state, level, pos, null, player, new ItemStack(Items.IRON_SHOVEL));
+                helper.assertTrue(drops.size() == 1 && drops.getFirst().is(block.asItem()) && drops.getFirst().getCount() == layers,
+                        "堆積層の回収数: " + entry.id() + " layers=" + layers);
+                var context = new BlockPlaceContext(player, InteractionHand.MAIN_HAND, new ItemStack(block),
+                        new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
+                if (layers < 8) helper.assertTrue(block.getStateForPlacement(context).getValue(SnowLayerBlock.LAYERS) == layers + 1, "堆積層の重ね置き");
+                level.setBlock(pos.below(), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+                helper.assertTrue(!state.canSurvive(level, pos), "空中に堆積層を支持しない");
+                level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+                count++;
+            }
+        }
+        AshenFrontierCore.LOGGER.info("堆積層の形状・積層・支持・回収: {}状態成功", count);
+        helper.succeed();
+    }
 
     @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
     public static void itemsRetainMaterialAndQuality(GameTestHelper helper) {
@@ -186,6 +253,31 @@ public final class NatureGameTests {
         helper.assertTrue(result.consumesAction() && level.getBlockState(pos).is(Blocks.WATER)
                 && player.getMainHandItem().is(Items.BUCKET), "対照の空き位置へ水を置けない");
         AshenFrontierCore.LOGGER.info("水バケツによる品質上書きの拒否: {}状態成功（空き位置への配置の対照も成功）", count);
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierCore.MOD_ID)
+    public static void naturalIceDoesNotMeltOrReleaseWater(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var pos = helper.absolutePos(new BlockPos(0, 2, 0));
+        var player = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "ice-test"));
+        player.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
+        for (var entry : NatureCatalog.entries()) {
+            if (!entry.kind().equals("ice")) continue;
+            var block = NatureContent.block(entry.id());
+            var state = block.defaultBlockState();
+            helper.assertTrue(!state.isRandomlyTicking(), "光による融解tickを登録しない: " + entry.id());
+            helper.assertTrue(block.getFriction() == Blocks.ICE.getFriction(), "氷と同じ滑りやすさ");
+            level.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+            level.setBlock(pos, state, Block.UPDATE_ALL);
+            state.randomTick(level, pos, level.random);
+            helper.assertTrue(level.getBlockState(pos) == state, "randomTickでも氷が融解しない");
+            var drops = Block.getDrops(state, level, pos, null, player, new ItemStack(Items.DIAMOND_PICKAXE));
+            helper.assertTrue(drops.size() == 1 && drops.getFirst().is(block.asItem()), "シルクタッチなしで自己回収");
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND_PICKAXE));
+            helper.assertTrue(player.gameMode.destroyBlock(pos), "ツルハシで氷を破壊");
+            helper.assertTrue(level.getBlockState(pos).isAir() && level.getFluidState(pos).isEmpty(), "破壊後に水を出さない");
+        }
         helper.succeed();
     }
 

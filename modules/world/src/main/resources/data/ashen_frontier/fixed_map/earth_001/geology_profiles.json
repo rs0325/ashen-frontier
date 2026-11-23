@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "profile_version": "geology_001",
+  "profile_version": "geology_002",
   "catalog": {
     "version": 1,
     "commit": "d033a41789694242f619d327b04062509dad7720",
@@ -55,7 +55,8 @@
           0
         ]
       },
-      "faults": []
+      "faults": [],
+      "reference_y": 90
     },
     "1": {
       "name": "unclassified_land",
@@ -80,7 +81,8 @@
           0
         ]
       },
-      "faults": []
+      "faults": [],
+      "reference_y": 90
     },
     "2": {
       "name": "plain_profile",
@@ -129,7 +131,8 @@
           0.001
         ]
       },
-      "faults": []
+      "faults": [],
+      "reference_y": 100
     },
     "3": {
       "name": "mountain_profile",
@@ -182,7 +185,14 @@
           ],
           "throw_blocks": 12
         }
-      ]
+      ],
+      "reference_y": 440,
+      "uplift": {
+        "axis_z": -11800,
+        "half_width_blocks": 600,
+        "transition_blocks": 2200,
+        "drop_blocks": 180
+      }
     },
     "4": {
       "name": "arid_profile",
@@ -239,7 +249,8 @@
           0.0005
         ]
       },
-      "faults": []
+      "faults": [],
+      "reference_y": 110
     },
     "5": {
       "name": "coastal_profile",
@@ -288,8 +299,10 @@
           0.001
         ]
       },
-      "faults": []
+      "faults": [],
+      "reference_y": 96
     }
   },
+  "island_reference_y": 180,
   "map_version": "earth_001"
 }

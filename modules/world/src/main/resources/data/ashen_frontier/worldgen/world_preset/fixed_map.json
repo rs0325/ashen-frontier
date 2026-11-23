@@ -1,13 +1,13 @@
 {
   "dimensions": {
     "minecraft:overworld": {
-      "type": "minecraft:overworld",
+      "type": "ashen_frontier:fixed_map",
       "generator": {
         "type": "ashen_frontier:fixed_map",
         "map": {
           "map_version": "earth_001",
           "format_version": 1,
-          "manifest_hash": "55103034fcf275b448933742e7cf10dbd03936b4c6d4f4a234d11ac9b1fd0933"
+          "manifest_hash": "cec5efacc41283b5909d5bbc2708c7a8e487e28f5942dad4d2a2bc3010e9de52"
         },
         "biome_source": {
           "biomes": [
@@ -27,7 +27,7 @@
           "map": {
             "map_version": "earth_001",
             "format_version": 1,
-            "manifest_hash": "55103034fcf275b448933742e7cf10dbd03936b4c6d4f4a234d11ac9b1fd0933"
+            "manifest_hash": "cec5efacc41283b5909d5bbc2708c7a8e487e28f5942dad4d2a2bc3010e9de52"
           }
         }
       }

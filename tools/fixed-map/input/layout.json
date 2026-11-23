@@ -4,24 +4,191 @@
   "fixed_seed": 520026,
   "catalog_version": "profiles_001",
   "regions": {
-    "0": {"en_us": "Ocean", "ja_jp": "海"},
-    "1": {"en_us": "Initial survival", "ja_jp": "初期生存地域"},
-    "2": {"en_us": "Former agriculture", "ja_jp": "旧農業地帯"},
-    "3": {"en_us": "Mining", "ja_jp": "鉱業地帯"},
-    "4": {"en_us": "Inland arid", "ja_jp": "内陸乾燥地域"},
-    "5": {"en_us": "Industry", "ja_jp": "工業地帯"},
-    "6": {"en_us": "Coastal industry", "ja_jp": "沿岸工業地帯"},
-    "7": {"en_us": "Northern cold research", "ja_jp": "寒冷研究地域（北）"},
-    "255": {"en_us": "Unassigned land", "ja_jp": "未割当て陸地"}
+    "0": {
+      "en_us": "Ocean",
+      "ja_jp": "海"
+    },
+    "1": {
+      "en_us": "Initial survival",
+      "ja_jp": "初期生存地域"
+    },
+    "2": {
+      "en_us": "Former agriculture",
+      "ja_jp": "旧農業地帯"
+    },
+    "3": {
+      "en_us": "Mining",
+      "ja_jp": "鉱業地帯"
+    },
+    "4": {
+      "en_us": "Inland arid",
+      "ja_jp": "内陸乾燥地域"
+    },
+    "5": {
+      "en_us": "Industry",
+      "ja_jp": "工業地帯"
+    },
+    "6": {
+      "en_us": "Coastal industry",
+      "ja_jp": "沿岸工業地帯"
+    },
+    "7": {
+      "en_us": "Northern cold research",
+      "ja_jp": "寒冷研究地域（北）"
+    },
+    "255": {
+      "en_us": "Unassigned land",
+      "ja_jp": "未割当て陸地"
+    }
   },
   "region_polygons": [
-    {"id": 7, "points": [[-16384,-16384],[16384,-16384],[16384,-13312],[-16384,-13312]]},
-    {"id": 3, "points": [[-16384,-13312],[16384,-13312],[16384,-10240],[-16384,-10240]]},
-    {"id": 1, "points": [[-16384,-10240],[-6000,-10240],[-6000,-7168],[-16384,-7168]]},
-    {"id": 2, "points": [[-6000,-10240],[16384,-10240],[16384,-7168],[-6000,-7168]]},
-    {"id": 4, "points": [[-16384,-7168],[-8500,-7168],[-8500,16384],[-16384,16384]]},
-    {"id": 5, "points": [[-8500,-7168],[16384,-7168],[16384,16384],[-8500,16384]]},
-    {"id": 6, "points": [[-5000,-6144],[16384,-6144],[16384,16384],[-5000,16384]]}
+    {
+      "id": 7,
+      "points": [
+        [
+          -16384,
+          -16384
+        ],
+        [
+          16384,
+          -16384
+        ],
+        [
+          16384,
+          -13312
+        ],
+        [
+          -16384,
+          -13312
+        ]
+      ]
+    },
+    {
+      "id": 3,
+      "points": [
+        [
+          -16384,
+          -13312
+        ],
+        [
+          16384,
+          -13312
+        ],
+        [
+          16384,
+          -10240
+        ],
+        [
+          -16384,
+          -10240
+        ]
+      ]
+    },
+    {
+      "id": 1,
+      "points": [
+        [
+          -16384,
+          -10240
+        ],
+        [
+          -6000,
+          -10240
+        ],
+        [
+          -6000,
+          -7168
+        ],
+        [
+          -16384,
+          -7168
+        ]
+      ]
+    },
+    {
+      "id": 2,
+      "points": [
+        [
+          -6000,
+          -10240
+        ],
+        [
+          16384,
+          -10240
+        ],
+        [
+          16384,
+          -7168
+        ],
+        [
+          -6000,
+          -7168
+        ]
+      ]
+    },
+    {
+      "id": 4,
+      "points": [
+        [
+          -16384,
+          -7168
+        ],
+        [
+          -8500,
+          -7168
+        ],
+        [
+          -8500,
+          16384
+        ],
+        [
+          -16384,
+          16384
+        ]
+      ]
+    },
+    {
+      "id": 5,
+      "points": [
+        [
+          -8500,
+          -7168
+        ],
+        [
+          16384,
+          -7168
+        ],
+        [
+          16384,
+          16384
+        ],
+        [
+          -8500,
+          16384
+        ]
+      ]
+    },
+    {
+      "id": 6,
+      "points": [
+        [
+          -5000,
+          -6144
+        ],
+        [
+          16384,
+          -6144
+        ],
+        [
+          16384,
+          16384
+        ],
+        [
+          -5000,
+          16384
+        ]
+      ]
+    }
   ],
   "region_boundaries": {
     "north_south_noise_scale": 12,
@@ -29,37 +196,1918 @@
     "elevation_z_scale": 2,
     "elevation_x_scale": 10,
     "agriculture_river_offset": 900,
-    "southern_divide": [[-10000,-7168],[-9600,-6800],[-9000,-6000],[-8200,-5200],[-7900,-4000],[-7600,-2662]],
+    "southern_divide": [
+      [
+        -10000,
+        -7168
+      ],
+      [
+        -9600,
+        -6800
+      ],
+      [
+        -9000,
+        -6000
+      ],
+      [
+        -8200,
+        -5200
+      ],
+      [
+        -7900,
+        -4000
+      ],
+      [
+        -7600,
+        -2662
+      ]
+    ],
     "coastal_distance_blocks": 640
   },
-  "mountain": {"points": [[-14000,-11776],[-10000,-11900],[-6000,-11800],[-2000,-12200],[3000,-11776]], "radius_blocks": 1100, "peak_y": 235},
-  "river": {"id": "northwest_main", "points": [[-4000,-12100],[-4500,-10600],[-4900,-9500],[-5000,-8200],[-4700,-7200],[-4500,-6400],[-4300,-5500],[-3500,-5000]], "width_blocks": 80, "meander_blocks": 180},
+  "terrain_base_y": 82,
+  "ocean_features": [
+    {
+      "id": "margin_trench",
+      "kind": "trench",
+      "points": [
+        [
+          -8800,
+          -15000
+        ],
+        [
+          -7200,
+          -15100
+        ],
+        [
+          -6000,
+          -15150
+        ]
+      ],
+      "width_blocks": 16,
+      "relief_blocks": 80,
+      "status": "confirmed"
+    },
+    {
+      "id": "ocean_ridge",
+      "kind": "ridge",
+      "points": [
+        [
+          9500,
+          8500
+        ],
+        [
+          10500,
+          10000
+        ],
+        [
+          12000,
+          11500
+        ]
+      ],
+      "width_blocks": 650,
+      "relief_blocks": 48,
+      "status": "confirmed"
+    },
+    {
+      "id": "ocean_seamount",
+      "kind": "seamount",
+      "points": [
+        [
+          1000,
+          0
+        ]
+      ],
+      "width_blocks": 600,
+      "relief_blocks": 82,
+      "status": "confirmed"
+    }
+  ],
+  "mountains": [
+    {
+      "id": "north_main",
+      "points": [
+        [
+          -14000,
+          -11776
+        ],
+        [
+          -10000,
+          -11900
+        ],
+        [
+          -6000,
+          -11800
+        ],
+        [
+          -2000,
+          -12200
+        ],
+        [
+          3000,
+          -11776
+        ]
+      ],
+      "radius_blocks": 1100,
+      "peak_y": 520,
+      "foothill_y": 130,
+      "passes": [
+        {
+          "route": "north_path",
+          "xz": [
+            -7920,
+            -11848
+          ],
+          "surface_y": 190
+        }
+      ],
+      "summits": [
+        {
+          "xz": [
+            -13500,
+            -11712
+          ],
+          "peak_y": 493,
+          "radius_blocks": 486,
+          "axis_degrees": 18,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -13240,
+            -12202
+          ],
+          "peak_y": 319,
+          "radius_blocks": 342,
+          "axis_degrees": -27,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            -12600,
+            -11905
+          ],
+          "peak_y": 513,
+          "radius_blocks": 603,
+          "axis_degrees": 34,
+          "aspect": 0.7
+        },
+        {
+          "xz": [
+            -12340,
+            -11455
+          ],
+          "peak_y": 353,
+          "radius_blocks": 423,
+          "axis_degrees": -12,
+          "aspect": 0.95
+        },
+        {
+          "xz": [
+            -12110,
+            -11818
+          ],
+          "peak_y": 480,
+          "radius_blocks": 522,
+          "axis_degrees": 8,
+          "aspect": 1.15
+        },
+        {
+          "xz": [
+            -11850,
+            -12248
+          ],
+          "peak_y": 333,
+          "radius_blocks": 378,
+          "axis_degrees": 18,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -11160,
+            -11891
+          ],
+          "peak_y": 520,
+          "radius_blocks": 648,
+          "axis_degrees": -27,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            -10900,
+            -11501
+          ],
+          "peak_y": 319,
+          "radius_blocks": 468,
+          "axis_degrees": 34,
+          "aspect": 0.7
+        },
+        {
+          "xz": [
+            -10680,
+            -11804
+          ],
+          "peak_y": 500,
+          "radius_blocks": 441,
+          "axis_degrees": -12,
+          "aspect": 0.95
+        },
+        {
+          "xz": [
+            -10420,
+            -12294
+          ],
+          "peak_y": 353,
+          "radius_blocks": 342,
+          "axis_degrees": 8,
+          "aspect": 1.15
+        },
+        {
+          "xz": [
+            -9710,
+            -11984
+          ],
+          "peak_y": 493,
+          "radius_blocks": 486,
+          "axis_degrees": 18,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -9450,
+            -11534
+          ],
+          "peak_y": 333,
+          "radius_blocks": 423,
+          "axis_degrees": -27,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            -8830,
+            -11855
+          ],
+          "peak_y": 513,
+          "radius_blocks": 603,
+          "axis_degrees": 34,
+          "aspect": 0.7
+        },
+        {
+          "xz": [
+            -8570,
+            -12285
+          ],
+          "peak_y": 319,
+          "radius_blocks": 378,
+          "axis_degrees": -12,
+          "aspect": 0.95
+        },
+        {
+          "xz": [
+            -8370,
+            -11886
+          ],
+          "peak_y": 480,
+          "radius_blocks": 522,
+          "axis_degrees": 8,
+          "aspect": 1.15
+        },
+        {
+          "xz": [
+            -8110,
+            -11496
+          ],
+          "peak_y": 353,
+          "radius_blocks": 468,
+          "axis_degrees": 18,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -7440,
+            -11758
+          ],
+          "peak_y": 520,
+          "radius_blocks": 648,
+          "axis_degrees": -27,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            -7180,
+            -12248
+          ],
+          "peak_y": 333,
+          "radius_blocks": 342,
+          "axis_degrees": 34,
+          "aspect": 0.7
+        },
+        {
+          "xz": [
+            -6810,
+            -11909
+          ],
+          "peak_y": 500,
+          "radius_blocks": 441,
+          "axis_degrees": -12,
+          "aspect": 0.95
+        },
+        {
+          "xz": [
+            -6550,
+            -11459
+          ],
+          "peak_y": 319,
+          "radius_blocks": 423,
+          "axis_degrees": 8,
+          "aspect": 1.15
+        },
+        {
+          "xz": [
+            -5820,
+            -11780
+          ],
+          "peak_y": 493,
+          "radius_blocks": 486,
+          "axis_degrees": 18,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -5560,
+            -12210
+          ],
+          "peak_y": 353,
+          "radius_blocks": 378,
+          "axis_degrees": -27,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            -5390,
+            -11905
+          ],
+          "peak_y": 513,
+          "radius_blocks": 603,
+          "axis_degrees": 34,
+          "aspect": 0.7
+        },
+        {
+          "xz": [
+            -5130,
+            -11515
+          ],
+          "peak_y": 333,
+          "radius_blocks": 468,
+          "axis_degrees": -12,
+          "aspect": 0.95
+        },
+        {
+          "xz": [
+            -4470,
+            -11870
+          ],
+          "peak_y": 480,
+          "radius_blocks": 522,
+          "axis_degrees": 8,
+          "aspect": 1.15
+        },
+        {
+          "xz": [
+            -4210,
+            -12360
+          ],
+          "peak_y": 319,
+          "radius_blocks": 342,
+          "axis_degrees": 18,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -3640,
+            -12115
+          ],
+          "peak_y": 520,
+          "radius_blocks": 648,
+          "axis_degrees": -27,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            -3380,
+            -11665
+          ],
+          "peak_y": 353,
+          "radius_blocks": 423,
+          "axis_degrees": 34,
+          "aspect": 0.7
+        },
+        {
+          "xz": [
+            -3090,
+            -12080
+          ],
+          "peak_y": 500,
+          "radius_blocks": 441,
+          "axis_degrees": -12,
+          "aspect": 0.95
+        },
+        {
+          "xz": [
+            -2830,
+            -12510
+          ],
+          "peak_y": 333,
+          "radius_blocks": 378,
+          "axis_degrees": 8,
+          "aspect": 1.15
+        },
+        {
+          "xz": [
+            -2090,
+            -12205
+          ],
+          "peak_y": 493,
+          "radius_blocks": 486,
+          "axis_degrees": 18,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -1830,
+            -11815
+          ],
+          "peak_y": 319,
+          "radius_blocks": 468,
+          "axis_degrees": -27,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            -1540,
+            -12078
+          ],
+          "peak_y": 513,
+          "radius_blocks": 603,
+          "axis_degrees": 34,
+          "aspect": 0.7
+        },
+        {
+          "xz": [
+            -1280,
+            -12568
+          ],
+          "peak_y": 353,
+          "radius_blocks": 342,
+          "axis_degrees": -12,
+          "aspect": 0.95
+        },
+        {
+          "xz": [
+            -680,
+            -12184
+          ],
+          "peak_y": 480,
+          "radius_blocks": 522,
+          "axis_degrees": 8,
+          "aspect": 1.15
+        },
+        {
+          "xz": [
+            -420,
+            -11734
+          ],
+          "peak_y": 333,
+          "radius_blocks": 423,
+          "axis_degrees": 18,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -150,
+            -12010
+          ],
+          "peak_y": 520,
+          "radius_blocks": 648,
+          "axis_degrees": -27,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            110,
+            -12440
+          ],
+          "peak_y": 319,
+          "radius_blocks": 378,
+          "axis_degrees": 34,
+          "aspect": 0.7
+        },
+        {
+          "xz": [
+            870,
+            -11997
+          ],
+          "peak_y": 500,
+          "radius_blocks": 441,
+          "axis_degrees": -12,
+          "aspect": 0.95
+        },
+        {
+          "xz": [
+            1130,
+            -11607
+          ],
+          "peak_y": 353,
+          "radius_blocks": 468,
+          "axis_degrees": 8,
+          "aspect": 1.15
+        },
+        {
+          "xz": [
+            1430,
+            -11823
+          ],
+          "peak_y": 493,
+          "radius_blocks": 486,
+          "axis_degrees": 18,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            1690,
+            -12313
+          ],
+          "peak_y": 333,
+          "radius_blocks": 342,
+          "axis_degrees": -27,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            2250,
+            -11930
+          ],
+          "peak_y": 513,
+          "radius_blocks": 603,
+          "axis_degrees": 34,
+          "aspect": 0.7
+        },
+        {
+          "xz": [
+            2510,
+            -11480
+          ],
+          "peak_y": 319,
+          "radius_blocks": 423,
+          "axis_degrees": -12,
+          "aspect": 0.95
+        },
+        {
+          "xz": [
+            3020,
+            -11756
+          ],
+          "peak_y": 480,
+          "radius_blocks": 522,
+          "axis_degrees": 8,
+          "aspect": 1.15
+        },
+        {
+          "xz": [
+            3280,
+            -12186
+          ],
+          "peak_y": 353,
+          "radius_blocks": 378,
+          "axis_degrees": 18,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -11456,
+            -11856
+          ],
+          "peak_y": 520,
+          "radius_blocks": 648,
+          "axis_degrees": -27,
+          "aspect": 1.05
+        }
+      ],
+      "termination": {
+        "join_x": -12800,
+        "transition_blocks": 500,
+        "base_y": 88,
+        "ridges": [
+          [
+            [
+              -12980,
+              -11840,
+              430,
+              250
+            ],
+            [
+              -13240,
+              -12202,
+              319,
+              190
+            ],
+            [
+              -13200,
+              -12500,
+              150,
+              110
+            ],
+            [
+              -13240,
+              -12680,
+              70,
+              45
+            ]
+          ],
+          [
+            [
+              -12980,
+              -11840,
+              430,
+              250
+            ],
+            [
+              -13500,
+              -11712,
+              493,
+              220
+            ],
+            [
+              -13740,
+              -11760,
+              295,
+              140
+            ],
+            [
+              -13920,
+              -11770,
+              145,
+              90
+            ],
+            [
+              -14000,
+              -11780,
+              75,
+              40
+            ]
+          ],
+          [
+            [
+              -13500,
+              -11712,
+              493,
+              220
+            ],
+            [
+              -13480,
+              -11520,
+              285,
+              150
+            ],
+            [
+              -13480,
+              -11300,
+              190,
+              110
+            ],
+            [
+              -13540,
+              -11140,
+              130,
+              85
+            ],
+            [
+              -13700,
+              -11000,
+              95,
+              55
+            ],
+            [
+              -13840,
+              -10800,
+              66,
+              25
+            ]
+          ],
+          [
+            [
+              -13740,
+              -11760,
+              295,
+              140
+            ],
+            [
+              -13840,
+              -11660,
+              180,
+              90
+            ],
+            [
+              -13960,
+              -11540,
+              95,
+              50
+            ],
+            [
+              -14064,
+              -11488,
+              68,
+              28
+            ]
+          ]
+        ],
+        "valleys": [
+          [
+            [
+              -13580,
+              -11860,
+              230,
+              55
+            ],
+            [
+              -13600,
+              -11970,
+              100,
+              75
+            ],
+            [
+              -13640,
+              -12110,
+              64,
+              65
+            ]
+          ],
+          [
+            [
+              -13520,
+              -11660,
+              260,
+              50
+            ],
+            [
+              -13550,
+              -11580,
+              100,
+              60
+            ],
+            [
+              -13580,
+              -11520,
+              64,
+              70
+            ]
+          ],
+          [
+            [
+              -13320,
+              -11940,
+              280,
+              50
+            ],
+            [
+              -13360,
+              -12200,
+              130,
+              75
+            ],
+            [
+              -13480,
+              -12540,
+              64,
+              70
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "north_branch",
+      "points": [
+        [
+          -3800,
+          -12020
+        ],
+        [
+          -2368,
+          -14992
+        ]
+      ],
+      "radius_blocks": 700,
+      "peak_y": 440,
+      "foothill_y": 100,
+      "passes": [],
+      "summits": [
+        {
+          "xz": [
+            -3616,
+            -12232
+          ],
+          "peak_y": 422,
+          "radius_blocks": 387,
+          "axis_degrees": -38,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -3880,
+            -12480
+          ],
+          "peak_y": 313,
+          "radius_blocks": 315,
+          "axis_degrees": -38,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -3568,
+            -12728
+          ],
+          "peak_y": 440,
+          "radius_blocks": 450,
+          "axis_degrees": -12,
+          "aspect": 1.1
+        },
+        {
+          "xz": [
+            -3216,
+            -12680
+          ],
+          "peak_y": 331,
+          "radius_blocks": 315,
+          "axis_degrees": -12,
+          "aspect": 1.1
+        },
+        {
+          "xz": [
+            -3160,
+            -13096
+          ],
+          "peak_y": 406,
+          "radius_blocks": 423,
+          "axis_degrees": 16,
+          "aspect": 0.9
+        },
+        {
+          "xz": [
+            -3416,
+            -13344
+          ],
+          "peak_y": 297,
+          "radius_blocks": 315,
+          "axis_degrees": 16,
+          "aspect": 0.9
+        },
+        {
+          "xz": [
+            -3088,
+            -13640
+          ],
+          "peak_y": 434,
+          "radius_blocks": 396,
+          "axis_degrees": -28,
+          "aspect": 0.85
+        },
+        {
+          "xz": [
+            -2752,
+            -13600
+          ],
+          "peak_y": 325,
+          "radius_blocks": 315,
+          "axis_degrees": -28,
+          "aspect": 0.85
+        },
+        {
+          "xz": [
+            -2728,
+            -14056
+          ],
+          "peak_y": 412,
+          "radius_blocks": 441,
+          "axis_degrees": 32,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            -2968,
+            -14296
+          ],
+          "peak_y": 303,
+          "radius_blocks": 315,
+          "axis_degrees": 32,
+          "aspect": 1.05
+        },
+        {
+          "xz": [
+            -2672,
+            -14528
+          ],
+          "peak_y": 348,
+          "radius_blocks": 324,
+          "axis_degrees": -20,
+          "aspect": 0.8
+        },
+        {
+          "xz": [
+            -2400,
+            -14520
+          ],
+          "peak_y": 239,
+          "radius_blocks": 315,
+          "axis_degrees": -20,
+          "aspect": 0.8
+        }
+      ]
+    }
+  ],
+  "mountain_islands": [
+    {
+      "id": "branch_island_south_west",
+      "parent_id": "branch_island_south",
+      "anchor_xz": [
+        -4992,
+        -14704
+      ],
+      "peak_y": 195,
+      "summits": [
+        {
+          "xz": [
+            -4912,
+            -14720
+          ],
+          "peak_y": 195,
+          "radius_blocks": 108.0,
+          "axis_degrees": 75
+        },
+        {
+          "xz": [
+            -4912,
+            -14832
+          ],
+          "peak_y": 172,
+          "radius_blocks": 96.0,
+          "axis_degrees": 20
+        },
+        {
+          "xz": [
+            -4928,
+            -14656
+          ],
+          "peak_y": 158,
+          "radius_blocks": 92.0,
+          "axis_degrees": -20
+        }
+      ]
+    },
+    {
+      "id": "branch_island_south_central",
+      "parent_id": "branch_island_south",
+      "anchor_xz": [
+        -4720,
+        -14816
+      ],
+      "peak_y": 205,
+      "summits": [
+        {
+          "xz": [
+            -4736,
+            -14784
+          ],
+          "peak_y": 205,
+          "radius_blocks": 104.39999999999999,
+          "axis_degrees": 30
+        },
+        {
+          "xz": [
+            -4784,
+            -14880
+          ],
+          "peak_y": 176,
+          "radius_blocks": 92.0,
+          "axis_degrees": 90
+        },
+        {
+          "xz": [
+            -4736,
+            -14688
+          ],
+          "peak_y": 165,
+          "radius_blocks": 92.0,
+          "axis_degrees": 0
+        }
+      ]
+    },
+    {
+      "id": "branch_island_south_east",
+      "parent_id": "branch_island_south",
+      "anchor_xz": [
+        -4496,
+        -14688
+      ],
+      "peak_y": 150,
+      "summits": [
+        {
+          "xz": [
+            -4528,
+            -14672
+          ],
+          "peak_y": 150,
+          "radius_blocks": 68.39999999999999,
+          "axis_degrees": 35
+        },
+        {
+          "xz": [
+            -4480,
+            -14656
+          ],
+          "peak_y": 130,
+          "radius_blocks": 64.0,
+          "axis_degrees": -20
+        }
+      ]
+    },
+    {
+      "id": "branch_island_north_west",
+      "parent_id": "branch_island_north",
+      "anchor_xz": [
+        -5168,
+        -14960
+      ],
+      "peak_y": 130,
+      "summits": [
+        {
+          "xz": [
+            -5152,
+            -14960
+          ],
+          "peak_y": 130,
+          "radius_blocks": 61.199999999999996,
+          "axis_degrees": 50
+        },
+        {
+          "xz": [
+            -5184,
+            -14928
+          ],
+          "peak_y": 124,
+          "radius_blocks": 64.0,
+          "axis_degrees": 0
+        }
+      ]
+    },
+    {
+      "id": "branch_island_north_east",
+      "parent_id": "branch_island_north",
+      "anchor_xz": [
+        -5104,
+        -15072
+      ],
+      "peak_y": 150,
+      "summits": [
+        {
+          "xz": [
+            -4960,
+            -15104
+          ],
+          "peak_y": 150,
+          "radius_blocks": 68.39999999999999,
+          "axis_degrees": 10
+        },
+        {
+          "xz": [
+            -4992,
+            -15072
+          ],
+          "peak_y": 130,
+          "radius_blocks": 68.0,
+          "axis_degrees": 55
+        }
+      ]
+    }
+  ],
+  "river": {
+    "id": "northwest_main",
+    "points": [
+      [
+        -4000,
+        -12100
+      ],
+      [
+        -4500,
+        -10600
+      ],
+      [
+        -4900,
+        -9500
+      ],
+      [
+        -5000,
+        -8200
+      ],
+      [
+        -4700,
+        -7200
+      ],
+      [
+        -4500,
+        -6400
+      ],
+      [
+        -4300,
+        -5500
+      ],
+      [
+        -3500,
+        -5000
+      ]
+    ],
+    "width_blocks": 80,
+    "meander_blocks": 180
+  },
   "facilities": [
-    {"id": "spawn", "region": 1, "xz": [-8500,-8192], "surface_y": 100, "floor_y": 80, "protection_radius": 96, "distance_range": [0,0]},
-    {"id": "agriculture", "region": 2, "xz": [-5500,-8192], "surface_y": 100, "protection_radius": 96, "distance_range": [0,3000]},
-    {"id": "mining", "region": 3, "xz": [-10000,-10650], "surface_y": 170, "protection_radius": 96, "distance_range": [2000,3000]},
-    {"id": "arid", "region": 4, "xz": [-12400,-5300], "surface_y": 100, "protection_radius": 96, "distance_range": [4000,6000]},
-    {"id": "industry", "region": 5, "xz": [-6000,-5000], "surface_y": 100, "protection_radius": 96, "distance_range": [4000,6000]},
-    {"id": "coastal_industry", "region": 6, "xz": [-4000,-3700], "surface_y": 90, "protection_radius": 96, "distance_range": [6000,8000]},
-    {"id": "cold_north", "region": 7, "xz": [-4000,-14100], "surface_y": 130, "protection_radius": 96, "distance_range": [5000,8000]}
+    {
+      "id": "spawn",
+      "region": 1,
+      "xz": [
+        -8500,
+        -8192
+      ],
+      "surface_y": 100,
+      "floor_y": 80,
+      "protection_radius": 96,
+      "distance_range": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "agriculture",
+      "region": 2,
+      "xz": [
+        -5500,
+        -8192
+      ],
+      "surface_y": 100,
+      "protection_radius": 96,
+      "distance_range": [
+        0,
+        3000
+      ]
+    },
+    {
+      "id": "mining",
+      "region": 3,
+      "xz": [
+        -10000,
+        -10650
+      ],
+      "surface_y": 110,
+      "protection_radius": 96,
+      "distance_range": [
+        2000,
+        3000
+      ]
+    },
+    {
+      "id": "arid",
+      "region": 4,
+      "xz": [
+        -12400,
+        -5300
+      ],
+      "surface_y": 100,
+      "protection_radius": 96,
+      "distance_range": [
+        4000,
+        6000
+      ]
+    },
+    {
+      "id": "industry",
+      "region": 5,
+      "xz": [
+        -6000,
+        -5000
+      ],
+      "surface_y": 100,
+      "protection_radius": 96,
+      "distance_range": [
+        4000,
+        6000
+      ]
+    },
+    {
+      "id": "coastal_industry",
+      "region": 6,
+      "xz": [
+        -4000,
+        -3700
+      ],
+      "surface_y": 90,
+      "protection_radius": 96,
+      "distance_range": [
+        6000,
+        8000
+      ]
+    },
+    {
+      "id": "cold_north",
+      "region": 7,
+      "xz": [
+        -4000,
+        -14100
+      ],
+      "surface_y": 100,
+      "protection_radius": 96,
+      "distance_range": [
+        5000,
+        8000
+      ]
+    }
   ],
   "routes": [
-    {"id": "old_rail", "kind": "rail_remains", "points": [[-10000,-10650],[-8500,-8192],[-5500,-8192],[-6000,-5000],[-4000,-3700]], "protection_radius": 32},
-    {"id": "arid_path", "kind": "footpath", "points": [[-8500,-8192],[-12400,-5300]], "protection_radius": 16},
-    {"id": "north_path", "kind": "footpath", "points": [[-10000,-10650],[-4000,-14100]], "protection_radius": 16}
+    {
+      "id": "old_rail",
+      "kind": "rail_remains",
+      "points": [
+        [
+          -10000,
+          -10650
+        ],
+        [
+          -8500,
+          -8192
+        ],
+        [
+          -5500,
+          -8192
+        ],
+        [
+          -6000,
+          -5000
+        ],
+        [
+          -4000,
+          -3700
+        ]
+      ],
+      "protection_radius": 32
+    },
+    {
+      "id": "arid_path",
+      "kind": "footpath",
+      "points": [
+        [
+          -8500,
+          -8192
+        ],
+        [
+          -12400,
+          -5300
+        ]
+      ],
+      "protection_radius": 16
+    },
+    {
+      "id": "north_path",
+      "kind": "footpath",
+      "points": [
+        [
+          -10000,
+          -10650
+        ],
+        [
+          -7920,
+          -11848
+        ],
+        [
+          -4000,
+          -14100
+        ]
+      ],
+      "protection_radius": 16
+    }
   ],
   "deposits": [
-    {"id": "mining_iron", "resource": "iron", "xz": [-10250,-10700], "geology_profile": 3, "radius_blocks": 64, "stage": "anchor_only"},
-    {"id": "mining_copper", "resource": "copper", "xz": [-9750,-10700], "geology_profile": 3, "radius_blocks": 64, "stage": "anchor_only"},
-    {"id": "mining_coal", "resource": "coal", "xz": [-10500,-10500], "geology_profile": 3, "radius_blocks": 64, "stage": "anchor_only"},
-    {"id": "mining_tin", "resource": "tin", "xz": [-10000,-11000], "geology_profile": 3, "radius_blocks": 64, "stage": "anchor_only"},
-    {"id": "mining_limestone", "resource": "limestone", "xz": [-10300,-10450], "geology_profile": 3, "radius_blocks": 64, "stage": "anchor_only"},
-    {"id": "agriculture_clay", "resource": "clay", "xz": [-5300,-8500], "geology_profile": 2, "radius_blocks": 64, "stage": "anchor_only"},
-    {"id": "arid_nitrate", "resource": "nitrate", "xz": [-12600,-5400], "geology_profile": 4, "radius_blocks": 64, "stage": "anchor_only"},
-    {"id": "coastal_silica", "resource": "silica_sand", "xz": [-4200,-3800], "geology_profile": 5, "radius_blocks": 64, "stage": "anchor_only"}
+    {
+      "id": "mining_iron",
+      "resource": "iron",
+      "xz": [
+        -10250,
+        -10700
+      ],
+      "geology_profile": 3,
+      "radius_blocks": 64,
+      "stage": "anchor_only"
+    },
+    {
+      "id": "mining_copper",
+      "resource": "copper",
+      "xz": [
+        -9750,
+        -10700
+      ],
+      "geology_profile": 3,
+      "radius_blocks": 64,
+      "stage": "anchor_only"
+    },
+    {
+      "id": "mining_coal",
+      "resource": "coal",
+      "xz": [
+        -10500,
+        -10500
+      ],
+      "geology_profile": 3,
+      "radius_blocks": 64,
+      "stage": "anchor_only"
+    },
+    {
+      "id": "mining_tin",
+      "resource": "tin",
+      "xz": [
+        -10000,
+        -11000
+      ],
+      "geology_profile": 3,
+      "radius_blocks": 64,
+      "stage": "anchor_only"
+    },
+    {
+      "id": "mining_limestone",
+      "resource": "limestone",
+      "xz": [
+        -10300,
+        -10450
+      ],
+      "geology_profile": 3,
+      "radius_blocks": 64,
+      "stage": "anchor_only"
+    },
+    {
+      "id": "agriculture_clay",
+      "resource": "clay",
+      "xz": [
+        -5300,
+        -8500
+      ],
+      "geology_profile": 2,
+      "radius_blocks": 64,
+      "stage": "anchor_only"
+    },
+    {
+      "id": "arid_nitrate",
+      "resource": "nitrate",
+      "xz": [
+        -12600,
+        -5400
+      ],
+      "geology_profile": 4,
+      "radius_blocks": 64,
+      "stage": "anchor_only"
+    },
+    {
+      "id": "coastal_silica",
+      "resource": "silica_sand",
+      "xz": [
+        -4200,
+        -3800
+      ],
+      "geology_profile": 5,
+      "radius_blocks": 64,
+      "stage": "anchor_only"
+    }
   ],
-  "adjacent_regions": [[1,2],[1,3],[1,4],[2,3],[2,5],[3,7],[4,5],[5,6]],
-  "area_ratio_reference": [0.3477096842512735,0.21775555846048303,0.32916239794331137,0.1053723593449321],
+  "adjacent_regions": [
+    [
+      1,
+      2
+    ],
+    [
+      1,
+      3
+    ],
+    [
+      1,
+      4
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      2,
+      5
+    ],
+    [
+      3,
+      7
+    ],
+    [
+      4,
+      5
+    ],
+    [
+      5,
+      6
+    ]
+  ],
+  "area_ratio_reference": [
+    0.3477096842512735,
+    0.21775555846048303,
+    0.32916239794331137,
+    0.1053723593449321
+  ],
   "area_ratio_tolerance": 0.01,
-  "deferred": ["geothermal", "space_development", "cold_south", "east_regions", "south_regions", "island_regions", "sulfur_source", "mineral_deposit_details"]
+  "deferred": [
+    "geothermal",
+    "space_development",
+    "cold_south",
+    "east_regions",
+    "south_regions",
+    "island_regions",
+    "sulfur_source",
+    "mineral_deposit_details"
+  ],
+  "underground_surface_controls": [
+    [
+      -10000,
+      -11000,
+      163
+    ],
+    [
+      -10096,
+      -11000,
+      170
+    ],
+    [
+      -10110,
+      -10650,
+      110
+    ],
+    [
+      -10160,
+      -10650,
+      111
+    ],
+    [
+      -10250,
+      -10700,
+      113
+    ],
+    [
+      -10300,
+      -10450,
+      104
+    ],
+    [
+      -10346,
+      -10700,
+      109
+    ],
+    [
+      -10396,
+      -10450,
+      105
+    ],
+    [
+      -10500,
+      -10500,
+      109
+    ],
+    [
+      -10596,
+      -10500,
+      107
+    ],
+    [
+      -10724,
+      -11600,
+      288
+    ],
+    [
+      -10800,
+      -10900,
+      136
+    ],
+    [
+      -10800,
+      -11600,
+      298
+    ],
+    [
+      -10860,
+      -11300,
+      230
+    ],
+    [
+      -10860,
+      -11480,
+      301
+    ],
+    [
+      -10860,
+      -11660,
+      315
+    ],
+    [
+      -10860,
+      -11840,
+      373
+    ],
+    [
+      -10896,
+      -10900,
+      141
+    ],
+    [
+      -10900,
+      -10100,
+      92
+    ],
+    [
+      -10956,
+      -11300,
+      231
+    ],
+    [
+      -10956,
+      -11480,
+      288
+    ],
+    [
+      -10956,
+      -11660,
+      327
+    ],
+    [
+      -10956,
+      -11840,
+      371
+    ],
+    [
+      -10996,
+      -10100,
+      100
+    ],
+    [
+      -11040,
+      -11300,
+      224
+    ],
+    [
+      -11040,
+      -11480,
+      318
+    ],
+    [
+      -11040,
+      -11660,
+      344
+    ],
+    [
+      -11040,
+      -11840,
+      465
+    ],
+    [
+      -11060,
+      -10100,
+      95
+    ],
+    [
+      -11136,
+      -11300,
+      237
+    ],
+    [
+      -11136,
+      -11480,
+      300
+    ],
+    [
+      -11136,
+      -11660,
+      397
+    ],
+    [
+      -11136,
+      -11840,
+      440
+    ],
+    [
+      -11156,
+      -10100,
+      100
+    ],
+    [
+      -11220,
+      -10100,
+      99
+    ],
+    [
+      -11220,
+      -11300,
+      234
+    ],
+    [
+      -11220,
+      -11480,
+      291
+    ],
+    [
+      -11220,
+      -11660,
+      410
+    ],
+    [
+      -11220,
+      -11840,
+      451
+    ],
+    [
+      -11316,
+      -10100,
+      100
+    ],
+    [
+      -11316,
+      -11300,
+      248
+    ],
+    [
+      -11316,
+      -11480,
+      318
+    ],
+    [
+      -11316,
+      -11660,
+      379
+    ],
+    [
+      -11316,
+      -11840,
+      419
+    ],
+    [
+      -11400,
+      -11300,
+      239
+    ],
+    [
+      -11400,
+      -11480,
+      341
+    ],
+    [
+      -11400,
+      -11660,
+      436
+    ],
+    [
+      -11400,
+      -11840,
+      486
+    ],
+    [
+      -11496,
+      -11300,
+      245
+    ],
+    [
+      -11496,
+      -11480,
+      324
+    ],
+    [
+      -11496,
+      -11660,
+      406
+    ],
+    [
+      -11496,
+      -11840,
+      485
+    ],
+    [
+      -12600,
+      -5400,
+      91
+    ],
+    [
+      -12696,
+      -5400,
+      86
+    ],
+    [
+      -4200,
+      -3800,
+      79
+    ],
+    [
+      -4296,
+      -3800,
+      68
+    ],
+    [
+      -5300,
+      -8500,
+      82
+    ],
+    [
+      -5396,
+      -8500,
+      84
+    ],
+    [
+      -5920,
+      -5500,
+      87
+    ],
+    [
+      -6080,
+      -5500,
+      88
+    ],
+    [
+      -6128,
+      -5000,
+      91
+    ],
+    [
+      -6160,
+      -5000,
+      95
+    ],
+    [
+      -6240,
+      -5500,
+      85
+    ],
+    [
+      -6400,
+      -5500,
+      84
+    ],
+    [
+      -8340,
+      -8000,
+      80
+    ],
+    [
+      -8384,
+      -8000,
+      85
+    ],
+    [
+      -8700,
+      -11400,
+      254
+    ],
+    [
+      -8800,
+      -11400,
+      241
+    ],
+    [
+      -8900,
+      -11400,
+      244
+    ],
+    [
+      -9000,
+      -11400,
+      225
+    ],
+    [
+      -9100,
+      -11400,
+      237
+    ],
+    [
+      -9200,
+      -11400,
+      238
+    ],
+    [
+      -9300,
+      -11400,
+      261
+    ],
+    [
+      -9600,
+      -11100,
+      195
+    ],
+    [
+      -9696,
+      -11100,
+      189
+    ],
+    [
+      -9750,
+      -10764,
+      114
+    ],
+    [
+      -9846,
+      -10764,
+      110
+    ]
+  ],
+  "underground_weathered_contacts": [
+    [
+      -10860,
+      -11300
+    ],
+    [
+      -10860,
+      -11480
+    ],
+    [
+      -10860,
+      -11660
+    ],
+    [
+      -10860,
+      -11840
+    ],
+    [
+      -11040,
+      -11300
+    ],
+    [
+      -11040,
+      -11480
+    ],
+    [
+      -11040,
+      -11660
+    ],
+    [
+      -11040,
+      -11840
+    ],
+    [
+      -11220,
+      -11300
+    ],
+    [
+      -11220,
+      -11480
+    ],
+    [
+      -11220,
+      -11660
+    ],
+    [
+      -11220,
+      -11840
+    ],
+    [
+      -11400,
+      -11300
+    ],
+    [
+      -11400,
+      -11660
+    ],
+    [
+      -11400,
+      -11840
+    ],
+    [
+      -8700,
+      -11400
+    ],
+    [
+      -8800,
+      -11400
+    ],
+    [
+      -8900,
+      -11400
+    ],
+    [
+      -9000,
+      -11400
+    ],
+    [
+      -9100,
+      -11400
+    ],
+    [
+      -9200,
+      -11400
+    ],
+    [
+      -9300,
+      -11400
+    ]
+  ]
 }

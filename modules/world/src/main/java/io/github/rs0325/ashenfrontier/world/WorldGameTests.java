@@ -12,6 +12,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.chunk.ChunkGenerator;
@@ -94,18 +95,18 @@ public final class WorldGameTests {
         var level = helper.getLevel();
         var random = level.getChunkSource().randomState();
         for (int x : new int[]{-16385, -16384, 16383, 16384}) {
-            var chunk = new ProtoChunk(new ChunkPos(Math.floorDiv(x, 16), 0), UpgradeData.EMPTY, level,
+            var chunk = new ProtoChunk(new ChunkPos(Math.floorDiv(x, 16), 0), UpgradeData.EMPTY, LevelHeightAccessor.create(-128,704),
                     level.registryAccess().registryOrThrow(Registries.BIOME), null);
             generator.fillFromNoise(Blender.empty(), random, level.structureManager(), chunk).join();
-            var column = generator.getBaseColumn(x, 0, level, random);
-            for (int y = -64; y < 320; y++) {
+            var column = generator.getBaseColumn(x, 0, LevelHeightAccessor.create(-128,704), random);
+            for (int y = -128; y < 576; y++) {
                 helper.assertTrue(chunk.getBlockState(new BlockPos(x, y, 0)).equals(column.getBlock(y)), "実チャンクと列サンプルの一致");
             }
             boolean inside = MapCoordinates.contains(x, 0);
-            helper.assertTrue(column.getBlock(-64).is(inside ? Blocks.BEDROCK : Blocks.AIR), "端の内外の岩盤");
-            int top = -64;
-            for (int y = -64; y < 320; y++) if (!column.getBlock(y).isAir()) top = y + 1;
-            helper.assertTrue(generator.getBaseHeight(x, 0, Heightmap.Types.WORLD_SURFACE_WG, level, random)
+            helper.assertTrue(column.getBlock(-128).is(inside ? Blocks.BEDROCK : Blocks.AIR), "端の内外の岩盤");
+            int top = -128;
+            for (int y = -128; y < 576; y++) if (!column.getBlock(y).isAir()) top = y + 1;
+            helper.assertTrue(generator.getBaseHeight(x, 0, Heightmap.Types.WORLD_SURFACE_WG, LevelHeightAccessor.create(-128,704), random)
                     == top, "高さサンプルの一致");
         }
         helper.succeed();
@@ -113,7 +114,7 @@ public final class WorldGameTests {
 
     private static ProtoChunk chunk(GameTestHelper helper, FixedMapChunkGenerator generator, ChunkPos pos, RandomState random) {
         var level = helper.getLevel();
-        var chunk = new ProtoChunk(pos, UpgradeData.EMPTY, level,
+        var chunk = new ProtoChunk(pos, UpgradeData.EMPTY, LevelHeightAccessor.create(-128,704),
                 level.registryAccess().registryOrThrow(Registries.BIOME), null);
         generator.fillFromNoise(Blender.empty(), random, level.structureManager(), chunk).join();
         return chunk;
@@ -122,7 +123,7 @@ public final class WorldGameTests {
     private static long hash(ProtoChunk chunk) {
         long hash = 0xcbf29ce484222325L;
         var pos = new BlockPos.MutableBlockPos();
-        for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) for (int y = -64; y < 320; y++) {
+        for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) for (int y = -128; y < 576; y++) {
             var state = chunk.getBlockState(pos.set(chunk.getPos().getMinBlockX() + x, y, chunk.getPos().getMinBlockZ() + z));
             hash = (hash ^ Block.getId(state)) * 0x100000001b3L;
         }
@@ -145,8 +146,8 @@ public final class WorldGameTests {
             expected.put(point, hash(generated));
             for (int dx = 0; dx < 16; dx++) for (int dz = 0; dz < 16; dz++) {
                 int x = point.getMinBlockX() + dx, z = point.getMinBlockZ() + dz;
-                var column = generator.getBaseColumn(x, z, level, second);
-                for (int y = -64; y < 320; y++) {
+                var column = generator.getBaseColumn(x, z, LevelHeightAccessor.create(-128,704), second);
+                for (int y = -128; y < 576; y++) {
                     helper.assertTrue(generated.getBlockState(new BlockPos(x, y, z)).equals(column.getBlock(y)), "全Yの実生成・列一致");
                 }
                 for (var type : new Heightmap.Types[]{Heightmap.Types.WORLD_SURFACE_WG, Heightmap.Types.OCEAN_FLOOR_WG}) {
@@ -166,8 +167,8 @@ public final class WorldGameTests {
     @GameTest(template = "empty", templateNamespace = AshenFrontierWorld.MOD_ID)
     public static void northwestRegionsAndStrata(GameTestHelper helper) {
         var generator = generator(helper);
-        int[][] points = {{-8500,-8192,1,100}, {-5500,-8192,2,100}, {-10000,-10650,3,170},
-                {-12400,-5300,4,100}, {-6000,-5000,5,100}, {-4000,-3700,6,90}, {-4000,-14100,7,130}};
+        int[][] points = {{-8500,-8192,1,100}, {-5500,-8192,2,100}, {-10000,-10650,3,110},
+                {-12400,-5300,4,100}, {-6000,-5000,5,100}, {-4000,-3700,6,90}, {-4000,-14100,7,100}};
         String[] names = {"", "temperate_wasteland", "abandoned_farmland", "mining_highlands", "arid_wasteland",
                 "industrial_wasteland", "industrial_coast", "cold_research_wastes"};
         for (var point : points) {
@@ -182,16 +183,25 @@ public final class WorldGameTests {
             helper.assertTrue(biome.is(AshenFrontierCore.id(names[point[2]])), "地域に合うバイオーム");
             var base = generator.getBaseColumn(x, z, helper.getLevel(), null);
             helper.assertTrue(!base.getBlock(point[3] - 4).isAir() && base.getBlock(point[3] - 4).getFluidState().isEmpty(), "土壌直下の母岩");
-            if (point[2] == 3) helper.assertTrue(base.getBlock(point[3] - 4).is(Blocks.GRANITE), "鉱業高地の花崗岩");
+            if (point[2] == 3) {
+                var rock = base.getBlock(point[3] - 4);
+                helper.assertTrue(rock.is(Blocks.GRANITE) || rock.is(BuiltInRegistries.BLOCK.get(AshenFrontierCore.id("gneiss")))
+                        || rock.is(BuiltInRegistries.BLOCK.get(AshenFrontierCore.id("quartzite"))), "侵食で露出する山脈の母岩");
+            }
             if (point[2] == 1 || point[2] == 4) {
                 String[] expected = point[2] == 1
                         ? new String[]{"minecraft:sandstone", "ashen_frontier:shale", "ashen_frontier:limestone", "minecraft:granite"}
                         : new String[]{"minecraft:sandstone", "ashen_frontier:gypsum", "ashen_frontier:rock_salt", "ashen_frontier:shale", "minecraft:stone"};
-                int next = 0;
-                for (int y = point[3] - 3; y > -64 && next < expected.length; y--) {
-                    if (base.getBlock(y).is(BuiltInRegistries.BLOCK.get(ResourceLocation.parse(expected[next])))) next++;
+                int previous = -1, layers = 0;
+                for (int y = point[3] - 4; y > -64; y--) {
+                    for (int index = 0; index < expected.length; index++) {
+                        if (!base.getBlock(y).is(BuiltInRegistries.BLOCK.get(ResourceLocation.parse(expected[index])))) continue;
+                        helper.assertTrue(index >= previous, "侵食・尖滅後も上下の地層順を逆転しない");
+                        if (index > previous) layers++;
+                        previous = index;
+                    }
                 }
-                helper.assertTrue(next == expected.length, "平野・乾燥地域の上下地層順");
+                helper.assertTrue(layers >= 2, "地表で切られた平野・乾燥地域にも複数の地層が残る");
             }
         }
         helper.assertTrue(generator.getBiomeSource().possibleBiomes().size() == 12, "possibleBiomesの全列挙");
@@ -212,11 +222,15 @@ public final class WorldGameTests {
                 }
                 if ((mask & 8) != 0 && coasts == 0) {
                     var column = generator.getBaseColumn(x, z, helper.getLevel(), null);
-                    helper.assertTrue(column.getBlock(63).is(BuiltInRegistries.BLOCK.get(AshenFrontierCore.id("polluted_seawater"))), "海面63の汚染海水");
+                    var surface = column.getBlock(63);
+                    helper.assertTrue(surface.is(BuiltInRegistries.BLOCK.get(AshenFrontierCore.id("polluted_seawater")))
+                            || surface.is(BuiltInRegistries.BLOCK.get(AshenFrontierCore.id("sea_ice")))
+                            && column.getBlock(62).is(BuiltInRegistries.BLOCK.get(AshenFrontierCore.id("polluted_seawater"))),
+                            "海面63の汚染海水、または同じ海水の上の海氷");
                     coasts++;
                 }
                 if ((mask & 1) != 0 && (mask & 14) == 0 && shores == 0) {
-                    helper.assertTrue(generator.terrain().surfaceY(x, z) >= 64, "陸側海岸の高さ");
+                    helper.assertTrue(generator.terrain().surfaceY(x, z) >= 63, "海面と同高の乾いた砂浜を含む陸側海岸の高さ");
                     shores++;
                 }
             }
@@ -243,9 +257,9 @@ public final class WorldGameTests {
                 var generated = chunk(helper, generator, position, random);
                 long elapsed = System.nanoTime() - before, elapsedCpu = cpu.getCurrentThreadCpuTime() - beforeCpu;
                 if (i >= 0) { times[i] = elapsed; cpuTimes[i] = elapsedCpu; }
-                helper.assertTrue(generated.getBlockState(new BlockPos(position.getMinBlockX(), -64, position.getMinBlockZ())).is(Blocks.BEDROCK), "計測チャンクを生成");
+                helper.assertTrue(generated.getBlockState(new BlockPos(position.getMinBlockX(), -128, position.getMinBlockZ())).is(Blocks.BEDROCK), "計測チャンクを生成");
                 int top = generated.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, 0, 0);
-                var cap = generated.getBlockState(new BlockPos(position.getMinBlockX(), top - 1, position.getMinBlockZ()));
+                var cap = generated.getBlockState(new BlockPos(position.getMinBlockX(), top - 6, position.getMinBlockZ()));
                 if (i >= 0 && (cap.is(Blocks.PACKED_ICE) || cap.is(Blocks.BLUE_ICE))) iceChunks++;
             }
             Arrays.sort(times);
@@ -261,27 +275,44 @@ public final class WorldGameTests {
     @GameTest(template = "empty", templateNamespace = AshenFrontierWorld.MOD_ID)
     public static void iceSheetsGlaciersAndSnow(GameTestHelper helper) {
         var generator = generator(helper);
-        int[][] points = {{-4000, -14100, 8}, {-8000, -11800, 3}, {-3840, -14256, 12}};
+        int[] glacier = null;
+        for (int z = -11920; z <= -11680 && glacier == null; z += 8) {
+            for (int x = -8160; x <= -7840; x += 8) {
+                var column = generator.terrain().column(x, z);
+                int floor = column.surfaceY();
+                while (column.state(floor).is(Blocks.SNOW_BLOCK)) floor--;
+                if (column.state(floor).is(Blocks.PACKED_ICE) && column.state(floor - 2).is(Blocks.PACKED_ICE)) {
+                    glacier = new int[]{x, z, 3, 0};
+                    break;
+                }
+            }
+        }
+        helper.assertTrue(glacier != null, "急な山腹の間の谷に山岳氷河を残す");
+        int[][] points = {{-4000, -14100, 8, 2}, glacier, {-3840, -14256, 12, 2}};
         for (var point : points) {
             int x = point[0], z = point[1];
             var column = generator.terrain().column(x, z);
             int surface = column.surfaceY();
             var generated = chunk(helper, generator, new ChunkPos(Math.floorDiv(x, 16), Math.floorDiv(z, 16)), helper.getLevel().getChunkSource().randomState());
-            helper.assertTrue(generated.getBlockState(new BlockPos(x, surface, z)).is(Blocks.SNOW_BLOCK), "氷床・山岳氷河・寒冷な谷の積雪");
-            helper.assertTrue(generated.getBlockState(new BlockPos(x, surface - 1, z)).is(Blocks.PACKED_ICE), "表層直下の氷");
+            var top = generated.getBlockState(new BlockPos(x, surface, z));
+            helper.assertTrue(top.is(Blocks.SNOW_BLOCK) || point[3] == 0 && top.is(Blocks.PACKED_ICE),
+                    "氷床と谷の厚雪、急になった山岳氷河の露氷: "+x+","+surface+","+z+" "+top);
+            int snow = 0;
+            while (column.state(surface - snow).is(Blocks.SNOW_BLOCK)) snow++;
+            helper.assertTrue(snow >= point[3] && snow <= 4, "傾斜に応じた積雪量");
             for (int depth = 1; depth <= point[2]; depth++) {
-                var state = generated.getBlockState(new BlockPos(x, surface - depth, z));
-                helper.assertTrue(state.is(depth >= 4 ? Blocks.BLUE_ICE : Blocks.PACKED_ICE), "緯度・標高・谷に応じた厚い氷層");
+                var state = generated.getBlockState(new BlockPos(x, surface - snow + 1 - depth, z));
+                helper.assertTrue(state.is(depth >= 4 ? Blocks.BLUE_ICE : Blocks.PACKED_ICE), "緯度・標高・谷に応じた厚い氷層: "+x+","+z+" depth="+depth+" surface="+surface+" snow="+snow+" "+state);
             }
-            for (int y = -64; y < 320; y++) {
+            for (int y = -128; y < 576; y++) {
                 helper.assertTrue(generated.getBlockState(new BlockPos(x, y, z)).equals(column.state(y)), "雪氷を含む実チャンクと列の一致");
             }
             helper.assertTrue(generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, helper.getLevel(), null)
-                    == surface + 1, "雪氷を含む地表高の一致");
+                    == column.topY() + 1, "雪層・雪氷を含む地表高の一致");
         }
         for (var point : new int[][]{{-16385, -14100}, {16384, -14100}, {-4000, -16385}, {-4000, 16384}}) {
             var column = generator.terrain().column(point[0], point[1]);
-            for (int y = -64; y < 320; y++) helper.assertTrue(column.state(y).isAir(), "範囲外へ雪氷を生成しない");
+            for (int y = -128; y < 576; y++) helper.assertTrue(column.state(y).isAir(), "範囲外へ雪氷を生成しない");
         }
         var warm = generator.terrain().column(-8500, -8192);
         helper.assertTrue(!warm.state(warm.surfaceY()).is(Blocks.SNOW_BLOCK), "温帯の初期地点は積雪なし");
@@ -301,13 +332,14 @@ public final class WorldGameTests {
                 int surface = terrain.surfaceY(x, z);
                 if (surface != 209 && surface != 210) continue;
                 var biome = generator.getBiomeSource().getNoiseBiome(QuartPos.fromBlock(x), 0, QuartPos.fromBlock(z), null);
-                helper.assertTrue(biome.is(AshenFrontierCore.id("alpine_wastes")) == (surface >= 210), "高山はノイズ・丸め後の地表Y=210以上");
-                if (surface < 210) below++; else above++;
-                if ((raw >= 210) != (surface >= 210)) corrected++;
+                boolean alpine = biome.is(AshenFrontierCore.id("alpine_wastes"));
+                helper.assertTrue(alpine == (FixedTerrain.biomeIndex(terrain.map(), x, z, surface) == 11), "実バイオームが地表の移行帯と一致");
+                if (alpine) above++; else below++;
+                if (alpine != (surface >= 210)) corrected++;
                 if (below >= 16 && above >= 16 && corrected > 0) break;
             }
         }
-        helper.assertTrue(below >= 16 && above >= 16 && corrected > 0, "閾値両側と従来判定が食い違う地点を検証");
+        helper.assertTrue(below >= 16 && above >= 16 && corrected > 0, "標高209〜210にも両側のバイオームが混在");
         helper.succeed();
     }
 

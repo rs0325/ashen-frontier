@@ -8,6 +8,7 @@ import math
 import shutil
 import sys
 import tempfile
+from collections import deque
 from write_underground import document as underground_document
 from pathlib import Path
 
@@ -22,7 +23,7 @@ OUTPUT = ROOT / MAP_RESOURCES / "earth_001"
 SIZE = 2048
 LAYERS = ("height", "region", "water", "soil", "geology", "coast_river")
 RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json", "underground.json")
-TOOL_VERSION = "1.2.0"
+TOOL_VERSION = "1.14.0"
 
 
 def sha(path):
@@ -182,10 +183,201 @@ def load_inputs(input_dir):
     return config, labels
 
 
+def mountain_coordinates(mountain, bx, bz):
+    """固定折れ線の最近点から、距離と稜線に沿う位置を求める。"""
+    squared = np.full(bx.shape, np.inf, np.float32)
+    station = np.zeros(bx.shape, np.float32)
+    cross = np.zeros(bx.shape, np.float32)
+    offset = 0
+    for a,b in zip(mountain["points"],mountain["points"][1:]):
+        vx,vz = b[0]-a[0],b[1]-a[1]
+        length = math.hypot(vx,vz)
+        projection=((bx-a[0])*vx+(bz-a[1])*vz)/(length*length)
+        t = np.clip(projection,0,1)
+        across=np.abs((vx*(bz-a[1])-vz*(bx-a[0]))/length)
+        outside=np.abs(projection-t)*length
+        distance = (np.maximum(across,outside)+.5*np.minimum(across,outside))**2
+        nearer = distance < squared
+        station = np.where(nearer,offset+t*length,station)
+        cross = np.where(nearer,(vx*(bz-a[1])-vz*(bx-a[0]))/length,cross)
+        squared = np.minimum(squared,distance)
+        offset += length
+    return np.sqrt(squared),station,cross
+
+
+def ridge_variation(station, scale, seed):
+    rng = np.random.Generator(np.random.PCG64(seed))
+    values = rng.random(math.ceil(float(station.max())/scale)+2)
+    cell = (station/scale).astype(int)
+    t = station/scale-cell
+    t = t*t*(3-2*t)
+    return values[cell]+(values[cell+1]-values[cell])*t
+
+
+def termination_relief(termination, bx, bz):
+    """西端の支尾根と、その間を海へ抜ける沢の固定断面。"""
+    foundation = termination["base_y"]
+    height = np.full(bx.shape, foundation, np.float32)
+    for points in termination["ridges"]:
+        for a,b in zip(points,points[1:]):
+            dx,dz = b[0]-a[0],b[1]-a[1]
+            t = np.clip(((bx-a[0])*dx+(bz-a[1])*dz)/(dx*dx+dz*dz),0,1)
+            distance = np.hypot(bx-a[0]-t*dx,bz-a[1]-t*dz)
+            width = a[3]+(b[3]-a[3])*t
+            crest = a[2]+(b[2]-a[2])*t
+            section = np.maximum(0,1-(distance/width)**1.5)
+            height = np.maximum(height,foundation+(crest-foundation)*section)
+    for points in termination["valleys"]:
+        for a,b in zip(points,points[1:]):
+            dx,dz = b[0]-a[0],b[1]-a[1]
+            t = np.clip(((bx-a[0])*dx+(bz-a[1])*dz)/(dx*dx+dz*dz),0,1)
+            distance = np.hypot(bx-a[0]-t*dx,bz-a[1]-t*dz)
+            width = a[3]+(b[3]-a[3])*t
+            cut = np.clip(1-distance/width,0,1)
+            cut = cut*cut*(3-2*cut)
+            floor = a[2]+(b[2]-a[2])*t
+            height += np.minimum(0,floor-height)*cut
+    weight = np.clip((termination["join_x"]-bx)/termination["transition_blocks"],0,1)
+    return height,weight*weight*(3-2*weight)
+
+
+def mountain_relief(config, bx, bz, height, nw):
+    """承認済みの範囲内にだけ、主稜線・峰・支稜と谷を作る。"""
+    rugged = np.clip(1-np.abs(noise(config["fixed_seed"]+91)/12),0,1)**2
+    warp = noise(config["fixed_seed"]+92)/12
+    influence = np.zeros(height.shape,bool)
+    for i,mountain in enumerate(config["mountains"]):
+        distance,station,cross = mountain_coordinates(mountain,bx,bz)
+        radius = mountain["radius_blocks"]
+        height += np.clip(1-distance/(radius*2.4),0,1)*(mountain["foothill_y"]-config["terrain_base_y"])*nw
+        envelope = np.clip(1-distance/radius,0,1)
+        phase = station/230+2.2*ridge_variation(station,600,config["fixed_seed"]+i+96)+distance/180+np.sign(cross)*.8+warp*2
+        spurs = np.clip(1-np.abs(np.sin(phase))/(.18+.20*rugged),0,1)*(.5+.5*rugged)
+        terminal = np.clip(station/900,0,1) if i==0 else np.ones_like(station)
+        target = 110+60*terminal+(55+50*terminal)*envelope+55*spurs*envelope
+        for summit in mountain["summits"]:
+            px,pz = summit["xz"]
+            angle = math.radians(summit["axis_degrees"])
+            u = ((bx-px)*math.cos(angle)+(bz-pz)*math.sin(angle))/summit["radius_blocks"]
+            v = (-(bx-px)*math.sin(angle)+(bz-pz)*math.cos(angle))/(summit["radius_blocks"]*summit["aspect"])
+            shoulder=np.clip((np.abs(u)+np.abs(v))/.2,0,1)
+            v=v+(.12*np.sin(u*5)+warp*.08)*shoulder
+            r = .58*np.abs(u)+.72*np.abs(v)+.24*np.abs(v+u*.7)
+            cone = np.clip(1-r,0,1)**1.05
+            target = np.maximum(target,170+(summit["peak_y"]-170)*cone)
+        if i == 0:
+            terminal_height,terminal_weight = termination_relief(mountain["termination"],bx,bz)
+            target += (terminal_height-target)*terminal_weight
+        active = (distance < radius) & nw
+        blend = np.clip((radius-distance)/(radius*.25),0,1)
+        blend = blend*blend*(3-2*blend)
+        shaped = height+(target-height)*blend
+        height = np.where(active,shaped if i==0 else np.maximum(height,shaped),height)
+        influence |= active
+    for mountain in config["mountains"]:
+        for saddle in mountain["passes"]:
+            along=bz-saddle["xz"][1]
+            across=np.abs(bx-saddle["xz"][0]+30*np.sin(along/150))
+            blend = np.clip((480-np.maximum(across*.9,np.abs(along)*.6))/200,0,1)
+            blend = blend*blend*(3-2*blend)
+            target = saddle["surface_y"]+np.abs(along)*.10+across*.35
+            height += np.minimum(0,target-height)*blend
+    return height,influence
+
+
+def grade_walkway(points, height):
+    """徒歩経路の基準高を1/8以下にし、配置図に平坦な路面を焼き込まない。"""
+    points = np.array(points,dtype=float)
+    lengths = np.linalg.norm(np.diff(points,axis=0),axis=1)
+    levels = np.array([height[int(pixel(p)[1]),int(pixel(p)[0])] for p in points],dtype=float)
+    station = np.r_[0,np.cumsum(lengths)]
+    start_distance = np.maximum(0,station-128)/8
+    end_distance = np.maximum(0,station[-1]-station-128)/8
+    lower = np.maximum(levels[0]-start_distance,levels[-1]-end_distance)
+    upper = np.minimum(levels[0]+start_distance,levels[-1]+end_distance)
+    levels = np.clip(levels,lower,upper)
+    for i in range(1,len(levels)):
+        levels[i] = np.clip(levels[i],levels[i-1]-lengths[i-1]/8,levels[i-1]+lengths[i-1]/8)
+    for i in range(len(levels)-2,-1,-1):
+        levels[i] = np.clip(levels[i],levels[i+1]-lengths[i]/8,levels[i+1]+lengths[i]/8)
+    return height,[[int(p[0]),int(p[1]),round(float(y),4)] for p,y in zip(points,levels)]
+
+
+def island_component(labels, anchor):
+    """指定した既存島の4近傍連結成分。輪郭や陸海ラベルは変更しない。"""
+    x,y = pixel(anchor)
+    if labels[y,x] != 4:
+        raise ValueError(f"島の峰のアンカーは既存島に置きます: {anchor}")
+    component = np.zeros(labels.shape,bool)
+    queue = deque([(y,x)])
+    component[y,x] = True
+    while queue:
+        y,x = queue.popleft()
+        for a,b in [(y-1,x),(y+1,x),(y,x-1),(y,x+1)]:
+            if 0<=a<SIZE and 0<=b<SIZE and labels[a,b]==4 and not component[a,b]:
+                component[a,b] = True
+                queue.append((a,b))
+    return component
+
+
+def island_relief(config, labels, height, mountain_mask):
+    peaks = []
+    for peak in config["mountain_islands"]:
+        component = island_component(labels,peak["anchor_xz"])
+        ys,xs = np.nonzero(component)
+        x0,x1,y0,y1 = xs.min(),xs.max()+1,ys.min(),ys.max()+1
+        mask = component[y0:y1,x0:x1]
+        depth = np.zeros(mask.shape,np.float32)
+        interior = mask & ~neighbors(~mask)
+        # 島の外は必ず海として侵食する。
+        interior[[0,-1],:] = False
+        interior[:,[0,-1]] = False
+        while interior.any():
+            depth[interior] += 16
+            interior &= ~neighbors(~interior)
+        y,x = np.mgrid[:mask.shape[0],:mask.shape[1]]
+        target = np.full(mask.shape,63.,np.float32)
+        for summit in peak["summits"]:
+            angle=math.radians(summit["axis_degrees"])
+            dx=(x+x0)*16-16384-summit["xz"][0]
+            dz=(y+y0)*16-16384-summit["xz"][1]
+            along=(dx*math.cos(angle)+dz*math.sin(angle))/summit["radius_blocks"]
+            across=(-dx*math.sin(angle)+dz*math.cos(angle))/(summit["radius_blocks"]*.65)
+            shoulder=np.clip((np.abs(along)+np.abs(across))/.3,0,1)
+            across-=.16*np.sin(along*5)*shoulder
+            profile=np.clip(1-.56*np.abs(along)-.72*np.abs(across)-.22*np.abs(across+along*.65),0,1)
+            target=np.maximum(target,63+(summit["peak_y"]-63)*profile)
+        target=np.maximum(64,target)
+        cx,cy=pixel(peak["summits"][0]["xz"])
+        cx-=x0;cy-=y0
+        area = height[y0:y1,x0:x1]
+        area[mask] = target[mask]
+        mountain_mask |= component
+        spans = []
+        for row in range(y0,y1):
+            columns = np.flatnonzero(component[row])
+            start = previous = int(columns[0])
+            for column in [*columns[1:],-1]:
+                column = int(column)
+                if column != previous+1:
+                    spans.append([int(row),start,previous+1])
+                    start = column
+                previous = column
+        peaks.append(dict(peak,summit_xz=[int((cx+x0)*16-16384),int((cy+y0)*16-16384)],
+                          inland_depth_blocks=int(depth.max()),pixel_spans_y_x0_x1ex=spans))
+    return peaks
+
+
 def validate_geology(definition):
     """カタログで確認済みの岩石参照と、地層の正の厚さ範囲を検査する。"""
+    if not -127 <= definition["island_reference_y"] <= 575:
+        raise ValueError("島の地層の基準Yが生成範囲外です")
     rocks = set(definition["catalog"]["rock_ids"]) | {"minecraft:stone", "minecraft:granite", "minecraft:sandstone"}
     for profile in definition["profiles"].values():
+        if not -127 <= profile["reference_y"] <= 575:
+            raise ValueError("地質の絶対基準Yが生成範囲外です")
+        if "uplift" in profile and (profile["uplift"]["transition_blocks"] <= 0 or profile["uplift"]["drop_blocks"] < 0):
+            raise ValueError("地質の隆起の移行幅・変位が不正です")
         if not profile["layers_top_to_bottom"] or profile["basement"] not in rocks:
             raise ValueError("地質プロファイルの地層・基盤岩が不正です")
         for layer in profile["layers_top_to_bottom"]:
@@ -231,19 +423,21 @@ def generate_assets(input_dir, output):
     z, x = np.mgrid[:SIZE, :SIZE]
     bx, bz = x*16-16384, z*16-16384
     print("標高ノイズ → 山脈 → 海岸", flush=True)
-    height = np.where(land, 90 + noise(config["fixed_seed"]), 40).astype(np.float32)
-    mountain = config["mountain"]
-    distance_squared = np.full(land.shape, np.inf, np.float32)
-    for a, b in zip(mountain["points"], mountain["points"][1:]):
-        vx, vz = b[0]-a[0], b[1]-a[1]
-        t = np.clip(((bx-a[0])*vx+(bz-a[1])*vz)/(vx*vx+vz*vz),0,1)
-        distance_squared = np.minimum(distance_squared,(bx-a[0]-t*vx)**2+(bz-a[1]-t*vz)**2)
-    height += np.exp(-distance_squared/(2*mountain["radius_blocks"]**2)) * (mountain["peak_y"]-90) * nw
+    height = np.where(land, config["terrain_base_y"] + noise(config["fixed_seed"])*.65, 40).astype(np.float32)
+    height,mountain_mask = mountain_relief(config,bx,bz,height,nw)
+    # 源流は主脈と分岐に挟まれる谷頭。北で閉じ、南へ開く谷にする。
+    source_x,source_z = config["river"]["points"][0]
+    head = np.abs(bx-source_x+40*np.sin((bz-source_z)/160))*.8
+    head += np.maximum(0,source_z-bz)*.4+np.maximum(0,bz-source_z)*.06
+    height = np.where(nw,np.minimum(height,110+head),height)
     coast = land & neighbors(~land)
     # 海岸の平滑な遷移。元の陸海輪郭は変えない。
     shore = np.array(Image.fromarray((~land).astype("uint8")*255).filter(ImageFilter.GaussianBlur(5)), dtype=np.float32)/255
     height = np.where(land, 64 + (height-64)*(1-shore), height)
     height[coast] = 64
+    terminal_height,terminal_weight = termination_relief(config["mountains"][0]["termination"],bx,bz)
+    height += np.maximum(0,terminal_height-config["mountains"][0]["termination"]["base_y"])*terminal_weight*shore*nw
+    island_peaks = island_relief(config,labels,height,mountain_mask)
     print("窪地処理と流路", flush=True)
     river = config["river"]
     river_mask = np.zeros(land.shape, bool)
@@ -254,6 +448,7 @@ def generate_assets(input_dir, output):
     distance = 0
     profile = []
     radius = max(1, river["width_blocks"]//32)
+    previous_level = 110
     for a, b, length in zip(points, points[1:], lengths):
         steps = max(abs(pixel(a)[0]-pixel(b)[0]), abs(pixel(a)[1]-pixel(b)[1]))
         for i in range(steps+1):
@@ -261,6 +456,10 @@ def generate_assets(input_dir, output):
             p = [round(v+(u-v)*t) for v,u in zip(a,b)]
             px, py = pixel(p)
             level = round(110-47*(distance+length*t)/total)
+            bank_height = min(height[np.clip(py+dz,0,SIZE-1),np.clip(px+dx,0,SIZE-1)]
+                              for dx,dz in [(radius+2,0),(-radius-2,0),(0,radius+2),(0,-radius-2)])
+            level = max(63,min(level,previous_level,math.floor(bank_height)-3))
+            previous_level = level
             profile.append([px,py,level])
             river_mask[max(0,py-radius):py+radius+1,max(0,px-radius):px+radius+1] = True
             surface[max(0,py-radius):py+radius+1,max(0,px-radius):px+radius+1] = level
@@ -271,6 +470,34 @@ def generate_assets(input_dir, output):
     valley_y = np.interp(bz[:,0],[p[1] for p in river["points"]],np.linspace(110,63,len(river["points"])))[:,None]+6
     height = np.where(land,height*(1-valley)+np.minimum(height,valley_y)*valley,height)
     height[river_mask & land] = surface[river_mask & land]-2
+    # 固定入口を高い峰で塞がず、既存の短い地下経路へ下りられる谷口を残す。
+    underground = underground_document()
+    approaches = []
+    for deposit in underground["deposits"]:
+        if deposit["id"].startswith("oil_") or deposit["vanilla"]:
+            continue
+        length = max(96,deposit["depth"]+24)
+        ex,ez = deposit["x"]-length,deposit["z"]
+        approaches.append((ex,ez,deposit["x"],deposit["depth"]))
+    for space in underground["spaces"]:
+        ex = space["x"]-int(np.sign(space["end_x"]-space["x"]))* (space["depth"]+16)
+        approaches.append((ex,space["z"],space["x"],space["depth"]))
+    for ex,ez,tx,depth in approaches:
+        length = abs(tx-ex)
+        px,py = pixel([tx,ez])
+        limit = height[py,px]-depth+length-40
+        for along in range(16,length,16):
+            sx,sy = pixel([ex+int(np.sign(tx-ex))*along,ez])
+            limit = min(limit,height[sy,sx]+along*.65-16)
+        x0,y0 = pixel([ex-96,ez-96]);x1,y1 = pixel([ex+96,ez+96])
+        area = np.s_[max(0,y0):min(SIZE,y1+1),max(0,x0):min(SIZE,x1+1)]
+        distance = np.hypot(bx[area]-ex,bz[area]-ez)
+        blend = np.clip((96-distance)/80,0,1)
+        blend = blend*blend*(3-2*blend)
+        along = (bx[area]-ex)*np.sign(tx-ex)
+        blend *= np.clip((length-along)/(length*.6),0,1)
+        cut = np.minimum(height[area],max(64,limit))
+        height[area] += (cut-height[area])*blend
     # 施設と歩行経路は流路を避けて整地し、最後の排水解析にも反映する。
     for facility in config["facilities"]:
         px, py = pixel(facility["xz"])
@@ -283,6 +510,24 @@ def generate_assets(input_dir, output):
             raise ValueError(f"施設の保護域が水域と重なります: {facility['id']}")
         blend = np.clip((r+128-distance_to_anchor)/128,0,1)
         height = np.where(land & ~river_mask, height*(1-blend)+facility["surface_y"]*blend,height)
+    route_land = nw.copy()
+    for deposit in underground_document()["deposits"]:
+        if deposit["id"].startswith("oil_"):
+            rx,_,rz = deposit["radii"]
+            route_land &= ((bx-deposit["x"])/(rx+32))**2+((bz-deposit["z"])/(rz+32))**2>1
+    routes = []
+    walkways = []
+    for route in config["routes"]:
+        route_points = terrain_route(route["points"],height,route_land)
+        routes.append(dict(route,points=route_points,length_blocks=sum(math.dist(a,b) for a,b in zip(route_points,route_points[1:]))))
+        if route["id"] == "north_path":
+            height,graded = grade_walkway(route_points,height)
+            walkways.append({"id": "north_path", "points_x_z_y": graded})
+    mining = next(f["xz"] for f in config["facilities"] if f["id"]=="mining")
+    spawn = next(f["xz"] for f in config["facilities"] if f["id"]=="spawn")
+    access = terrain_route([spawn,mining],height,route_land)
+    height,graded = grade_walkway(access,height)
+    walkways.append({"id": "mining_access", "points_x_z_y": graded})
     height = np.rint(height).astype(np.int16)
     parent, accumulation = drainage(height, land)
     print("地質 → 土壌・水域 → 施設・経路", flush=True)
@@ -293,7 +538,8 @@ def generate_assets(input_dir, output):
         base_region[np.array(image)>0] = polygon["id"]
     boundary = config["region_boundaries"]
     terrain = np.array(Image.fromarray(np.clip(height,0,255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(18)),dtype=np.float32)
-    ridge_z = np.interp(bx[0],[p[0] for p in mountain["points"]],[p[1] for p in mountain["points"]])
+    main = config["mountains"][0]
+    ridge_z = np.interp(bx[0],[p[0] for p in main["points"]],[p[1] for p in main["points"]])
     offset_z = (np.mean(ridge_z)-ridge_z)[None,:]+noise(config["fixed_seed"]+73)*boundary["north_south_noise_scale"]+(terrain-90)*boundary["elevation_z_scale"]
     offset_x = noise(config["fixed_seed"]+74)*boundary["east_west_noise_scale"]+(terrain-90)*boundary["elevation_x_scale"]+180*np.sin(bz/1800)
     sample_x = np.clip(np.rint(x+offset_x/16).astype(int),0,SIZE-1)
@@ -320,6 +566,7 @@ def generate_assets(input_dir, output):
     geology[np.isin(region,[1,2,5])] = 2
     geology[region==4] = 4
     geology[region==6] = 5
+    geology[mountain_mask] = 3
     for deposit in config["deposits"]:
         px, py = pixel(deposit["xz"])
         if not nw[py,px] or geology[py,px] != deposit["geology_profile"]:
@@ -333,10 +580,6 @@ def generate_assets(input_dir, output):
     flags = coast.astype(np.uint8) | np.where(~land,8,0).astype(np.uint8)
     flags[river_mask & land] |= 2
     height[~land] = 40
-    routes = []
-    for route in config["routes"]:
-        route_points = terrain_route(route["points"],height,nw)
-        routes.append(dict(route,points=route_points,length_blocks=sum(math.dist(a,b) for a,b in zip(route_points,route_points[1:]))))
     layers = dict(height=(height+64).astype(np.uint16), region=region, water=water,
                   soil=soil, geology=geology, coast_river=flags)
     output.mkdir(parents=True, exist_ok=True)
@@ -374,7 +617,11 @@ def generate_assets(input_dir, output):
              "coordinate_system": {"origin_xz": [-16384,-16384], "blocks_per_pixel": 16, "sample": "northwest_corner", "north": "-Z", "height_offset": -64, "latitude": "-80 * z / 16384"},
              "tables": tables, "water_bodies": [{"id": "ocean", "surface_y": 63, "quality": 8, "membership_bit": 8},
                  {"id": river["id"], "membership_bit": 2, "surface_spans_y_x0_x1ex_y": spans, "centerline_pixel_x_y_surface": profile}],
-             "facilities": facilities, "routes": routes,
+             "facilities": facilities, "routes": routes, "walkways": walkways, "mountains": config["mountains"],
+             "mountain_islands": island_peaks,
+             "underground_surface_controls": config["underground_surface_controls"],
+             "underground_weathered_contacts": config["underground_weathered_contacts"],
+             "ocean_features": config["ocean_features"],
              "deposits": config["deposits"], "deferred": config["deferred"],
              "metrics": {"land_pixels": counts.tolist(), "land_area_ratios": ratios,
                          "area_ratio_reference": config["area_ratio_reference"], "area_ratio_tolerance": config["area_ratio_tolerance"],
@@ -390,7 +637,7 @@ def generate_assets(input_dir, output):
     tool_files = {f"tools/fixed-map/{p}": sha(TOOL/p) for p in ["generate.py", "extract_mask.py", "requirements.txt", "write_underground.py"]}
     manifest = {"map_version": config["map_version"], "format_version": config["format_version"],
                 "fixed_seed": config["fixed_seed"], "width": 32768, "depth": 32768,
-                "min_y": -64, "height": 384, "raster_width": SIZE, "raster_depth": SIZE,
+                "min_y": -128, "height": 704, "raster_width": SIZE, "raster_depth": SIZE,
                 "catalog_version": config["catalog_version"], "inputs": inputs,
                 "geology_profile_version": geology_definition["profile_version"],
                 "tool": {"version": TOOL_VERSION, "python": "3.12", "numpy": np.__version__, "pillow": PIL.__version__, "files": tool_files},
@@ -473,6 +720,7 @@ def main(argv=None):
         if args.update_preset:
             preset_path = ROOT/"modules/world/src/main/resources/data/ashen_frontier/worldgen/world_preset/fixed_map.json"
             preset = json.loads(preset_path.read_text(encoding="utf-8"))
+            preset["dimensions"]["minecraft:overworld"]["type"] = "ashen_frontier:fixed_map"
             preset["dimensions"]["minecraft:overworld"]["generator"]["map"] = {
                 "map_version": index["map_version"], "format_version": 1,
                 "manifest_hash": sha(output/"manifest.json")}

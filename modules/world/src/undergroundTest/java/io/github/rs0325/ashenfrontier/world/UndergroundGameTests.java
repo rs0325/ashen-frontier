@@ -13,6 +13,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.ProtoChunk;
@@ -114,8 +115,8 @@ public final class UndergroundGameTests {
             var first = chunk(helper, generator, pos, a);
             var second = chunk(helper, generator, pos, b);
             for (int x = pos.getMinBlockX(); x <= pos.getMaxBlockX(); x++) for (int z = pos.getMinBlockZ(); z <= pos.getMaxBlockZ(); z++) {
-                var column = generator.getBaseColumn(x, z, level, b);
-                for (int y = -64; y < 320; y++) {
+                var column = generator.getBaseColumn(x, z, LevelHeightAccessor.create(-128,704), b);
+                for (int y = -128; y < 576; y++) {
                     var at = new BlockPos(x, y, z);
                     helper.assertTrue(first.getBlockState(at).equals(second.getBlockState(at)), "別seedの配置・量一致: " + d.id());
                     helper.assertTrue(first.getBlockState(at).equals(column.getBlock(y)), "実チャンクとサンプラー一致");
@@ -127,7 +128,7 @@ public final class UndergroundGameTests {
 
     private static ProtoChunk chunk(GameTestHelper helper, FixedMapChunkGenerator generator, ChunkPos pos, RandomState random) {
         var level = helper.getLevel();
-        var chunk = new ProtoChunk(pos, UpgradeData.EMPTY, level, level.registryAccess().registryOrThrow(Registries.BIOME), null);
+        var chunk = new ProtoChunk(pos, UpgradeData.EMPTY, LevelHeightAccessor.create(-128,704), level.registryAccess().registryOrThrow(Registries.BIOME), null);
         generator.fillFromNoise(Blender.empty(), random, level.structureManager(), chunk).join();
         return chunk;
     }

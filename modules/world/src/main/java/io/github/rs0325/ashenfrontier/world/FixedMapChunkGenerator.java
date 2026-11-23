@@ -22,6 +22,7 @@ import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import io.github.rs0325.ashenfrontier.world.structure.FacilityPlacement;
 import java.util.List;
+import java.util.EnumSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
@@ -63,22 +64,23 @@ public final class FixedMapChunkGenerator extends ChunkGenerator {
         if (!MapCoordinates.contains(chunk.getPos().getMinBlockX(), chunk.getPos().getMinBlockZ())) {
             return CompletableFuture.completedFuture(chunk);
         }
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        Heightmap floor = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.OCEAN_FLOOR_WG);
-        Heightmap surface = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG);
+        int minY=Math.max(-128,chunk.getMinBuildHeight());
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
                 int blockX = chunk.getPos().getMinBlockX() + x;
                 int blockZ = chunk.getPos().getMinBlockZ() + z;
                 var column = terrain.column(blockX, blockZ);
-                for (int y = Math.max(-64, chunk.getMinBuildHeight()); y <= Math.min(column.topY(), chunk.getMaxBuildHeight() - 1); y++) {
-                    BlockState state = column.state(y);
-                    chunk.setBlockState(pos.set(blockX, y, blockZ), state, false);
-                    floor.update(x, y, z, state);
-                    surface.update(x, y, z, state);
+                int top=Math.min(column.topY(),chunk.getMaxBuildHeight()-1);
+                // NOISE段階は照明初期化前。高さマップは全列を書いた後にまとめて作る。
+                for(int base=minY;base<=top;base+=16) {
+                    var section=chunk.getSection(chunk.getSectionIndex(base));
+                    for(int y=base;y<=Math.min(base+15,top);y++) {
+                        section.setBlockState(x,y&15,z,column.state(y));
+                    }
                 }
             }
         }
+        Heightmap.primeHeightmaps(chunk, EnumSet.of(Heightmap.Types.OCEAN_FLOOR_WG, Heightmap.Types.WORLD_SURFACE_WG));
         return CompletableFuture.completedFuture(chunk);
     }
 
@@ -116,9 +118,9 @@ public final class FixedMapChunkGenerator extends ChunkGenerator {
     @Override
     public void spawnOriginalMobs(WorldGenRegion level) {}
     @Override
-    public int getMinY() { return -64; }
+    public int getMinY() { return -128; }
     @Override
-    public int getGenDepth() { return 384; }
+    public int getGenDepth() { return 704; }
     @Override
     public int getSeaLevel() { return MapCoordinates.SEA_LEVEL; }
     @Override

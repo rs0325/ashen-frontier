@@ -27,6 +27,9 @@
     "ashen_frontier:bituminous_coal": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:black_sand": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:cable_fragment": {
       "mass_kg": 1.0
     },
@@ -117,6 +120,9 @@
     "ashen_frontier:contaminated_soil": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:contaminated_water_ice": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:copper_scrap": {
       "mass_kg": 1.0
     },
@@ -145,6 +151,9 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:corroded_steel_window": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cracked_mud": {
       "mass_kg": 1.0
     },
     "ashen_frontier:damaged_android_wreck": {
@@ -303,6 +312,9 @@
     "ashen_frontier:gear": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:glacial_till": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:glass_scrap": {
       "mass_kg": 1.0
     },
@@ -394,6 +406,12 @@
     "ashen_frontier:limestone_sphalerite_ore": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:loess": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:loess_layer": {
+      "mass_kg": 0.125
+    },
     "ashen_frontier:loose_flint": {
       "mass_kg": 1.0
     },
@@ -410,6 +428,9 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:optical_lens": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:organic_mud": {
       "mass_kg": 1.0
     },
     "ashen_frontier:peat": {
@@ -549,6 +570,9 @@
     "ashen_frontier:raw_uraninite": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:raw_water_ice": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:reinforced_concrete_fence": {
       "mass_kg": 1.0
     },
@@ -565,6 +589,9 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:reinforced_concrete_window": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:river_gravel": {
       "mass_kg": 1.0
     },
     "ashen_frontier:rock_salt": {
@@ -589,6 +616,9 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:sandstone_rutile_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:sea_ice": {
       "mass_kg": 1.0
     },
     "ashen_frontier:seal_ring": {
@@ -636,6 +666,12 @@
     "ashen_frontier:shielding_window": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:silt": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:silt_layer": {
+      "mass_kg": 0.125
+    },
     "ashen_frontier:simple_wrench": {
       "mass_kg": 1.0
     },
@@ -654,10 +690,25 @@
     "ashen_frontier:stone_hammer": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:talus": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:talus_layer": {
+      "mass_kg": 0.125
+    },
+    "ashen_frontier:tidal_mud": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:titanium_scrap": {
       "mass_kg": 1.0
     },
     "ashen_frontier:toxic_soil": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:toxic_water_ice": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:turbid_water_ice": {
       "mass_kg": 1.0
     },
     "ashen_frontier:vacuum_seal": {
