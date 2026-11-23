@@ -20,6 +20,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import io.github.rs0325.ashenfrontier.world.structure.FacilityPlacement;
 import java.util.List;
 import java.util.EnumSet;
 import java.util.concurrent.CompletableFuture;
@@ -33,6 +34,7 @@ public final class FixedMapChunkGenerator extends ChunkGenerator {
     ).apply(i, FixedMapChunkGenerator::new));
     private final MapVersion mapVersion;
     private final FixedTerrain terrain;
+    private volatile FacilityPlacement facilities;
 
     /** 同梱版との一致を検証する。不足・不一致なら生成開始前に例外で停止する。 */
     public FixedMapChunkGenerator(FixedMapBiomeSource biomeSource, MapVersion mapVersion) {
@@ -105,7 +107,14 @@ public final class FixedMapChunkGenerator extends ChunkGenerator {
     public void applyCarvers(WorldGenRegion level, long seed, RandomState random, BiomeManager biomes,
                              StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) {}
     @Override
-    public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {}
+    public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
+        if (facilities == null) {
+            synchronized (this) {
+                if (facilities == null) facilities = FacilityPlacement.load(level, mapVersion.mapVersion());
+            }
+        }
+        facilities.placeChunk(level, chunk);
+    }
     @Override
     public void spawnOriginalMobs(WorldGenRegion level) {}
     @Override

@@ -35,6 +35,7 @@ import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
 import io.github.rs0325.ashenfrontier.core.catalog.RelicProperties;
 import io.github.rs0325.ashenfrontier.core.catalog.RelicContent;
 import io.github.rs0325.ashenfrontier.core.catalog.RelicModels;
+import io.github.rs0325.ashenfrontier.core.loot.LifeSupportLootModifiers;
 
 @Mod(AshenFrontierCore.MOD_ID)
 public final class AshenFrontierCore {
@@ -45,6 +46,7 @@ public final class AshenFrontierCore {
     public AshenFrontierCore(IEventBus modEventBus, ModContainer modContainer) {
         CoreConfig.register(modContainer);
         RemovedLootModifiers.register(modEventBus);
+        LifeSupportLootModifiers.register(modEventBus);
         MaterialData.register(modEventBus);
         ItemProperties.register(modEventBus);
         NatureProperties.register(modEventBus);

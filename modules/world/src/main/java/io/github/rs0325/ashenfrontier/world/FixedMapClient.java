@@ -8,7 +8,6 @@ import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
@@ -32,6 +31,9 @@ import java.util.WeakHashMap;
 
 @EventBusSubscriber(modid = AshenFrontierWorld.MOD_ID, value = Dist.CLIENT)
 public final class FixedMapClient {
+    private static final int PARTICLE_SAMPLES_PER_RADIUS = 667;
+    private static final double DUST_PARTICLE_CHANCE = 0.118093334;
+    private static final double SNOW_PARTICLE_CHANCE = 0.003125;
     private static final Set<CreateWorldScreen> INITIALIZED = Collections.newSetFromMap(new WeakHashMap<>());
     private static final Random RANDOM = new Random();
 
@@ -97,22 +99,37 @@ public final class FixedMapClient {
         if (quality == 0) return;
         var level = minecraft.level;
         var position = player.position();
-        if (!hasAtmosphere(level, position)) return;
-        var density = AtmosphereSampler.sample(position, (x, y, z) -> new Vec3(
-                atmosphere(level, x, y, z).density(),
-                level.getBiomeManager().getNoiseBiomeAtQuart(x, y, z).value().getBaseTemperature() < 0.15f ? 1 : 0, 0));
-        double amount = density.x * quality;
-        int count = (int) amount + (RANDOM.nextDouble() < amount % 1 ? 1 : 0);
-        var color = AtmosphereSampler.sample(position, (x, y, z) ->
-                Vec3.fromRGB24(atmosphere(level, x, y, z).dustColor()));
-        for (int i = 0; i < count; i++) {
-            ParticleOptions particle = RANDOM.nextDouble() < density.y ? ParticleTypes.SNOWFLAKE
-                    : new DustParticleOptions(color.toVector3f(), quality == 1 ? 0.65f : 0.9f);
-            double x = player.getX() + RANDOM.nextDouble() * 16 - 8;
-            double y = player.getY() + RANDOM.nextDouble() * 6 - 3;
-            double z = player.getZ() + RANDOM.nextDouble() * 16 - 8;
-            minecraft.level.addParticle(particle, x, y, z, RANDOM.nextDouble() * 0.02 - 0.01,
-                    RANDOM.nextDouble() * 0.01, RANDOM.nextDouble() * 0.02 - 0.01);
+        var particlePosition = BlockPos.containing(position);
+        var biome = level.getBiome(particlePosition);
+        var biomeAtmosphere = biome.unwrapKey()
+                .map(key -> BiomeAtmosphereUpdate.clientValues().get(key.location())).orElse(null);
+        if (biomeAtmosphere == null) return;
+        var density = AtmosphereSampler.sample(position, (x, y, z) -> {
+            var sampleBiome = level.getBiomeManager().getNoiseBiomeAtQuart(x, y, z);
+            var sampleAtmosphere = sampleBiome.unwrapKey()
+                    .map(key -> BiomeAtmosphereUpdate.clientValues().getOrDefault(key.location(), BiomeAtmosphere.CLEAR))
+                    .orElse(BiomeAtmosphere.CLEAR);
+            return new Vec3(sampleAtmosphere.density(), sampleBiome.value().getBaseTemperature() < 0.15f ? 1 : 0, 0);
+        });
+        if (density.x <= 0 || (density.y == 0
+                && biomeAtmosphere.dustParticle() == BiomeAtmosphere.DustParticle.NONE)) return;
+        ParticleOptions dust = biomeAtmosphere.dustParticle() == BiomeAtmosphere.DustParticle.NONE
+                ? null : biomeAtmosphere.dustParticle().options();
+        for (int range = 0; range < 2; range++) {
+            int radius = 16 << range;
+            for (int i = 0; i < PARTICLE_SAMPLES_PER_RADIUS; i++) {
+                boolean snow = RANDOM.nextDouble() < density.y;
+                ParticleOptions particle = snow ? ParticleTypes.SNOWFLAKE : dust;
+                if (particle == null) continue;
+                double chance = density.x * quality / 2.0
+                        * (snow ? SNOW_PARTICLE_CHANCE : DUST_PARTICLE_CHANCE);
+                if (RANDOM.nextDouble() >= chance) continue;
+                double x = player.getX() + RANDOM.nextInt(radius) - RANDOM.nextInt(radius);
+                double y = player.getY() + RANDOM.nextInt(radius) - RANDOM.nextInt(radius);
+                double z = player.getZ() + RANDOM.nextInt(radius) - RANDOM.nextInt(radius);
+                level.addParticle(particle, x, y, z, RANDOM.nextDouble() * 0.02 - 0.01,
+                        RANDOM.nextDouble() * 0.01, RANDOM.nextDouble() * 0.02 - 0.01);
+            }
         }
     }
 

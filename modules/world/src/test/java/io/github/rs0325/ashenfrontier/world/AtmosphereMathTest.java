@@ -7,16 +7,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AtmosphereMathTest {
     @Test
-    void edgeFogFadesAcrossTheConfigured256Blocks() {
-        assertEquals(0.0, AtmosphereMath.edgeDensity(256));
-        assertEquals(0.5, AtmosphereMath.edgeDensity(128));
+    void edgeFogFadesAcrossTheConfigured1024Blocks() {
+        assertEquals(0.0, AtmosphereMath.edgeDensity(1024));
+        assertEquals(0.5, AtmosphereMath.edgeDensity(512));
         assertEquals(1.0, AtmosphereMath.edgeDensity(0));
         assertEquals(1.0, AtmosphereMath.edgeDensity(-32));
     }
 
     @Test
     void biomeFogScalesBothPlanes() {
-        var fog = AtmosphereMath.fogRange(230.4, 256, 0.82, 1000);
+        var fog = AtmosphereMath.fogRange(230.4, 256, 0.82, 2048);
         assertEquals(230.4 * 0.4424, fog.start(), 1e-9);
         assertEquals(256 * 0.4424, fog.end(), 1e-9);
     }
@@ -25,19 +25,19 @@ class AtmosphereMathTest {
     void edgeFogStaysOrderedAndHidesEverySideOfTheBorder() {
         for (double density : new double[]{0, 0.18, 0.82, 1}) {
             double previous = Double.POSITIVE_INFINITY;
-            for (double distance : new double[]{1024, 256, 255.999, 192, 128, 64, 16, 1, 0, -32}) {
+            for (double distance : new double[]{2048, 1024, 1023.999, 768, 512, 256, 128, 16, 1, 0, -32}) {
                 for (double far : new double[]{32, 256, 1024}) {
                     var fog = AtmosphereMath.fogRange(far * 0.9, far, density, distance);
                     assertTrue(fog.start() < fog.end());
-                    if (distance < 256) assertTrue(fog.end() <= Math.max(0, distance));
+                    assertTrue(fog.end() < distance || distance <= 0);
                 }
                 var fog = AtmosphereMath.fogRange(230.4, 256, density, distance);
                 assertTrue(fog.end() <= previous);
                 previous = fog.end();
             }
         }
-        assertEquals(AtmosphereMath.fogRange(921.6, 1024, 0, 256).end(),
-                AtmosphereMath.fogRange(921.6, 1024, 0, 255.999).end(), 0.001);
+        assertEquals(AtmosphereMath.fogRange(921.6, 1024, 0, 1024).end(),
+                AtmosphereMath.fogRange(921.6, 1024, 0, 1023.999).end(), 0.001);
     }
 
     @Test

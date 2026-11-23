@@ -1,5 +1,6 @@
 {
   "entries": [
+    "ashen_frontier_core:scale_building_life_support",
     "ashen_frontier_core:remove_tagged_items"
   ],
   "replace": false

@@ -15,9 +15,10 @@ record BiomeAtmosphereUpdate(Map<ResourceLocation, BiomeAtmosphere.Values> value
     static final Type<BiomeAtmosphereUpdate> TYPE = new Type<>(AshenFrontierCore.id("biome_atmosphere"));
     static final StreamCodec<RegistryFriendlyByteBuf, BiomeAtmosphereUpdate> STREAM_CODEC = StreamCodec.of(
             (buffer, packet) -> buffer.writeMap(packet.values, (buf, id) -> buf.writeResourceLocation(id),
-                    (buf, value) -> { buf.writeDouble(value.density()); buf.writeInt(value.dustColor()); }),
+                    (buf, value) -> { buf.writeDouble(value.density()); buf.writeVarInt(value.dustParticle().ordinal()); }),
             buffer -> new BiomeAtmosphereUpdate(buffer.readMap(buf -> buf.readResourceLocation(),
-                    buf -> new BiomeAtmosphere.Values(buf.readDouble(), buf.readInt()))));
+                    buf -> new BiomeAtmosphere.Values(buf.readDouble(),
+                            BiomeAtmosphere.DustParticle.values()[buf.readVarInt()]))));
     private static Map<ResourceLocation, BiomeAtmosphere.Values> clientValues = Map.of();
 
     BiomeAtmosphereUpdate { values = Map.copyOf(values); }
