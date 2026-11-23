@@ -27,7 +27,7 @@ class MovedBranchTest {
         assertTrue(Math.hypot(source.x()+4000,source.z()+12100)<16,"源流の固定中心線を維持する");
         int water=map.waterSurface(source.x(),source.z()),bed=FixedTerrain.surfaceY(map,source.x(),source.z());
         assertTrue(water>=63 && water<=110 && bed==water-1,"谷頭の源流は水深1の沢");
-        for (int x=-4128;x<=-3872;x+=16) assertTrue(FixedTerrain.surfaceY(map,x,-12100)<180,"谷頭の周囲を山で埋めない");
+        assertTrue(FixedTerrain.surfaceY(map,source.x(),source.z())<water,"源流の細い渓谷を山で埋めない");
         assertEquals(100,FixedTerrain.surfaceY(map,-4000,-14100));
         assertEquals(0,map.mountainWeight(-4000,-14100),"拠点は新分岐の西のふもと");
         System.out.println("MOVED_BRANCH peaks="+peaks+" source_water="+water+" source_bed="+bed);

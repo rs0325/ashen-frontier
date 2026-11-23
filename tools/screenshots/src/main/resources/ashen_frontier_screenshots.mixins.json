@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "io.github.rs0325.ashenfrontier.screenshots.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": ["LevelRendererAccessor", "HiddenWindowMixin", "MouseHandlerMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

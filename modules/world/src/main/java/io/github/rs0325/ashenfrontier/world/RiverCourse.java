@@ -57,6 +57,7 @@ final class RiverCourse {
                 double t=step/(double)steps,u=(step+1)/(double)steps;
                 double bend=Math.sin(Math.PI*u)*(Math.sin(u*7+i)*9+TerrainMath.fbm(seed,"brook_bend",ax+(join.ax-ax)*u,az+(join.az-az)*u,48)*14);
                 bend+=Math.sin(Math.PI*u)*TerrainMath.fbm(seed,"brook_fine_bend",ax+(join.ax-ax)*u,az+(join.az-az)*u,12)*3;
+                if(i==1)bend*=1.8;
                 double bx=ax+(join.ax-ax)*u-(join.az-az)/branchLength*bend;
                 double bz=az+(join.az-az)*u+(join.ax-ax)/branchLength*bend;
                 index(cells,drops,new Segment(px,pz,base+branchLength*(1-t)*.004,
@@ -89,6 +90,15 @@ final class RiverCourse {
     }
 
     Sample sample(int x, int z) {
+        return sample(x,z,false);
+    }
+
+    /** 岸の接続に使うもう一方の流路。近くに支沢がなければnull。 */
+    Sample bankAlternative(int x,int z) {
+        return sample(x,z,true);
+    }
+
+    private Sample sample(int x,int z,boolean alternative) {
         double distance = 256 * 256, surface = 63, nearestX = x, nearestZ = z, station = 0, bank = 0, grade=63,side=0;
         double branchDistance=Double.POSITIVE_INFINITY,branchX=x,branchZ=z,branchGrade=63,branchStation=0;
         for (var segment : cells.getOrDefault(key(x >> 7, z >> 7), List.of())) {
@@ -111,7 +121,7 @@ final class RiverCourse {
                 bank=-Math.signum(dx*(z-sz)-dz*(x-sx))*segment.bend;
             }
         }
-        if(distance==256*256)return new Sample(256,63,x,z,0,32,0,7,63,Double.NaN,false);
+        if(distance==256*256)return alternative?null:new Sample(256,63,x,z,0,32,0,7,63,Double.NaN,false);
         double toDrop = 8;
         for (var drop : drops.getOrDefault(key(x >> 7, z >> 7), List.of())) {
             toDrop = Math.min(toDrop, Math.abs(station - drop.station));
@@ -129,7 +139,9 @@ final class RiverCourse {
             width=Math.max(.72,width+(TerrainMath.noise(seed,"brook_fine_width",nearestX,nearestZ,8)-.5)*.2*fine);
         }
         double branchWidth=branchDistance<144*144?.72+.25*TerrainMath.noise(seed,"brook_width",branchX,branchZ,6):.8;
-        if(Math.sqrt(branchDistance)-branchWidth<mainDistance-width && branchDistance<144*144)
+        if(alternative && branchDistance>=144*144)return null;
+        boolean branch=Math.sqrt(branchDistance)-branchWidth<mainDistance-width && branchDistance<144*144;
+        if(branch!=alternative)
             return new Sample(Math.sqrt(branchDistance),Math.ceil(branchGrade-1e-8),(int)Math.round(branchX),(int)Math.round(branchZ),
                     1-TerrainMath.smooth(Math.min(branchGrade-Math.floor(branchGrade),Math.ceil(branchGrade)-branchGrade)/.032),branchWidth,0,1,branchGrade,branchStation,true);
         return new Sample(mainDistance, surface, (int) Math.round(nearestX), (int) Math.round(nearestZ),

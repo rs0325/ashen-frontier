@@ -21,12 +21,12 @@ from generate import (LAYERS, MAP_RESOURCES, OUTPUT, RESOURCE_FILES, ROOT, SIZE,
 
 class FixedMapTests(unittest.TestCase):
     def test_headwater_has_asymmetric_shoulders_and_joining_gullies(self):
-        x=np.array([-160,-220,-100,280,-280,300])
-        z=np.array([-260,-260,-260,40,40,-500])
+        x=np.array([-65,-200,200,0,0,0])
+        z=np.array([-150,-150,-150,-320,0,-500])
         height,weight=headwater_relief(x,z,0,0,np.zeros(6))
-        self.assertLess(height[0],min(height[1],height[2])-5)
-        self.assertGreater(height[3]-height[4],8)
-        self.assertGreater(weight[5],0)
+        self.assertGreater(weight[0],.9)
+        self.assertTrue(np.all(weight[[1,2,3,5]]==0),"広い谷頭や四角い雪原を彫らない")
+        self.assertGreater(height[0],200,"北へ登る沢筋が主稜線を低く切り開かない")
         np.testing.assert_allclose(headwater_relief(np.array([0]),np.array([0]),0,0,np.array([0]))[0],[114])
 
     def test_soil_quality_has_no_contaminated_or_toxic_category(self):
@@ -91,21 +91,6 @@ class FixedMapTests(unittest.TestCase):
                 self.assertLessEqual(summit["peak_y"],205)
             self.assertEqual(self.index["mountain_islands"][self.config["mountain_islands"].index(island)]["summits"],summits)
         self.assertEqual(self.index["geology_profile_version"],"geology_002")
-
-    def test_water_animation_frames_and_quality_colors(self):
-        from animate_water import WATERS, TEXTURES
-        for water in WATERS:
-            for kind,size in (("still",16),("flow",32)):
-                path = TEXTURES/f"{water}_{kind}.png"
-                metadata = json.loads(path.with_suffix(".png.mcmeta").read_text(encoding="utf-8"))["animation"]
-                self.assertEqual(metadata["frames"],list(range(32)))
-                self.assertEqual(metadata["frametime"],2)
-                with Image.open(path) as image:
-                    self.assertEqual(image.size,(size,size*32))
-                    frames = [image.crop((0,i*size,size,(i+1)*size)) for i in range(32)]
-                    self.assertGreater(len({frame.tobytes() for frame in frames}),8)
-                    palette = set(frames[0].getdata())
-                    for frame in frames: self.assertEqual(set(frame.getdata()),palette)
 
     @classmethod
     def setUpClass(cls):
@@ -342,7 +327,10 @@ class FixedMapTests(unittest.TestCase):
         surface = np.full((SIZE,SIZE),-999,np.int16)
         for y,x0,x1,level in self.index["water_bodies"][1]["surface_spans_y_x0_x1ex_y"]:
             surface[y,x0:x1] = level
-        self.assertTrue(np.all(surface[river] > self.layers["height"][river].astype(np.int16)-64))
+        # 山中の渓谷は格子幅16より細いため、河床はJavaの実列で検査する。
+        z=np.arange(SIZE)[:,None]*16-16384
+        raster_bed=river & (z>=self.config["river"]["points"][0][1]+1300)
+        self.assertTrue(np.all(surface[raster_bed] > self.layers["height"][raster_bed].astype(np.int16)-64))
         self.assertTrue(np.all(surface[river]!=-999))
         center = self.index["water_bodies"][1]["centerline_pixel_x_y_surface"]
         self.assertTrue(all(a[2]>=b[2] for a,b in zip(center,center[1:])))

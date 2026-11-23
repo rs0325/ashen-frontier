@@ -1,0 +1,25 @@
+// このinitスクリプトを指定した実行だけに、標本化用のソースとrunを追加する。
+gradle.beforeProject { world ->
+    if (world.path != ':world:1.21.1') return
+    world.pluginManager.withPlugin('ashenfrontier.mod') {
+        def request = world.providers.gradleProperty('fixedMapRenderRequest').get()
+        def samples = world.sourceSets.create('mapRender') {
+            java.srcDir(gradle.rootProject.file('tools/fixed-map/src/mapRender/java'))
+            resources.srcDir(world.layout.buildDirectory.dir('map-render-resources'))
+            compileClasspath += world.sourceSets.main.output + world.configurations.compileClasspath
+            runtimeClasspath += world.sourceSets.main.output + world.configurations.runtimeClasspath
+        }
+        def template = world.tasks.register('mapRenderTemplate', Copy) {
+            from(gradle.rootProject.file('modules/world/src/main/resources/data/ashen_frontier_world/structure/empty.nbt'))
+            into(world.layout.buildDirectory.dir('map-render-resources/data/ashen_frontier_map_render/structure'))
+        }
+        world.tasks.named(samples.processResourcesTaskName).configure { dependsOn(template) }
+        world.neoForge.mods.named('ashen_frontier_world') { sourceSet(samples) }
+        world.neoForge.runs.register('fixedMapRender') {
+            type = 'gameTestServer'
+            gameDirectory = world.layout.buildDirectory.dir('map-render-run')
+            systemProperty('neoforge.enabledGameTestNamespaces', 'ashen_frontier_map_render')
+            systemProperty('ashen.fixedMapRenderRequest', request)
+        }
+    }
+}

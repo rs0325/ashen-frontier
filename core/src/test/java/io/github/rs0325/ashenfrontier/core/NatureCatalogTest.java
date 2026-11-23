@@ -68,8 +68,10 @@ class NatureCatalogTest {
             assertEquals(entry.ja(), japanese.get(key).getAsString());
             if (entry.block()) json("assets/ashen_frontier/blockstates/" + id + ".json");
             if (entry.fluid()) {
-                resource("assets/ashen_frontier/textures/block/" + id + "_still.png");
-                resource("assets/ashen_frontier/textures/block/" + id + "_flow.png");
+                var model = json("assets/ashen_frontier/models/block/" + id + ".json");
+                assertEquals("minecraft:block/water_still", model.getAsJsonObject("textures").get("particle").getAsString());
+                assertNull(getClass().getResource("/assets/ashen_frontier/textures/block/" + id + "_still.png"));
+                assertNull(getClass().getResource("/assets/ashen_frontier/textures/block/" + id + "_flow.png"));
                 continue;
             }
             assertTrue(materials.has("ashen_frontier:" + id), id);

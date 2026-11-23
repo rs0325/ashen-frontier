@@ -139,6 +139,7 @@ public final class FixedTerrain {
         double coast = map.coastDistance(x, z), weight = map.detailWeight(x, z);
         var river = map.river(x, z);
         double height = coast < 0 ? map.ocean().height(map,x,z,-coast,shore) : landHeight(map, x, z, coast, weight, shore);
+        double natural=height;
         int water = Integer.MIN_VALUE, quality = 0;
         if (coast < 0) {
             water = 63; quality = 8;
@@ -147,33 +148,24 @@ public final class FixedTerrain {
                 water = (int) Math.floor(river.surface()); quality = map.riverQuality(river);
                 height = riverBed(river);
             } else if (river.distance() < 256) {
-                double reach=TerrainMath.noise(map.seed(), "river_bank", river.x(), river.z(), 192);
-                double slope = .07 + .12*reach + .3*Math.max(0,river.bank());
-                double headwater=river.tributary()?1:1-TerrainMath.smooth((river.station()-2400)/1800);
-                double cut=TerrainMath.valleyHeight(height,river.grade()+1,river.distance(),river.width(),slope);
-                if(headwater>0) {
-                    double dx=Math.abs(x-river.x()),dz=Math.abs(z-river.z());
-                    double distance=river.tributary()?Math.max(dx,dz)+.5*Math.min(dx,dz):river.distance();
-                    double d=Math.max(0,distance-river.width());
-                    double shoulder=TerrainMath.fbm(map.seed(),"brook_shoulder",x,z,36);
-                    double detail=1-TerrainMath.smooth((river.station()-1600)/400);
-                    double v=river.surface()+.35+d*(.32+shoulder*.12)+Math.pow(d,1.35)*.02
-                            +shoulder*(3+3*detail*TerrainMath.smooth(d/32))*TerrainMath.smooth(d/8);
-                    if(river.tributary() && d<3)v+=.8*TerrainMath.smooth((TerrainMath.noise(map.seed(),"brook_boulders",x,z,9)-.65)/.2)
-                            *(1-TerrainMath.smooth(d/3));
-                    double bank=Math.min(height,v)+(height-Math.min(height,v))*TerrainMath.smooth((d-20)/100);
-                    cut+=(bank-cut)*headwater;
+                height=riverBankHeight(map,x,z,natural,river);
+                if(river.distance()<144) {
+                    var other=map.riverBankAlternative(x,z);
+                    if(other!=null) {
+                        double bank=riverBankHeight(map,x,z,natural,other);
+                        double edge=Math.min(river.distance()-river.width(),other.distance()-other.width());
+                        double width=6*TerrainMath.smooth((edge-3)/10);
+                        double overlap=TerrainMath.smooth(Math.min(natural-height,natural-bank)/8);
+                        double round=width==0?0:Math.pow(1-Math.min(1,Math.abs(height-bank)/width),2)*width*.25*overlap;
+                        double joined=Math.min(height,bank)-round;
+                        height+=(joined-height)*TerrainMath.smooth((edge-2)/6);
+                    }
                 }
-                double terrace=(1-TerrainMath.smooth(Math.abs(river.distance()-river.width()-65)/32))
-                        *TerrainMath.smooth((reach-.45)/.3)*(1-Math.max(0,river.bank()));
-                double bench=river.grade()+8+(river.distance()-river.width()-50)*.025;
-                height = Math.min(height,cut+(Math.min(cut,bench)-cut)*terrace);
-                double lip=TerrainMath.smooth((river.distance()-river.width())/4);
-                double rim=river.surface()+1-headwater*.65;
-                height=Math.min(height,rim+(height-rim)*lip);
-                double bankFloor=river.surface()+(river.riffle()>0?1:0);
-                height+=(Math.max(height,bankFloor)-height)*headwater
-                        *(1-TerrainMath.smooth((river.distance()-river.width()-2)/6));
+            }
+            var source=map.riverSource();double north=source.z()-z;
+            if(north>0 && north<320 && Math.abs(x-source.x())<220) {
+                height+=(natural-height)*TerrainMath.smooth(north/20);
+                height=Math.min(height,TerrainMath.valleyHead(map.seed(),x,z,source,natural));
             }
             if (river.distance() >= river.width() && (map.category(4, x, z) & 4) != 0) {
                 water = map.waterSurface(x, z); quality = map.waterQuality(x, z);
@@ -185,6 +177,41 @@ public final class FixedTerrain {
         if (water != Integer.MIN_VALUE) rounded = Math.min(rounded, water - (coast >= 0 && river.distance() < river.width() ? (int)Math.min(2,Math.ceil(river.depth()-.5)) : 1));
         else rounded = Math.max(coast < 16 ? 63 : 64, rounded);
         return new Surface(Math.clamp(rounded, -127, 520), water, quality, coast, river, shore, Math.clamp(height,-127,520));
+    }
+
+    static double riverBankHeight(FixedMapData map,int x,int z,double height,RiverCourse.Sample river) {
+        double reach=TerrainMath.noise(map.seed(),"river_bank",river.x(),river.z(),192);
+        double slope=.07+.12*reach+.3*Math.max(0,river.bank());
+        double headwater=river.tributary()?1:1-TerrainMath.smooth((river.station()-2400)/1800);
+        double gorge=1-TerrainMath.smooth((river.station()-550)/650);
+        double cut=TerrainMath.valleyHeight(height,river.grade()+1,river.distance(),river.width(),slope);
+        double d=Math.max(0,river.distance()-river.width());
+        if(headwater>0) {
+            double shoulder=TerrainMath.fbm(map.seed(),"brook_shoulder",x,z,36);
+            double level=river.surface()+(river.grade()-river.surface())*TerrainMath.smooth((d-2)/8);
+            double detail=1-TerrainMath.smooth((river.station()-1600)/400);
+            double v=level+.35+d*(.32+shoulder*.12)+Math.pow(d,1.35)*.02
+                    +shoulder*(3+3*detail*TerrainMath.smooth(d/32))*TerrainMath.smooth(d/8);
+            if(gorge>0) {
+                double strength=1.8+.4*TerrainMath.smooth(river.station()/32);
+                double narrow=level+.35+d*.35+Math.pow(Math.max(0,d-.8),1.25)*(strength+shoulder*.35);
+                double rocks=d>3?(TerrainMath.massifRelief(map.seed(),x,z)+12)*.9*TerrainMath.smooth((d-3)/10):0;
+                narrow=Math.max(level+.35+d*.35,narrow+rocks);
+                v+=(narrow-v)*gorge;
+            }
+            if(river.tributary() && d<3)v+=.8*TerrainMath.smooth((TerrainMath.noise(map.seed(),"brook_boulders",x,z,9)-.65)/.2)
+                    *(1-TerrainMath.smooth(d/3));
+            double bank=Math.min(height,v)+(height-Math.min(height,v))*TerrainMath.smooth((d-(20-12*gorge))/(100-60*gorge));
+            cut+=(bank-cut)*headwater;
+        }
+        double terrace=river.tributary()?0:(1-TerrainMath.smooth(Math.abs(d-65)/32))*TerrainMath.smooth((reach-.45)/.3)
+                *(1-Math.max(0,river.bank()))*TerrainMath.smooth((river.station()-1400)/400);
+        double bench=river.grade()+8+(d-50)*.025;
+        height=Math.min(height,cut+(Math.min(cut,bench)-cut)*terrace);
+        double lip=TerrainMath.smooth(d/(4-2*gorge)),rim=river.surface()+1-headwater*.65;
+        height=Math.min(height,rim+(height-rim)*lip);
+        double bankFloor=river.surface()+(river.riffle()>0?1:0);
+        return height+(Math.max(height,bankFloor)-height)*headwater*(1-TerrainMath.smooth((d-2)/6));
     }
 
     private static double riverBed(RiverCourse.Sample river) {
@@ -217,6 +244,8 @@ public final class FixedTerrain {
         double wz = (TerrainMath.noise(map.seed(), "relief_z", x, z, 256) - 0.5) * 24 * weight;
         double base = map.height(x + wx, z + wz);
         double terminal=map.terminationWeight(x,z);
+        double headwater=TerrainMath.smooth((z+12650)/240.0)*TerrainMath.smooth((-10000-z)/300.0)
+                *TerrainMath.smooth((x+5100)/240.0)*TerrainMath.smooth((-3500-x)/240.0);
         double mountain = map.mountainWeight(x, z) * TerrainMath.smooth((base - 130+40*terminal) / (70-20*terminal));
         double amplitude=8+18*TerrainMath.noise(map.seed(),"relief_region",x,z,768);
         double detail=TerrainMath.fbm(map.seed(), "surface_detail", x+wx,z+wz,224);
@@ -231,8 +260,6 @@ public final class FixedTerrain {
         double rough=mountain>0?TerrainMath.rockRelief(map.seed(),x,z)
                 :(TerrainMath.noise(map.seed(),"lowland_rills",x+wx,z+wz,12)*2-1)*3;
         if(terminal>0)rough+=(TerrainMath.massifRelief(map.seed(),x,z)-rough)*terminal*mountain;
-        double headwater=TerrainMath.smooth((z+12650)/240.0)*TerrainMath.smooth((-10000-z)/300.0)
-                *TerrainMath.smooth((x+5100)/240.0)*TerrainMath.smooth((-3500-x)/240.0);
         if(headwater>0 && mountain>0)rough+=(TerrainMath.massifRelief(map.seed(),x,z)-rough)*headwater;
         if(headwater>0 && mountain>0 && mountain<.35) {
             double lowland=(TerrainMath.noise(map.seed(),"lowland_rills",x+wx,z+wz,12)*2-1)*3;
@@ -240,6 +267,11 @@ public final class FixedTerrain {
         }
         double steep=mountain>0?TerrainMath.smooth((Math.abs(map.height(x+16.0,z)-base)
                 +Math.abs(map.height((double)x,z+16)-base))/16):0;
+        if(headwater>0 && mountain>0) {
+            double sx=(map.height(x+wx+16,z+wz)-map.height(x+wx-16,z+wz))/32;
+            double sz=(map.height(x+wx,z+wz+16)-map.height(x+wx,z+wz-16))/32;
+            steep+=(TerrainMath.smooth(Math.hypot(sx,sz))-steep)*headwater;
+        }
         double bedding=(base+x*.12-z*.08)/8;
         double fraction=bedding-Math.floor(bedding);
         double ledge=(TerrainMath.smooth((fraction-.2)/.6)-fraction)*8*Math.max(0,rough/16)*mountain*steep*(1-headwater);
@@ -393,7 +425,7 @@ public final class FixedTerrain {
             layers=Math.min(layers,TerrainMath.depositLayers(edge,scatter));
             double bankDistance=relief.river.distance()-relief.river.width();
             if(bankDistance>=0 && bankDistance<4 && (relief.river.tributary() || relief.river.station()<2400))
-                layers=Math.min(layers,Math.max(1,(int)Math.ceil(bankDistance*1.3)));
+                layers=surface<=relief.river.surface()+2?0:Math.min(layers,Math.max(1,(int)Math.ceil(bankDistance*1.3)));
             aboveLine = relief.continuous-line;
         }
         if (island != null) layers = Math.min(layers,4);

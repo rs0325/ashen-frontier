@@ -206,23 +206,21 @@ def mountain_coordinates(mountain, bx, bz):
 
 
 def headwater_relief(bx, bz, source_x, source_z, rough):
-    """非対称な岩の肩と、谷頭へ集まる折れた浅い沢筋。"""
-    north = source_z-bz
-    cross = bx-source_x+rough*28
-    margin = np.minimum.reduce([(cross+320+rough*65)/110,(380-cross+rough*40)/130,
-                                (north+230+rough*35)/120,(650-north+rough*75)/180])
-    weight = np.clip(margin,0,1)
-    weight = weight*weight*(3-2*weight)
-    height = 114+np.maximum(0,north)*.11+np.maximum(0,-cross)*.28+np.maximum(0,cross)*.53
-    height += rough*7+np.maximum(0,cross+north*.65-130)*.12
-    for points in [[[-220,-430],[-160,-260],[-70,-100],[0,0]],
-                   [[60,-520],[110,-340],[25,-170],[0,0]],
-                   [[280,-310],[210,-190],[90,-85],[0,0]]]:
+    """山の基盤を残し、源流の隙間へ集まる短い沢筋だけを下げる。"""
+    height = np.full(bx.shape,np.inf)
+    weight = np.zeros(bx.shape)
+    for points in [[[-95,-240],[-65,-150],[-28,-65],[0,0]],
+                   [[45,-280],[65,-160],[12,-70],[0,0]],
+                   [[120,-150],[75,-95],[30,-45],[0,0]]]:
         distance,station,side = mountain_coordinates({"points":points},bx-source_x,bz-source_z)
         length = sum(math.dist(a,b) for a,b in zip(points,points[1:]))
-        floor = 114+(length-station)*.065
-        channel = floor+distance*(.35+np.where(side>0,.12,0))+rough*3
-        height = np.minimum(height,channel)
+        channel = 114+(length-station)*.75+distance*(1.9+np.where(side>0,.4,0))+rough*3
+        influence = np.clip(1-distance/(28+rough*4),0,1)
+        influence = influence*influence*(3-2*influence)
+        replace = influence>weight
+        height = np.where(replace,channel,height)
+        weight = np.maximum(weight,influence)
+    height = np.where(weight>0,height,0)
     return height,weight
 
 
@@ -452,13 +450,10 @@ def generate_assets(input_dir, output):
     print("標高ノイズ → 山脈 → 海岸", flush=True)
     height = np.where(land, config["terrain_base_y"] + noise(config["fixed_seed"])*.65, 40).astype(np.float32)
     height,mountain_mask = mountain_relief(config,bx,bz,height,nw)
-    # 源流は主脈と分岐に挟まれる谷頭。北で閉じ、南へ開く谷にする。
+    # 16ブロック格子には山の基盤を残し、細い渓谷は実ブロックで彫る。
     source_x,source_z = config["river"]["points"][0]
-    head = np.abs(bx-source_x+40*np.sin((bz-source_z)/160))*.8
-    head += np.maximum(0,source_z-bz)*.4+np.maximum(0,bz-source_z)*.06
-    height = np.where(nw,np.minimum(height,110+head),height)
     head_height,head_weight = headwater_relief(bx,bz,source_x,source_z,noise(config["fixed_seed"]+177)/12)
-    height += (head_height-height)*head_weight*nw
+    height += np.clip(head_height-height,-8,0)*head_weight*nw
     coast = land & neighbors(~land)
     # 海岸の平滑な遷移。元の陸海輪郭は変えない。
     shore = np.array(Image.fromarray((~land).astype("uint8")*255).filter(ImageFilter.GaussianBlur(5)), dtype=np.float32)/255
@@ -496,9 +491,13 @@ def generate_assets(input_dir, output):
     valley_image = Image.new("L",(SIZE,SIZE))
     ImageDraw.Draw(valley_image).line([pixel(p) for p in points],fill=255,width=25)
     valley = np.array(valley_image.filter(ImageFilter.GaussianBlur(10)),dtype=np.float32)/255
+    opening = np.clip((bz-source_z-650)/650,0,1)
+    opening = opening*opening*(3-2*opening)
+    valley *= opening
     valley_y = np.interp(bz[:,0],[p[1] for p in river["points"]],np.linspace(110,63,len(river["points"])))[:,None]+6
     height = np.where(land,height*(1-valley)+np.minimum(height,valley_y)*valley,height)
-    height[river_mask & land] = surface[river_mask & land]-2
+    raster_bed = river_mask & land & (opening>=1)
+    height[raster_bed] = surface[raster_bed]-2
     # 固定入口を高い峰で塞がず、既存の短い地下経路へ下りられる谷口を残す。
     underground = underground_document()
     approaches = []
