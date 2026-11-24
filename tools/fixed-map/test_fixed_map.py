@@ -16,7 +16,59 @@ from PIL import Image
 
 from generate import (LAYERS, MAP_RESOURCES, OUTPUT, RESOURCE_FILES, ROOT, SIZE, TOOL,
                       drainage, generate, island_component, island_relief, load_inputs, main, mountain_coordinates, neighbors, pixel,
-                      raster_line, sha, termination_relief, headwater_relief, validate, write_json)
+                      raster_line, sha, termination_relief, headwater_relief, curved_points, ridge_relief, join_relief, validate, write_json)
+
+
+def contour_lines(field,x0,z0,step=16):
+    """配置標高の等高線を画素間で補間し、連続した線へつなぐ。"""
+    edges={};adj={}
+    for y in range(field.shape[0]-1):
+        for x in range(field.shape[1]-1):
+            v=[field[y,x],field[y,x+1],field[y+1,x+1],field[y+1,x]]
+            corners=[(x,y),(x+1,y),(x+1,y+1),(x,y+1)]
+            ids=[]
+            for k in range(4):
+                j=(k+1)%4
+                if (v[k]>=0)==(v[j]>=0):continue
+                a,b=corners[k],corners[j]
+                key=tuple(sorted([a,b]));t=v[k]/(v[k]-v[j])
+                edges[key]=(x0+(a[0]+(b[0]-a[0])*t)*step,z0+(a[1]+(b[1]-a[1])*t)*step)
+                ids.append((k,key))
+            if len(ids)==2:pairs=[(ids[0][1],ids[1][1])]
+            elif len(ids)==4:
+                e=dict(ids);pairs=[(e[0],e[1]),(e[2],e[3])] if (v[0]>=0)==(sum(v)>=0) else [(e[0],e[3]),(e[1],e[2])]
+            else:continue
+            for a,b in pairs:adj.setdefault(a,[]).append(b);adj.setdefault(b,[]).append(a)
+    visited=set();result=[]
+    for start in sorted(adj,key=lambda k:len(adj[k])):
+        if start in visited:continue
+        chain=[];previous=None;current=start
+        while current not in visited:
+            visited.add(current);chain.append(edges[current]);options=[q for q in adj[current] if q!=previous]
+            if not options:break
+            previous,current=current,options[0]
+        if len(chain)>3:result.append(np.array(chain))
+    return result
+def longest_circular_arc(chains):
+    """一定曲率の長い円弧を、円への残差と半径で見つける。"""
+    best=0;detail=None
+    for chain in chains:
+        dist=np.r_[0,np.cumsum(np.linalg.norm(np.diff(chain,axis=0),axis=1))]
+        if dist[-1]<160:continue
+        points=np.column_stack([np.interp(np.arange(0,dist[-1],8),dist,chain[:,k]) for k in [0,1]])
+        for count in range(25,50,4):
+            for start in range(0,len(points)-count+1,4):
+                p=points[start:start+count];local=p-p.mean(0)
+                coef=np.linalg.lstsq(np.column_stack([2*local[:,0],2*local[:,1],np.ones(count)]),(local*local).sum(1),rcond=None)[0]
+                r2=coef[2]+coef[0]**2+coef[1]**2
+                if r2<=0:continue
+                radius=math.sqrt(r2);arc=(count-1)*8
+                if not 64<radius<256 or arc/radius<math.pi/3:continue
+                residual=np.linalg.norm(local-coef[:2],axis=1)-radius
+                rms=float(np.sqrt(np.mean(residual**2)))
+                if rms<3.5 and max(abs(residual))<8 and arc>best:
+                    best=arc;detail={'radius':radius,'rms':rms,'start':p[0].tolist(),'end':p[-1].tolist()}
+    return best,detail
 
 
 class FixedMapTests(unittest.TestCase):
@@ -28,6 +80,114 @@ class FixedMapTests(unittest.TestCase):
         self.assertTrue(np.all(weight[[1,2,3,5]]==0),"広い谷頭や四角い雪原を彫らない")
         self.assertGreater(height[0],200,"北へ登る沢筋が主稜線を低く切り開かない")
         np.testing.assert_allclose(headwater_relief(np.array([0]),np.array([0]),0,0,np.array([0]))[0],[114])
+
+    def test_curved_ridges_keep_their_fixed_positions_heights_and_widths(self):
+        for mountain in self.config["mountains"]:
+            for ridge in mountain["flanks"]["ridges"]+mountain["flanks"]["toes"]:
+                curve=curved_points(ridge,0,spacing=48)
+                self.assertEqual(curve[0],ridge[0])
+                self.assertEqual(curve[-1],ridge[-1])
+                self.assertTrue(set(map(tuple,ridge))<=set(map(tuple,curve)),"曲線の途中の固定点も移動しない")
+                self.assertTrue(all(p[3]>0 for p in curve))
+
+    def test_flank_toes_join_the_plain_without_a_slope_step(self):
+        ridge={"base_y":104,"ridges":[[[0,0,264,240],[0,320,144,160]]],"valleys":[]}
+        x=np.array([0.,180,220,232,236,240,244])
+        z=np.zeros(x.shape)
+        height=ridge_relief(ridge,x,z,curved=True)
+        self.assertEqual(height[0],264,"支稜の固定した頂部を変えない")
+        np.testing.assert_array_equal(height[-2:],[104,104])
+        self.assertTrue(np.all(np.diff(height)<=0),"山すそへ連続して低くなる")
+        self.assertLess((height[-3]-height[-2])/4,.05,"端の勾配を平野のゼロへ近づける")
+        self.assertLess(height[3]-height[4],height[2]-height[3],"山すそ側で勾配が緩くなる")
+
+    def test_flank_ridges_stay_inside_the_approved_mountain_ranges(self):
+        for mountain,count in zip(self.config["mountains"],[33,8]):
+            ridges=mountain["flanks"]["ridges"]
+            self.assertEqual(len(ridges),count)
+            lengths=[]
+            for ridge in ridges:
+                x,z=np.array([p[0] for p in ridge]),np.array([p[1] for p in ridge])
+                distance,_,_=mountain_coordinates(mountain,x,z)
+                self.assertTrue(np.all(distance<mountain["radius_blocks"]),mountain["id"])
+                self.assertTrue(all(a[2]>b[2] for a,b in zip(ridge,ridge[1:])))
+                lengths.append(sum(math.dist(a[:2],b[:2]) for a,b in zip(ridge,ridge[1:])))
+            self.assertGreater(max(lengths)-min(lengths),200,"支稜は同じ長さで並べない")
+
+    def test_flank_toes_split_and_do_not_end_in_long_circular_arcs(self):
+        for mountain in self.config["mountains"]:
+            terrain=mountain["flanks"]
+            self.assertEqual(len(terrain["toes"]),len(terrain["ridges"])*2)
+            self.assertGreaterEqual(len(terrain["valleys"]),len(terrain["toes"]))
+            roots=[np.linalg.norm(np.array(terrain["toes"][i][0][:2])-np.array(terrain["toes"][i+1][0][:2]))
+                   for i in range(0,len(terrain["toes"]),2)]
+            self.assertGreater(sum(d>=80 for d in roots),len(roots)*.7,"枝分かれ点を分散し、同じ点から放射させない")
+
+            for valley in terrain["valleys"]:
+                points=np.array(valley)
+                distance,_,_=mountain_coordinates(mountain,points[:,0],points[:,1])
+                self.assertGreater(distance[-1],distance[0],"支沢は山すそへ抜ける")
+                self.assertTrue(np.all(np.linalg.norm(np.diff(points[:,:2],axis=0),axis=1)>0))
+                self.assertTrue(np.all(np.diff(points[:,2])<0))
+            for ridge in terrain["toes"]:
+                points=np.array(ridge)
+                distance,_,_=mountain_coordinates(mountain,points[:,0],points[:,1])
+                self.assertTrue(np.all(distance<mountain["radius_blocks"]))
+                self.assertEqual(ridge[-1][2],terrain["base_y"])
+                self.assertTrue(all(a[2]>b[2] for a,b in zip(ridge,ridge[1:])))
+        for bounds in [(-10400,-11200,-9856,-10704),(-9968,-11328,-9296,-10736)]:
+            x0,z0,x1,z1=bounds
+            height=self.layers["height"][(z0+16384)//16:(z1+16384)//16+1,(x0+16384)//16:(x1+16384)//16+1].astype(float)-64
+            for level in (120,140,160):
+                arc,detail=longest_circular_arc(contour_lines(height-level,x0,z0))
+                self.assertLess(arc,192,f"支稜の先端・谷側を長い一定曲率の円弧にしない: {bounds} Y{level} arc={arc} {detail}")
+
+    def test_flank_valleys_do_not_become_level_terraces(self):
+        x0,z0,x1,z1=-10560,-11600,-10240,-11008
+        height=self.layers["height"][(z0+16384)//16:(z1+16384)//16+1,(x0+16384)//16:(x1+16384)//16+1].astype(float)-64
+        self.assertTrue(height.min()<108 and height.max()>180,"谷と周囲の山地を含む範囲を検査する")
+        seen=np.zeros(height.shape,bool)
+        largest=0
+        for y,x in np.ndindex(height.shape):
+            if seen[y,x] or not 108<height[y,x]<160:continue
+            queue=deque([(y,x)]);seen[y,x]=True;area=0
+            while queue:
+                z,c=queue.popleft();area+=1
+                for dz,dx in ((0,1),(0,-1),(1,0),(-1,0)):
+                    nz,nx=z+dz,c+dx
+                    if 0<=nz<height.shape[0] and 0<=nx<height.shape[1] and not seen[nz,nx] and height[nz,nx]==height[y,x]:
+                        seen[nz,nx]=True;queue.append((nz,nx))
+            largest=max(largest,area)
+        self.assertLessEqual(largest*256,4096,"排水評価で谷を大きな水平面へ埋め戻さない")
+        x0,z0,x1,z1=-10608,-11616,-10224,-10976
+        height=self.layers["height"][(z0+16384)//16:(z1+16384)//16+1,(x0+16384)//16:(x1+16384)//16+1].astype(float)-64
+        for level in (108,112,120,140,160):
+            longest=0
+            for chain in contour_lines(height-level,x0,z0):
+                distance=np.r_[0,np.cumsum(np.linalg.norm(np.diff(chain,axis=0),axis=1))]
+                points=np.column_stack([np.interp(np.arange(0,distance[-1],16),distance,chain[:,k]) for k in (0,1)])
+                for start in range(len(points)):
+                    for end in range(start+1,len(points)):
+                        if min(np.ptp(points[start:end+1],axis=0))>16:break
+                        longest=max(longest,(end-start)*16)
+            self.assertLess(longest,160,f"谷の縁を幅16の帯で長く座標軸へ揃えない: Y{level} length={longest}")
+
+
+    def test_relief_intersections_keep_the_plain_and_join_slopes(self):
+        x=np.linspace(-4,4,17)
+        height=join_relief(130+x,130-x,104)
+        self.assertTrue(np.all(height<=np.maximum(130+x,130-x)))
+        self.assertEqual(float(join_relief(np.array([104.]),np.array([104.]),104)[0]),104)
+        self.assertLess(abs(height[9]-2*height[8]+height[7]),.2,"交差部に鋭い勾配の折れを作らない")
+        terrain={"base_y":104,"ridges":[[[0,0,185,86],[-246,62,158,120],[-285,85,104,22]]],"valleys":[]}
+        folds=[]
+        for step in (2,.5):
+            z,x=np.mgrid[-40:200:step,-344:-144:step]
+            shape=ridge_relief(terrain,x,z,curved=True)
+            folds.append(max(np.max(abs(np.diff(shape,n=2,axis=0))),np.max(abs(np.diff(shape,n=2,axis=1)))))
+        self.assertLess(folds[1],2,"最近点の切替えに標高ジャンプを残さない")
+        self.assertLess(folds[1],folds[0]*.35,"格子を細かくすると自然な曲率の差分は縮み、継ぎ目のジャンプは縮まない")
+
 
     def test_soil_quality_has_no_contaminated_or_toxic_category(self):
         self.assertLessEqual(int(self.layers["soil"].max()), 3)
@@ -159,6 +319,7 @@ class FixedMapTests(unittest.TestCase):
             for saddle in mountain["passes"]:
                 points = next(w["points_x_z_y"] for w in self.index["walkways"] if w["id"]==saddle["route"])
                 self.assertIn(saddle["xz"],[p[:2] for p in points])
+                self.assertEqual(next(p[2] for p in points if p[:2]==saddle["xz"]),209.1739,"既存の峠の路面高を維持する")
 
     def test_approved_mask_changes_only_by_the_two_island_channels(self):
         delta = json.loads((TOOL/"input/island_channels.json").read_text(encoding="utf-8"))

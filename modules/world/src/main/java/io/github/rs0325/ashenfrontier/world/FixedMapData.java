@@ -34,6 +34,7 @@ public final class FixedMapData {
     private record Mountain(double[][] points, double radius, int peakY) {}
     private int terminationJoin, terminationTransition;
     private final List<Mountain> mountains;
+    private final Map<Long,List<Entrance>> reliefPins, summits;
     record IslandPeak(int x, int z, int y, double radius, double cos, double sin) {}
     record MountainIsland(int peakY, int inlandDepth, int x, int z, List<IslandPeak> peaks) {}
     private final Map<Integer, MountainIsland> mountainIslands;
@@ -133,6 +134,8 @@ public final class FixedMapData {
                 junctions.put(at,new IslandJunction(nw,ne,sw,se));
             }
             var mountains = new ArrayList<Mountain>();
+            var reliefPins = new HashMap<Long,List<Entrance>>();
+            var summits = new HashMap<Long,List<Entrance>>();
             for (var value : index.getAsJsonArray("mountains")) {
                 var mountain = value.getAsJsonObject();
                 var source = mountain.getAsJsonArray("points");
@@ -142,8 +145,20 @@ public final class FixedMapData {
                     points[i][1] = source.get(i).getAsJsonArray().get(1).getAsDouble();
                 }
                 mountains.add(new Mountain(points, mountain.get("radius_blocks").getAsDouble(),mountain.get("peak_y").getAsInt()));
+                for(var item:mountain.getAsJsonArray("summits")) {
+                    var point=item.getAsJsonObject().getAsJsonArray("xz");
+                    addEntrance(summits,point.get(0).getAsInt(),point.get(1).getAsInt(),48);
+                }
             }
             this.mountains = List.copyOf(mountains);
+            for(var value:index.getAsJsonArray("underground_surface_controls")) {
+                var point=value.getAsJsonArray();
+                addEntrance(reliefPins,point.get(0).getAsInt(),point.get(1).getAsInt(),144);
+            }
+            reliefPins.replaceAll((key,value)->List.copyOf(value));
+            this.reliefPins = Map.copyOf(reliefPins);
+            summits.replaceAll((key,value)->List.copyOf(value));
+            this.summits = Map.copyOf(summits);
             var termination = index.getAsJsonArray("mountains").get(0).getAsJsonObject().getAsJsonObject("termination");
             terminationJoin=termination.get("join_x").getAsInt();
             terminationTransition=termination.get("transition_blocks").getAsInt();
@@ -248,13 +263,13 @@ public final class FixedMapData {
             var entrances = new HashMap<Long, List<Entrance>>();
             var geologyAnchors = new HashMap<Long, List<Entrance>>();
             for (var deposit : underground.deposits()) {
-                addEntrance(geologyAnchors,deposit.x(),deposit.z());
+                addEntrance(geologyAnchors,deposit.x(),deposit.z(),48);
                 if (!deposit.id().startsWith("oil_") && !Boolean.TRUE.equals(deposit.vanilla())) {
-                    addEntrance(entrances, deposit.x() - Math.max(96, deposit.depth() + 24), deposit.z());
+                    addEntrance(entrances, deposit.x() - Math.max(96, deposit.depth() + 24), deposit.z(),48);
                 }
             }
             for (var space : underground.spaces()) {
-                addEntrance(entrances, space.x() - Integer.signum(space.end_x() - space.x()) * (space.depth() + 16), space.z());
+                addEntrance(entrances, space.x() - Integer.signum(space.end_x() - space.x()) * (space.depth() + 16), space.z(),48);
             }
             entrances.replaceAll((key, value) -> List.copyOf(value));
             this.entrances = Map.copyOf(entrances);
@@ -332,10 +347,10 @@ public final class FixedMapData {
 
     private static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xffffffffL); }
 
-    private static void addEntrance(Map<Long, List<Entrance>> cells, int x, int z) {
+    private static void addEntrance(Map<Long, List<Entrance>> cells, int x, int z, int reach) {
         var entrance = new Entrance(x, z);
-        for (int cx = (x - 48) >> 7; cx <= (x + 48) >> 7; cx++) {
-            for (int cz = (z - 48) >> 7; cz <= (z + 48) >> 7; cz++) {
+        for (int cx = (x - reach) >> 7; cx <= (x + reach) >> 7; cx++) {
+            for (int cz = (z - reach) >> 7; cz <= (z + reach) >> 7; cz++) {
                 cells.computeIfAbsent(key(cx, cz), ignored -> new ArrayList<>()).add(entrance);
             }
         }
@@ -536,6 +551,15 @@ public final class FixedMapData {
             }
             weight = Math.max(weight, TerrainMath.smooth(1 - nearest / mountain.radius));
         }
+        return weight;
+    }
+
+    double reliefDetailWeight(int x,int z) {
+        double weight=1;
+        for(var peak:summits.getOrDefault(key(x>>7,z>>7),List.of()))
+            weight=Math.min(weight,TerrainMath.smooth((Math.hypot(x-peak.x,z-peak.z)-16)/32));
+        for(var pin:reliefPins.getOrDefault(key(x>>7,z>>7),List.of()))
+            weight=Math.min(weight,TerrainMath.smooth((Math.hypot(x-pin.x,z-pin.z)-80)/64));
         return weight;
     }
 

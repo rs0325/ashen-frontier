@@ -252,17 +252,21 @@ public final class FixedTerrain {
         detail=.2-Math.abs(detail);
         if(mountain>0) {
             double ridge=TerrainMath.noise(map.seed(),"mountain_detail",x+wx,z+wz,48)*2-1;
+            double brook=headwater*TerrainMath.smooth((300-Math.abs(x+4000+(z+12100)*.22))/100);
+            double broken=TerrainMath.fbm(map.seed(),"mountain_detail",.8*(x+wx)-.6*(z+wz),.6*(x+wx)+.8*(z+wz),96);
+            ridge+=(broken-ridge)*TerrainMath.smooth((x+12800)/320.0)*(1-brook)*map.reliefDetailWeight(x,z);
             if(terminal>0)ridge+=(TerrainMath.fbm(map.seed(),"mountain_detail",x+wx,z+wz,128)-ridge)*terminal;
             detail=detail*(1-mountain)+ridge*mountain;
         }
         detail*=amplitude+(64-40*terminal)*mountain;
         detail*=1-mountain+mountain*TerrainMath.smooth((coast-96*(1-terminal))/(192-168*terminal));
-        double rough=mountain>0?TerrainMath.rockRelief(map.seed(),x,z)
-                :(TerrainMath.noise(map.seed(),"lowland_rills",x+wx,z+wz,12)*2-1)*3;
+        double lowland=(TerrainMath.noise(map.seed(),"lowland_rills",x+wx,z+wz,12)*2-1)*3;
+        double rough=mountain>0?TerrainMath.rockRelief(map.seed(),x,z):lowland;
+        if(mountain>0)rough+=(lowland-rough)*(1-TerrainMath.smooth(mountain/.12))
+                *TerrainMath.smooth((x+12800)/320.0)*(1-headwater);
         if(terminal>0)rough+=(TerrainMath.massifRelief(map.seed(),x,z)-rough)*terminal*mountain;
         if(headwater>0 && mountain>0)rough+=(TerrainMath.massifRelief(map.seed(),x,z)-rough)*headwater;
         if(headwater>0 && mountain>0 && mountain<.35) {
-            double lowland=(TerrainMath.noise(map.seed(),"lowland_rills",x+wx,z+wz,12)*2-1)*3;
             rough+=(lowland-rough)*headwater*(1-TerrainMath.smooth(mountain/.35));
         }
         double steep=mountain>0?TerrainMath.smooth((Math.abs(map.height(x+16.0,z)-base)
@@ -421,7 +425,7 @@ public final class FixedTerrain {
             layers = rock ? 0 : TerrainMath.snowLayers(surface, line, slope);
             double margin=TerrainMath.smooth((relief.coast-8)/48);
             double edge=TerrainMath.smooth((relief.continuous-line+16)/32)*margin;
-            double scatter=TerrainMath.noise(map.seed(),"snow_edge",x,z,1);
+            double scatter=TerrainMath.noise(map.seed(),"snow_edge",.8*x+.6*z,-.6*x+.8*z,24);
             layers=Math.min(layers,TerrainMath.depositLayers(edge,scatter));
             double bankDistance=relief.river.distance()-relief.river.width();
             if(bankDistance>=0 && bankDistance<4 && (relief.river.tributary() || relief.river.station()<2400))

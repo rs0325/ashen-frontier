@@ -49,7 +49,8 @@ public final class ReliefRevisionGameTests {
                 String material=BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
                 helper.assertTrue(!RemovedItems.isRemoved(new ItemStack(state.getBlock())),"削除済みの表層を復活させない");
                 if(coast>=0 && map.waterSurface(x,z)==Integer.MIN_VALUE && !map.isProtected(x,z)) {
-                    if(slope>=.95 && !state.isAir()) {
+                    // 整数Yの差分には最大√2/16の丸め誤差がある。
+                    if(slope>=.99 && !state.isAir()) {
                         helper.assertTrue(!cap.is(Blocks.SNOW) && snow==0,"急斜面に雪を留めない");
                         helper.assertTrue(state.equals(FixedUnderground.state(terrain.underground().cell(x,z),x,ground,z,column.rockState(ground))),
                                 "急斜面の母岩・鉱化部を露出させる: "+x+","+z+" "+state);bare++;
