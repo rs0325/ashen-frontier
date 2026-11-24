@@ -49,7 +49,7 @@ def contour_lines(field,x0,z0,step=16):
             previous,current=current,options[0]
         if len(chain)>3:result.append(np.array(chain))
     return result
-def longest_circular_arc(chains):
+def longest_circular_arc(chains, minimum_angle=math.pi/3):
     """一定曲率の長い円弧を、円への残差と半径で見つける。"""
     best=0;detail=None
     for chain in chains:
@@ -63,11 +63,11 @@ def longest_circular_arc(chains):
                 r2=coef[2]+coef[0]**2+coef[1]**2
                 if r2<=0:continue
                 radius=math.sqrt(r2);arc=(count-1)*8
-                if not 64<radius<256 or arc/radius<math.pi/3:continue
+                if not 64<radius<256 or arc/radius<minimum_angle:continue
                 residual=np.linalg.norm(local-coef[:2],axis=1)-radius
                 rms=float(np.sqrt(np.mean(residual**2)))
                 if rms<3.5 and max(abs(residual))<8 and arc>best:
-                    best=arc;detail={'radius':radius,'rms':rms,'start':p[0].tolist(),'end':p[-1].tolist()}
+                    best=arc;detail={'radius':radius,'rms':rms,'center':(p.mean(0)+coef[:2]).tolist(),'start':p[0].tolist(),'end':p[-1].tolist()}
     return best,detail
 
 

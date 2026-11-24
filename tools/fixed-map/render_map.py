@@ -20,6 +20,7 @@ PRESETS = {
 
 def arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--map", choices=["earth_001", "earth_002"], default="earth_001", help="検査する版を明示。通常プリセットは更新しない")
     region = parser.add_mutually_exclusive_group()
     region.add_argument("--preset", choices=["all", *PRESETS], default=None,
                         help="省略時は全域16と北西8を一括生成")
@@ -119,10 +120,13 @@ def main(argv=None):
     head = git("rev-parse", "HEAD")
     dirty = bool(git("status", "--porcelain", "--untracked-files=normal"))
     output = prepare_output(args.output or TOOLS / "preview/maps" / (datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + head[:7]))
-    manifest = ROOT / "modules/world/src/main/resources/data/ashen_frontier/fixed_map/earth_001/manifest.json"
+    manifest = ROOT / f"modules/world/src/main/resources/data/ashen_frontier/fixed_map/{args.map}/manifest.json"
     request = {"token": uuid.uuid4().hex, "head": head, "dirty": dirty,
-               "map": "earth_001", "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
+               "map": args.map, "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
                "layout": json.loads((TOOLS / "input/layout.json").read_text(encoding="utf-8")), "jobs": jobs}
+    if args.map == "earth_002":
+        request["layout"] = {"facilities": [], "mountains": []}
+        request["landform"] = json.loads((manifest.parent / "landform.json").read_text(encoding="utf-8"))
     path = output / "request.json"
     path.write_text(json.dumps(request, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     result = sample(path)

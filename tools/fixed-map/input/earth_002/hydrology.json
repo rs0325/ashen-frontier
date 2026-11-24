@@ -1,0 +1,505 @@
+{
+  "map_version": "earth_002",
+  "hydrology_schema_version": 1,
+  "coordinate_units": "block",
+  "water_level": "整数の水面ブロックY",
+  "profile_fields": [
+    "X",
+    "Z",
+    "water_y",
+    "full_width_blocks",
+    "depth_blocks"
+  ],
+  "inventories": [
+    {
+      "id": 1,
+      "key": "ocean",
+      "quality_id": 8,
+      "finite": false
+    },
+    {
+      "id": 2,
+      "key": "nw05",
+      "quality_id": 4,
+      "finite": true
+    },
+    {
+      "id": 3,
+      "key": "nw06",
+      "quality_id": 4,
+      "finite": true
+    },
+    {
+      "id": 4,
+      "key": "nw16",
+      "quality_id": 4,
+      "finite": true
+    }
+  ],
+  "nodes": [
+    {
+      "id": "S05",
+      "kind": "source",
+      "xz": [
+        -10150,
+        -12450
+      ],
+      "water_y": 350
+    },
+    {
+      "id": "I10",
+      "kind": "lake_inlet",
+      "xz": [
+        -7200,
+        -10670
+      ],
+      "water_y": 145
+    },
+    {
+      "id": "O10",
+      "kind": "lake_outlet",
+      "xz": [
+        -6510,
+        -10300
+      ],
+      "water_y": 145
+    },
+    {
+      "id": "J15",
+      "kind": "confluence",
+      "xz": [
+        -6200,
+        -10300
+      ],
+      "water_y": 136
+    },
+    {
+      "id": "J17",
+      "kind": "confluence",
+      "xz": [
+        -4800,
+        -7800
+      ],
+      "water_y": 90
+    },
+    {
+      "id": "M05",
+      "kind": "ocean_outlet",
+      "xz": [
+        -2432,
+        -5792
+      ],
+      "water_y": 63
+    },
+    {
+      "id": "S15",
+      "kind": "source",
+      "xz": [
+        -4800,
+        -11900
+      ],
+      "water_y": 230
+    },
+    {
+      "id": "S17",
+      "kind": "source",
+      "xz": [
+        -7900,
+        -6500
+      ],
+      "water_y": 155
+    },
+    {
+      "id": "S06",
+      "kind": "source",
+      "xz": [
+        -10200,
+        -9900
+      ],
+      "water_y": 210
+    },
+    {
+      "id": "M06",
+      "kind": "ocean_outlet",
+      "xz": [
+        -13125,
+        -9178
+      ],
+      "water_y": 63
+    },
+    {
+      "id": "S16",
+      "kind": "source",
+      "xz": [
+        -4800,
+        -13000
+      ],
+      "water_y": 220
+    },
+    {
+      "id": "M16",
+      "kind": "ocean_outlet",
+      "xz": [
+        -5313,
+        -13954
+      ],
+      "water_y": 63
+    }
+  ],
+  "reaches": [
+    {
+      "id": "R05U",
+      "route": "r05_u",
+      "from_node": "S05",
+      "to_node": "I10",
+      "inventory_id": 2,
+      "profile_x_z_surface_full_width_depth": [
+        [
+          -10150,
+          -12450,
+          350,
+          2,
+          1
+        ],
+        [
+          -9900,
+          -12367,
+          320,
+          2,
+          1
+        ],
+        [
+          -9400,
+          -12200,
+          260,
+          4,
+          1
+        ],
+        [
+          -8500,
+          -12000,
+          175,
+          5,
+          1
+        ],
+        [
+          -7900,
+          -11000,
+          155,
+          8,
+          2
+        ],
+        [
+          -7200,
+          -10670,
+          145,
+          12,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "R05A",
+      "route": "r05_d",
+      "from_node": "O10",
+      "to_node": "J15",
+      "inventory_id": 2,
+      "profile_x_z_surface_full_width_depth": [
+        [
+          -6510,
+          -10300,
+          145,
+          14,
+          2
+        ],
+        [
+          -6200,
+          -10300,
+          136,
+          24,
+          3
+        ]
+      ]
+    },
+    {
+      "id": "R05B",
+      "route": "r05_d",
+      "from_node": "J15",
+      "to_node": "J17",
+      "inventory_id": 2,
+      "profile_x_z_surface_full_width_depth": [
+        [
+          -6200,
+          -10300,
+          136,
+          24,
+          3
+        ],
+        [
+          -5200,
+          -9200,
+          112,
+          38,
+          4
+        ],
+        [
+          -4800,
+          -7800,
+          90,
+          50,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "R05C",
+      "route": "r05_d",
+      "from_node": "J17",
+      "to_node": "M05",
+      "inventory_id": 2,
+      "profile_x_z_surface_full_width_depth": [
+        [
+          -4800,
+          -7800,
+          90,
+          50,
+          5
+        ],
+        [
+          -4000,
+          -6500,
+          75,
+          68,
+          5
+        ],
+        [
+          -2900,
+          -5900,
+          65,
+          84,
+          6
+        ],
+        [
+          -2432,
+          -5792,
+          63,
+          90,
+          6
+        ]
+      ]
+    },
+    {
+      "id": "R15",
+      "route": "r15",
+      "from_node": "S15",
+      "to_node": "J15",
+      "inventory_id": 2,
+      "profile_x_z_surface_full_width_depth": [
+        [
+          -4800,
+          -11900,
+          230,
+          3,
+          1
+        ],
+        [
+          -5200,
+          -11300,
+          195,
+          8,
+          2
+        ],
+        [
+          -5700,
+          -10900,
+          160,
+          16,
+          2
+        ],
+        [
+          -6200,
+          -10300,
+          136,
+          24,
+          3
+        ]
+      ]
+    },
+    {
+      "id": "R17",
+      "route": "r17",
+      "from_node": "S17",
+      "to_node": "J17",
+      "inventory_id": 2,
+      "profile_x_z_surface_full_width_depth": [
+        [
+          -7900,
+          -6500,
+          155,
+          4,
+          1
+        ],
+        [
+          -6900,
+          -6700,
+          133,
+          8,
+          2
+        ],
+        [
+          -5700,
+          -6900,
+          113,
+          18,
+          3
+        ],
+        [
+          -4800,
+          -7800,
+          90,
+          30,
+          3
+        ]
+      ]
+    },
+    {
+      "id": "R06",
+      "route": "r06",
+      "from_node": "S06",
+      "to_node": "M06",
+      "inventory_id": 3,
+      "profile_x_z_surface_full_width_depth": [
+        [
+          -10200,
+          -9900,
+          210,
+          3,
+          1
+        ],
+        [
+          -10800,
+          -9700,
+          125,
+          6,
+          1
+        ],
+        [
+          -11100,
+          -9500,
+          110,
+          8,
+          2
+        ],
+        [
+          -11800,
+          -9100,
+          85,
+          18,
+          3
+        ],
+        [
+          -13125,
+          -9178,
+          63,
+          30,
+          4
+        ]
+      ]
+    },
+    {
+      "id": "R16",
+      "route": "r16",
+      "from_node": "S16",
+      "to_node": "M16",
+      "inventory_id": 4,
+      "profile_x_z_surface_full_width_depth": [
+        [
+          -4800,
+          -13000,
+          220,
+          3,
+          1
+        ],
+        [
+          -5200,
+          -13500,
+          120,
+          12,
+          2
+        ],
+        [
+          -5313,
+          -13954,
+          63,
+          28,
+          3
+        ]
+      ]
+    }
+  ],
+  "lakes": [
+    {
+      "id": "L10",
+      "inventory_id": 2,
+      "surface_y": 145,
+      "outline_x_z": [
+        [
+          -7450,
+          -10400
+        ],
+        [
+          -7150,
+          -10750
+        ],
+        [
+          -6800,
+          -10680
+        ],
+        [
+          -6490,
+          -10300
+        ],
+        [
+          -6850,
+          -9980
+        ],
+        [
+          -7260,
+          -10110
+        ]
+      ],
+      "inlet_nodes": [
+        "I10"
+      ],
+      "outlet_node": "O10",
+      "outlet_full_width": 14,
+      "depth_max": 25,
+      "depth_min_interior": 8,
+      "outlet_bed_y": 143,
+      "shore_depth_rule": "湖心8–25B。湖岸・出口浅瀬は0–8B、出口の中心水深2B。",
+      "outlet_overlap_length": 20
+    }
+  ],
+  "outlets": [
+    {
+      "node_id": "M05",
+      "inventory_id": 2,
+      "ocean_inventory_id": 1,
+      "connectivity": "排水接続のみ。淡水への無限補給・品質変換を行わない"
+    },
+    {
+      "node_id": "M06",
+      "inventory_id": 3,
+      "ocean_inventory_id": 1,
+      "connectivity": "排水接続のみ。淡水への無限補給・品質変換を行わない"
+    },
+    {
+      "node_id": "M16",
+      "inventory_id": 4,
+      "ocean_inventory_id": 1,
+      "connectivity": "排水接続のみ。淡水への無限補給・品質変換を行わない"
+    }
+  ],
+  "volume_owner": "湖内部はL10、それ以外は共有合流水位を持つreach。重複列は一度だけ体積計上",
+  "volume_units": "block^3。kgと容器量への換算・永続消費は#55が所有"
+}

@@ -1,0 +1,8 @@
+{
+  "map_version": "earth_002",
+  "format_version": 1,
+  "fixed_seed": 520026,
+  "catalog_version": "profiles_001",
+  "stage": "terrain_basis",
+  "background_map": "earth_001"
+}
