@@ -28,6 +28,7 @@ import io.github.rs0325.ashenfrontier.core.terminal.TerminalModuleAction;
 import net.minecraft.world.item.Items;
 import io.github.rs0325.ashenfrontier.core.vanilla.RemovedLootModifiers;
 import io.github.rs0325.ashenfrontier.core.catalog.FuelData;
+import io.github.rs0325.ashenfrontier.core.food.FoodProperties;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
 import io.github.rs0325.ashenfrontier.core.catalog.CoreCreativeTab;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureDataProvider;
@@ -48,6 +49,7 @@ public final class AshenFrontierCore {
         RemovedLootModifiers.register(modEventBus);
         LifeSupportLootModifiers.register(modEventBus);
         MaterialData.register(modEventBus);
+        FoodProperties.register(modEventBus);
         ItemProperties.register(modEventBus);
         ContaminationTools.register(modEventBus);
         NatureProperties.register(modEventBus);
@@ -65,6 +67,7 @@ public final class AshenFrontierCore {
         ResearchManager.register(modEventBus);
         if (gameTestEnabled() || Boolean.getBoolean("ashen_frontier.testRecipes")) {
             RecipeTypeRegistry.register(modEventBus, id("game_test"));
+            RecipeTypeRegistry.register(modEventBus, id("game_test_processing"));
         }
         NeoForge.EVENT_BUS.addListener(TeamCommands::register);
         NeoForge.EVENT_BUS.addListener(RescueCommands::register);

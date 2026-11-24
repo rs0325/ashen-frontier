@@ -14,6 +14,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /** 全加工レシピで共有するSI単位の条件。 */
 public record RecipeConditions(Optional<Range> temperatureK, Optional<Range> pressurePa,
@@ -55,12 +56,16 @@ public record RecipeConditions(Optional<Range> temperatureK, Optional<Range> pre
 
     /** JEI・EMI向けに、クライアントの研究状態と表示単位を反映した条件文を返す。 */
     public List<Component> displayLines() {
+        return displayLines(TimeBasis.REAL);
+    }
+
+    public List<Component> displayLines(TimeBasis timeBasis) {
         List<Component> lines = new ArrayList<>();
         temperatureK.ifPresent(range -> lines.add(Component.translatable("recipe.ashen_frontier.temperature",
                 UnitDisplay.temperature(range.min()), UnitDisplay.temperature(range.max()))));
         pressurePa.ifPresent(range -> lines.add(Component.translatable("recipe.ashen_frontier.pressure",
                 UnitDisplay.pressure(range.min()), UnitDisplay.pressure(range.max()))));
-        durationSeconds.ifPresent(value -> lines.add(Component.translatable("recipe.ashen_frontier.duration",
+        durationSeconds.ifPresent(value -> lines.add(Component.translatable("recipe.ashen_frontier.duration_" + timeBasis.name().toLowerCase(Locale.ROOT),
                 Units.format(value, "s"))));
         energyJoules.ifPresent(value -> lines.add(Component.translatable("recipe.ashen_frontier.energy",
                 Units.format(value, "J"))));

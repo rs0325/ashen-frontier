@@ -3,6 +3,8 @@ package io.github.rs0325.ashenfrontier.core.catalog;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import io.github.rs0325.ashenfrontier.core.ItemProperties;
 import io.github.rs0325.ashenfrontier.core.SoilContamination;
+import io.github.rs0325.ashenfrontier.core.food.FoodProperties;
+import io.github.rs0325.ashenfrontier.core.recipe.WaterMass;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -24,6 +26,9 @@ public final class NatureTooltips {
         var id = BuiltInRegistries.ITEM.getKey(event.getItemStack().getItem());
         if (!id.getNamespace().equals(AshenFrontierCore.NAMESPACE)) return;
         var stack = event.getItemStack();
+        var species = stack.get(FoodProperties.CROP_SPECIES);
+        if (species != null) event.getToolTip().add(Component.translatable("tooltip.ashen_frontier.crop_species",
+                Component.translatable("crop_species." + species.getNamespace() + "." + species.getPath())));
         RelicCatalog.entries().stream().filter(entry -> entry.id().equals(id.getPath())).findFirst().ifPresent(entry -> {
             if (!entry.behavior().equals("decoration")) event.getToolTip().add(Component.translatable("tooltip.ashen_frontier." + entry.behavior()));
             if (entry.blockItem() && !entry.recovery().equals(entry.id())) {
@@ -39,7 +44,12 @@ public final class NatureTooltips {
                             ? Component.translatable("fluid_type.ashen_frontier." + quality.getPath()) : Component.literal(quality.toString())));
         }
         var mass = stack.get(RelicProperties.CONTENT_MASS);
-        if (mass != null) event.getToolTip().add(Component.translatable("tooltip.ashen_frontier.content_mass", mass));
+        if (mass != null) {
+            double displayedMass = WaterMass.toKg(WaterMass.fromKg(mass));
+            event.getToolTip().add(displayedMass == 0
+                    ? Component.translatable("tooltip.ashen_frontier.content_empty")
+                    : Component.translatable("tooltip.ashen_frontier.content_mass", displayedMass));
+        }
         var document = stack.get(RelicProperties.DOCUMENT);
         if (document != null) event.getToolTip().add(Component.translatable("tooltip.ashen_frontier.document_id", document.toString()));
         NatureCatalog.entries().stream().filter(entry -> entry.id().equals(id.getPath()) && entry.blockItem()
