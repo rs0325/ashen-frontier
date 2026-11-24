@@ -516,16 +516,25 @@ class FixedMapTests(unittest.TestCase):
             regenerated = Path(directory)
             with chdir(ROOT):
                 generate(Path("tools/fixed-map/input"),regenerated)
-            for name in [*RESOURCE_FILES,"manifest.json"]:
+            for name in RESOURCE_FILES:
                 self.assertEqual(sha(OUTPUT/name),sha(regenerated/name),name)
+            baseline = json.loads((OUTPUT/"manifest.json").read_text(encoding="utf-8"))
+            current = json.loads((regenerated/"manifest.json").read_text(encoding="utf-8"))
+            # D0の検査入口を追加した来歴だけを更新する。地形と他のmanifest値は不変。
+            baseline["tool"]["files"]["tools/fixed-map/generate.py"] = sha(TOOL/"generate.py")
+            # 起点25a4e82の資産はlayout.jsonの制作来歴だけが旧hashのまま。
+            self.assertEqual(baseline["inputs"]["layout.json"], "ef36402b8030f59ddb55792c083a934630e8002bda445c6117ad754a14a8aa67")
+            self.assertEqual(sha(TOOL/"input/layout.json"), "0808399cb7b3aec61516b238271edce462aa3755b526df498e0fcf2a0855e7be")
+            baseline["inputs"]["layout.json"] = sha(TOOL/"input/layout.json")
+            self.assertEqual(baseline, current)
 
-    def test_new_version_cli_and_preset(self):
+    def test_current_version_cli_and_preset(self):
         with tempfile.TemporaryDirectory(dir=TOOL) as directory:
             work = Path(directory)
             source = work/"input"
             shutil.copytree(TOOL/"input",source)
             config = json.loads((source/"layout.json").read_text(encoding="utf-8"))
-            config["map_version"] = "earth_002"
+            config["map_version"] = "earth_001"
             write_json(source/"layout.json",config)
             project = work/"project"
             preset = project/"modules/world/src/main/resources/data/ashen_frontier/worldgen/world_preset/fixed_map.json"
@@ -535,14 +544,14 @@ class FixedMapTests(unittest.TestCase):
             with chdir(ROOT), patch("generate.ROOT",project):
                 main([*args,"--update-preset"])
                 main([*args,"--validate"])
-            output = project/MAP_RESOURCES/"earth_002"
+            output = project/MAP_RESOURCES/"earth_001"
             version = json.loads(preset.read_text(encoding="utf-8"))["dimensions"]["minecraft:overworld"]["generator"]["map"]
-            self.assertEqual(version["map_version"],"earth_002")
+            self.assertEqual(version["map_version"],"earth_001")
             self.assertEqual(version["manifest_hash"],sha(output/"manifest.json"))
             generator = json.loads(preset.read_text(encoding="utf-8"))["dimensions"]["minecraft:overworld"]["generator"]
             self.assertEqual(generator["biome_source"]["map"],version)
             for name in ["index.json","geology_profiles.json"]:
-                self.assertEqual(json.loads((output/name).read_text(encoding="utf-8"))["map_version"],"earth_002")
+                self.assertEqual(json.loads((output/name).read_text(encoding="utf-8"))["map_version"],"earth_001")
 
     def test_manifest_write_failure_preserves_previous_bundle(self):
         with tempfile.TemporaryDirectory() as directory:

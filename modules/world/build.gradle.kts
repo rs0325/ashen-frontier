@@ -118,3 +118,7 @@ neoForge {
                 "--output", layout.buildDirectory.dir("fixture-datagen").get().asFile.absolutePath)
     }
 }
+
+sourceSets.test {
+    resources.srcDir(rootDir.resolve("tools/fixed-map/fixtures"))
+}

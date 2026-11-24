@@ -220,3 +220,49 @@ BlockContamination.get(ServerLevel, BlockPos)は対象の実ブロックにつ�
 M1のContamination Codecは部分的なMapを許容するため、lead・pcb・conductivity・ph・fecal_coliformの欠損キーは各清浄値として読む。化学成分なしでCs-137成分だけが存在する場合も、その総Bqを捨てず乾燥基準質量でBq/kgへ戻す。
 
 保存の回帰試験は、保護範囲外の通常チャンクについて管理表とアンロード待ち表からの完全除去を待ち、別のLevelChunkオブジェクトとしてディスクから復元されることを確認する。清浄化後の再アンロード・再読込みと、Overworld/Netherの同一座標の独立性も確認する。試験内の管理表確認は読取りだけで、チャンクを強制的に管理表から除去しない。
+
+## r20: earth_002の共有契約（#97）
+
+設計の正本は[設計12のr20](design/12-m2-fixed-map.md)。通常プリセットとmanifestはearth_001を保持する。MapVersionのCodecは変更せず、earth_002のisPreview()だけがtrueになる。新版用の通常プリセット・PNGはこの段階では同梱しない。
+
+### 版・必須資産と失敗
+
+BundledMaps.requireはearth_001/earth_002以外を未知版として拒否する。format_version=1と既存6PNG・index/geology_profiles/undergroundの必須項目は保持する。earth_002にはlandform.json・hydrology.jsonを追加し、manifestのlandform_schema_version/hydrology_schema_versionを各1とする。各JSON内部の同名schema版とmap_versionも照合する。filesは全必須ファイルの生バイト列SHA-256。PNGの2048²・符号化は変えず、generate.validateで検査する。
+
+未知版・未知schema・不足・hash不一致・不正契約は版名と理由を含むIllegalStateExceptionで停止する。正常結果だけを版・manifestHash単位でキャッシュする。旧版・バニラへの代替や、worldの版の自動更新はしない。
+
+BundledMaps.landform(MapVersion)/hydrology(MapVersion)は照合済みの不変契約を返す。追加契約のないearth_001は明示的な例外にする。earth_002は本番資産がないためrequireで不足資産となる。後続が制作するまではLandformLayout.parse/HydrologyLayout.parseにfixtureを明示して検査する。資産があっても未制作のFixedMapDataへ旧座標の地形処理を適用させず停止する。この入口を新版の実生成へ置換するのは#98/#99。
+
+### 制作入力と不変API
+
+tools/fixed-map/fixtures/earth_002/をJavaのtest resourcesとPythonで共用し、配布jarから除外する。parse(JsonObject,String mapVersion)は版名付きIllegalStateExceptionで不正入力を拒否する。返すMap/Listは不変。
+
+landform.jsonはmap_version・format_version・landform_schema_version、units、volcanoes、divides、glacier、details_rules、caldera_rim/caldera_drain、snowline_latitude_y、40°未満の下限550、風上/風下/斜面の雪線補正と24Bの連続変動幅を持つ。units.idはregionから独立する。boundaryは整数[X,Z]の閉じた包絡、pinsはid/xz/base_y/control_y/section_half_width/role。roleはridge/surface/valley_floor/crater_floor/ice_surface。稜線の片幅は正。面・谷床・氷面の片幅0は区分包絡で範囲を決める意味で、ゼロ幅の地形ではない。谷床の制御高は基盤より低くできる。LandformLayout.units()は型付き定義、document()は火山・雪氷等を含むコピーを返す。変更してもキャッシュへ反映しない。細地形の制作は#100。
+
+hydrology.jsonはcoordinate_units=blockと次の配列を持つ。
+
+| 配列 | フィールドと意味 |
+|---|---|
+| inventories | id/key/quality_id/finite。1=ocean・品質8・無限、2=nw05・3=nw06・4=nw16は品質4・有限 |
+| nodes | id/kind/xz/water_y。source/confluence/lake_inlet/lake_outlet/ocean_outlet |
+| reaches | id/from_node/to_node/inventory_id/profile_x_z_surface_full_width_depth。断面は[X,Z,水面Y,全幅,水深] |
+| lakes | id/inventory_id/surface_y/outline_x_z/inlet_nodes/outlet_node/outlet_full_width/depth_min_interior/depth_max/outlet_bed_y |
+| outlets | node_id/inventory_id/ocean_inventory_id。排水接続だけで、淡水への補給・水質変換ではない |
+
+座標は絶対ブロックX/Z・[-16384,16384)、water_yは水面ブロックの整数Y。断面の全幅・深さは正の有限数。RiverCourse.Sample.widthは半幅なのでProfile.halfWidth()で一度だけ変換する。始終点X/Z/Yは共有ノードと完全一致、水面は下流非増加。合流は同じinventoryを使い、閉路・重複ID・未接続ノードを拒否する。湖口は内部へ正幅で重ね、入口は流入reachの終端半幅、出口は出口全幅の半分よりも湖岸までの最短距離が大きいことを要求する。境界上や、中心だけが浅く内側に入った接続は拒否する。出口の全幅と床を下流reachの先頭断面へ一致させる。一点接触は許可しない。心部最小水深は岸と出口浅瀬の下限ではない。
+
+### 水体ID・初期量と現況
+
+既存waterSurface/waterQualityのシグネチャとearth_001の結果は維持する。FixedMapData.waterInventoryId(x,z)は初期配置の版内ID。乾燥/範囲外0、海1。earth_001は旧本流と支沢2・独立湖3で、earth_002のnw06を意味しない。earth_002の実座標判定は#99で湖・8reachの近傍索引へ接続し、nw05/06/16=2/3/4を返す。D0は未制作の新地形の列を返さない。
+
+#99の初期所有列は湖内L10を優先し、他は包含するreachをID辞書順で一つだけ選ぶ。同inventoryの共有合流は一度だけ計上する。異なるinventoryが同じ陸の水列を所有する配置は制作検査で拒否する。海側は常に海inventoryを優先する。幾何体積block³は床から水面までの実際の水列の合計で、重複を二重計上しない。
+
+固定サンプラーは生成時の不変な初期定義だけを返す。kg/Fluid/容器量換算、消費・凍結・再設置・保存後の現況は#55の正本へ一本化する。world側へ残水台帳や補給tickを追加しない。採取後の現況はworld/#55の保存状態を参照し、サンプラーから復活させない。coreからworldへ逆依存しない。
+
+### 段階と検証
+
+#97は契約、#98は骨格、#99は実水面、#100は細地形。#101/#102と#55/#59/#60完了後、#103の切替検査を終えてから新規worldの通常プリセットへ公開する。
+
+Java/Pythonは同じ30区分・56制御点・8reach・12node・L10 fixtureを検査する。水位不一致・逆勾配・閉路・ID重複・点接触・別inventory合流・未知schemaを失敗例にする。manifestでは不足・誤hash・未知版も検査する。earth_001は変更前の広域・旧主脈・源頭の標高/水面/水質/水域mask SHA-256と資産・プリセットの生バイト列を保持する。
+
+反証後の契約検査: 整数欄は小数表記・真偽値を受理せず、幅や深さ等の実数欄も真偽値・文字列を数値へ変換しない。地形の付属定義（火山、分水界、氷河、カルデラ、細地形規則、雪線と補正）は必須とし、座標・列数・標高・幅・氷厚・雪線値域をJava/Pythonで同じ規則で検査する。細地形規則の文章そのものの地形的成立は制作Issueで検証する。
