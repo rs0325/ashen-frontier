@@ -19,4 +19,12 @@ jobs:
         run: ./gradlew build
       - name: Run GameTests
         timeout-minutes: 15
-        run: ./gradlew gameTest
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/ashen-gametest.log"
+          dumps="$RUNNER_TEMP/ashen-gametest-dumps"
+          : > "$log"
+          setsid bash tools/ci/capture-gametest-hang.sh "$log" "$dumps" &
+          watcher=$!
+          trap 'kill -- "-$watcher" 2>/dev/null || true; wait "$watcher" 2>/dev/null || true' EXIT
+          ./gradlew gameTest 2>&1 | tee "$log"
