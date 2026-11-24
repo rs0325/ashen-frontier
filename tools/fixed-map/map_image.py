@@ -188,7 +188,11 @@ def render(output, request, job, font_path, pale):
                 if inside(*summit["xz"]):
                     px, pz = xy(*summit["xz"])
                     draw.polygon([(px, pz - 4), (px - 4, pz + 3), (px + 4, pz + 3)], fill=(107, 66, 48))
-        for point, text in [((-11000, -13200), "北の主脈"), ((-1700, -13900), "分岐山脈")]:
+        labels = [((-11000, -13200), "北の主脈"), ((-1700, -13900), "分岐山脈")]
+        if request["map"] == "earth_002":
+            labels = [(u["pins"][0]["xz"], str(u["id"])+" "+u["name"]) for u in request["landform"]["units"]
+                      if u["id"] in (1,2,21,22,23,24,3,4,61,62,63)]
+        for point, text in labels:
             if inside(*point):
                 label(xy(*point), text, 26, (100, 58, 39))
         anchors = {row["id"]: row for row in csv.DictReader((output / "anchors.csv").open(encoding="utf-8"))}
@@ -222,6 +226,8 @@ def render(output, request, job, font_path, pale):
             sy += 35
         notes = ["川・湖：青", "雪・氷河：白〜淡青", "凍結水面：淡い斜線（色は水深）",
                  "山脈の配置軸：茶の破線", "固定の峰：▲　陰影：北西光"]
+        if request["map"] == "earth_002":
+            notes = ["D1：基盤と山脈・山地・丘陵", "北西の母岩は中立の石で仮表示", "河川・湖・細地形・雪氷は未制作", "施設・鉱床・路線も未制作", "旧版は既定のまま維持"]
     else:
         sy = top + 380
         notes = ["川・湖：淡い青", "海岸線・陰影のみを薄く表示", "施設名・山脈軸は省略",

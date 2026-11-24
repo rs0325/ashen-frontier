@@ -50,12 +50,14 @@ def neighbors(mask):
             padded[1:-1, :-2] | padded[1:-1, 2:])
 
 
-def curved_points(points, seed, amplitude=0, spacing=16):
+def curved_points(points, seed, amplitude=0, spacing=16, closed=False):
     """制約点を通る滑らかな曲線。蛇行は端点と接線を保つ固定シードの変位とする。"""
     rng = np.random.Generator(np.random.PCG64(seed))
     values = np.array(points, dtype=float)
+    if closed:
+        values = np.vstack((values[-1], values, values[0], values[1]))
     result = []
-    for i in range(len(values)-1):
+    for i in range(1 if closed else 0, len(values)-2 if closed else len(values)-1):
         a, b = values[max(0,i-1)], values[i]
         c, d = values[i+1], values[min(len(values)-1,i+2)]
         length = np.linalg.norm((c-b)[:2])
@@ -68,7 +70,7 @@ def curved_points(points, seed, amplitude=0, spacing=16):
             point = np.rint(p).astype(int).tolist()
             if not result or point != result[-1]:
                 result.append(point)
-    result.append(list(points[-1]))
+    result.append(list(points[0] if closed else points[-1]))
     return result
 
 
@@ -252,7 +254,7 @@ def relax_relief(height):
     return result
 
 
-def ridge_relief(terrain, bx, bz, curved=False):
+def ridge_relief(terrain, bx, bz, curved=False, sharp=False, section_power=1.65):
     """固定した支稜と谷底の断面を重ねる。curvedは固定点を通る曲がる支稜に使う。"""
     foundation = terrain["base_y"]
     height = np.full(bx.shape, foundation, np.float64)
@@ -276,7 +278,7 @@ def ridge_relief(terrain, bx, bz, curved=False):
             crest = a[2]+(b[2]-a[2])*t
             if curved:
                 toe = np.clip(1-distance/width,0,1)
-                section = toe*toe*(3-2*toe)
+                section = toe**section_power if sharp else toe*toe*(3-2*toe)
             else:
                 section = np.maximum(0,1-(distance/width)**1.5)
             candidate = foundation+np.maximum(0,crest-foundation)*section
@@ -576,7 +578,9 @@ def validate_geology(definition):
 def generate(input_dir, output):
     """検査済みの資産一式を置き換える。生成中・通常の置換失敗では旧出力を保持する。"""
     input_dir, output = Path(input_dir).resolve(), Path(output).resolve()
-    if output.exists() and any(not p.is_file() or p.name not in (*RESOURCE_FILES,"manifest.json") for p in output.iterdir()):
+    version = json.loads((input_dir/"layout.json").read_text(encoding="utf-8"))["map_version"]
+    extra = ("landform.png", "landform.json", "hydrology.json") if version == "earth_002" else ()
+    if output.exists() and any(not p.is_file() or p.name not in (*RESOURCE_FILES,*extra,"manifest.json") for p in output.iterdir()):
         raise ValueError("出力先に生成資産以外のファイルがあります")
     output.parent.mkdir(parents=True,exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f".{output.name}-",dir=output.parent))
@@ -602,6 +606,9 @@ def generate(input_dir, output):
 
 
 def generate_assets(input_dir, output):
+    if json.loads((input_dir/"layout.json").read_text(encoding="utf-8"))["map_version"] == "earth_002":
+        from generate_basis import generate_assets as basis_assets
+        return basis_assets(input_dir, output)
     config, labels = load_inputs(input_dir)
     geology_definition = json.loads((input_dir/"geology.json").read_text(encoding="utf-8"))
     validate_geology(geology_definition)
@@ -883,7 +890,7 @@ def validate(output, expected_version):
         raise ValueError("マップ版・形式が一致しません")
     required = set(RESOURCE_FILES)
     if expected_version == "earth_002":
-        required.update(("landform.json", "hydrology.json"))
+        required.update(("landform.json", "hydrology.json", "landform.png"))
         if any(type(manifest.get(k)) is not int or manifest[k] != 1 for k in ("landform_schema_version", "hydrology_schema_version")):
             raise ValueError("地形・水系のschemaが不正です")
     if not required <= manifest["files"].keys():
@@ -894,6 +901,10 @@ def validate(output, expected_version):
     if expected_version == "earth_002":
         from layout_contract import validate as validate_contract
         validate_contract(output, expected_version)
+        with Image.open(output/"landform.png") as image:
+            units = json.loads((output/"landform.json").read_text(encoding="utf-8"))["units"]
+            if image.size != (SIZE,SIZE) or image.mode != "L" or set(np.unique(np.array(image)))-{0} != {u["id"] for u in units}:
+                raise ValueError("地形分類の寸法・型・区分が不正です")
     for name in LAYERS:
         expected_mode = "I;16" if name=="height" else "L"
         with Image.open(output/f"{name}.png") as image:
@@ -922,10 +933,10 @@ def main(argv=None):
     args.input = args.input.resolve()
     config = json.loads((args.input/"layout.json").read_text(encoding="utf-8"))
     output = args.output.resolve() if args.output else ROOT/MAP_RESOURCES/config["map_version"]
-    if config["map_version"] == "earth_002" and not args.validate:
-        parser.error("earth_002の地形制作は後続Issueです。D0はlayout_contract.pyで契約だけを検査します")
     if args.update_preset and config["map_version"] != "earth_001":
         parser.error("通常プリセットはearth_001を維持します")
+    if config["map_version"] == "earth_002" and not (args.input/"landform.json").is_file():
+        parser.error("earth_002の地形入力が不足しています")
     if args.validate:
         validate(output,config["map_version"])
     else:

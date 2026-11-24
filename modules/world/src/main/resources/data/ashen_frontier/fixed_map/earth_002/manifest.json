@@ -1,0 +1,47 @@
+{
+  "map_version": "earth_002",
+  "format_version": 1,
+  "fixed_seed": 520026,
+  "width": 32768,
+  "depth": 32768,
+  "min_y": -128,
+  "height": 704,
+  "raster_width": 2048,
+  "raster_depth": 2048,
+  "catalog_version": "profiles_001",
+  "inputs": {
+    "hydrology.json": "ec31b0a0e9b8a66e8eace418ed011710b3afbb34facf0c912d2493413bb56bde",
+    "landform.json": "5f6519877b8c55c3c2ae509f69c3bf2b17df584eafa71743130cf3c7eb2db50f",
+    "layout.json": "e8474babd33bd8905ef69f6897c6f32628e4dc091e0f7918e7f503d96ab5cf96"
+  },
+  "geology_profile_version": "geology_002",
+  "tool": {
+    "version": "2.0.0-D1-fix3b",
+    "files": {
+      "tools/fixed-map/generate_basis.py": "834c072a3ef567d3acd651f110837323588aa8836e5885391cce711a5e5a2952",
+      "tools/fixed-map/generate.py": "bd3b45100a5b014c4f1db69f79dc9c50eebbd53e2482974b3b169ccf9d334216",
+      "tools/fixed-map/layout_contract.py": "b7e1051f5544b425d11f31841f5d15483a23397494f780fb2cfab7acfea0a4de",
+      "modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/TerrainBasis.java": "115e2c42c404c6592c2beda5ce7535be2024d9a2ed7944fbd225a9d14d01bef0"
+    }
+  },
+  "files": {
+    "height.png": "b2b6714b7297b9aa3ecdf27aba3fedd1cb288c44fd5f91cce40db7a0870758c1",
+    "region.png": "75229ebee95357b161cc08886066ad1fa704a08ba05f01c4b93ee2ec173d7f97",
+    "water.png": "60cde2161bc86af9d95c5cb03fd02a41e1be6fbb7cceaa7df413b174aa531c69",
+    "soil.png": "47409785b30cc38f1ec62f219ce1c46f885427442416c0768dc470497ef784cb",
+    "geology.png": "86e03aebf3f21537223523bcee9cabf7a677008dc99368f9a58155019de5caf0",
+    "coast_river.png": "0b9b99ef474b050f190fbfff599b44199131350782877f936b29adc9a1084a4b",
+    "index.json": "b53e29772710d0cb05be7bd1899435302e1182cbadf87a350f69a58951d7168d",
+    "geology_profiles.json": "0c9902bf551d3c8cb71ff207e9f5f16110d2c8c8caea75e4b132992ef2e9405d",
+    "underground.json": "8558ed803ca8296623f4a074afd272be9947a266d10f8cfaa4fca5b6a0c800b3",
+    "landform.png": "dc6cea011c987f843543c5a4ff91aa2309135ff89c3e7059d1987f2cfefe1d05",
+    "landform.json": "5f6519877b8c55c3c2ae509f69c3bf2b17df584eafa71743130cf3c7eb2db50f",
+    "hydrology.json": "ec31b0a0e9b8a66e8eace418ed011710b3afbb34facf0c912d2493413bb56bde"
+  },
+  "landform_schema_version": 1,
+  "hydrology_schema_version": 1,
+  "terrain_basis_schema_version": 1,
+  "runtime_relief_version": 1,
+  "stage": "D1",
+  "background_manifest_sha256": "e0323c7aa41ada44a0eab9b07ddd98aa2bbd8b31c65d9a485f47f92b844b43a6"
+}

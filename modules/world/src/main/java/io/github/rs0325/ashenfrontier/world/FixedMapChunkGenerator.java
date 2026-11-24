@@ -108,6 +108,7 @@ public final class FixedMapChunkGenerator extends ChunkGenerator {
                              StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) {}
     @Override
     public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
+        if (mapVersion.isPreview()) return;
         if (facilities == null) {
             synchronized (this) {
                 if (facilities == null) facilities = FacilityPlacement.load(level, mapVersion.mapVersion());

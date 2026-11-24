@@ -17,10 +17,10 @@ import javax.imageio.ImageIO;
 public final class FixedMapData {
     private static final Map<MapVersion, FixedMapData> LOADED = new HashMap<>();
     private static final int SIZE = 2048;
-    private final short[] heights = new short[SIZE * SIZE];
-    private final byte[][] categories = new byte[5][SIZE * SIZE];
-    private final short[] waterSurface = new short[SIZE * SIZE];
-    private final boolean[] protectedArea = new boolean[SIZE * SIZE];
+    private final short[] heights;
+    private final byte[][] categories;
+    private final short[] waterSurface;
+    private final boolean[] protectedArea;
     private final float[] coastDistance;
     private final float[] protectionDistance;
     private record Entrance(int x, int z) {}
@@ -49,15 +49,61 @@ public final class FixedMapData {
     private final OceanRelief ocean;
     private final JsonObject geology;
     private final long seed;
+    private final TerrainBasis basis;
+    private final FixedMapData background;
 
     /** ハッシュ照合後にロードする。不正な画像・索引は版名を含む例外で停止する。 */
     public static synchronized FixedMapData require(MapVersion version) {
-        return LOADED.computeIfAbsent(version, FixedMapData::new);
+        var map = LOADED.get(version);
+        if (map == null) { map = new FixedMapData(version); LOADED.put(version, map); }
+        return map;
     }
 
     private FixedMapData(MapVersion version) {
         BundledMaps.require(version);
-        if (version.isPreview()) throw new IllegalStateException("固定マップ版 earth_002: D1・D2の実地形と水面は未制作です。地形・水系契約を明示して検査してください");
+        if (version.isPreview()) {
+            basis = new TerrainBasis(version);
+            var previous = require(basis.background);
+            background = previous;
+            heights = previous.heights;
+            categories = previous.categories;
+            waterSurface = previous.waterSurface;
+            protectedArea = previous.protectedArea;
+            coastDistance = previous.coastDistance;
+            protectionDistance = previous.protectionDistance;
+            entrances = previous.entrances;
+            geologyAnchors = previous.geologyAnchors;
+            weatheredContacts = previous.weatheredContacts;
+            facilities = previous.facilities;
+            river = previous.river;
+            riverSource = previous.riverSource;
+            mountains = previous.mountains;
+            reliefPins = previous.reliefPins;
+            summits = previous.summits;
+            mountainIslands = previous.mountainIslands;
+            islandCoasts = previous.islandCoasts;
+            islandJunctions = previous.islandJunctions;
+            islandStraits = previous.islandStraits;
+            straitMinX = previous.straitMinX;
+            straitMaxX = previous.straitMaxX;
+            straitMinZ = previous.straitMinZ;
+            straitMaxZ = previous.straitMaxZ;
+            surfaceCorrections = previous.surfaceCorrections;
+            walkways = previous.walkways;
+            ocean = previous.ocean;
+            seed = previous.seed;
+            terminationJoin = previous.terminationJoin;
+            terminationTransition = previous.terminationTransition;
+            geology = previous.geology;
+            return;
+        }
+        basis = null;
+        background = null;
+        heights = new short[SIZE * SIZE];
+        categories = new byte[5][SIZE * SIZE];
+        waterSurface = new short[SIZE * SIZE];
+        protectedArea = new boolean[SIZE * SIZE];
+
         String root = "/data/ashen_frontier/fixed_map/" + version.mapVersion() + "/";
         try {
             seed = json(root + "manifest.json").get("fixed_seed").getAsLong();
@@ -396,6 +442,7 @@ public final class FixedMapData {
     }
 
     double detailWeight(int x, int z) {
+        if (basis != null && basis.contains(x,z)) return 1;
         double weight = 0.25 + 0.75 * TerrainMath.smooth(interpolate(protectionDistance, x, z) / 96);
         for (var facility : facilities) {
             double dx = x - facility.x, dz = z - facility.z;
@@ -584,12 +631,19 @@ public final class FixedMapData {
     OceanRelief ocean() { return ocean; }
     JsonObject geology() { return geology.deepCopy(); }
 
+    TerrainBasis basis() { return basis; }
+    FixedMapData background() { return background; }
+
+    /** 物理的な地形区分。旧版・海・他大陸は0。31～40はD1では予約分類だけ。 */
+    public int landformId(int x, int z) { return basis == null ? 0 : basis.classification(x,z); }
+
     /** 範囲外は0。範囲内は最近傍の地域ID（0〜7、255）を返す。 */
     public int region(int x, int z) { return category(0, x, z); }
 
     record GeologyAnchor(int x, int z, double weight, boolean weathered) {}
 
     GeologyAnchor geologyAnchor(int x, int z) {
+        if (basis != null && basis.contains(x,z)) return null;
         Entrance nearest = null;
         double distance = 48;
         for (var anchor : geologyAnchors.getOrDefault(key(x >> 7, z >> 7), List.of())) {
@@ -602,6 +656,7 @@ public final class FixedMapData {
     record Boundary(int region, int soil, double dry, double cold) {}
 
     Boundary boundary(int x, int z) {
+        if (basis != null && basis.contains(x,z)) return new Boundary(255,0,0,0);
         double weight = detailWeight(x, z);
         int wx = (int) Math.round(TerrainMath.fbm(seed, "boundary_x", x, z, 192) * 64 * weight);
         int wz = (int) Math.round(TerrainMath.fbm(seed, "boundary_z", x, z, 192) * 64 * weight);
@@ -627,6 +682,7 @@ public final class FixedMapData {
         return new Boundary(region,soil,dry,cold);
     }
     int category(int layer, int x, int z) {
+        if (basis != null && basis.contains(x,z)) return layer == 0 ? 255 : layer == 4 ? 1 : 0;
         return MapCoordinates.contains(x, z) ? Byte.toUnsignedInt(categories[layer][at(x, z)]) : 0;
     }
 
@@ -635,6 +691,7 @@ public final class FixedMapData {
         if (!MapCoordinates.contains(x, z)) return 0;
         double coast = coastDistance(x, z);
         if (coast < 0) return 8;
+        if (basis != null && basis.contains(x,z)) return 0;
         var sample = river.sample(x, z);
         return (coast < 48 ? 1 : 0) | (sample.distance() < sample.width() ? 2 : 0) | (category(4, x, z) & 4);
     }
@@ -643,6 +700,7 @@ public final class FixedMapData {
     public int waterQuality(int x, int z) {
         if (!MapCoordinates.contains(x, z)) return 0;
         if (coastDistance(x, z) < 0) return 8;
+        if (basis != null && basis.contains(x,z)) return 0;
         var sample = river.sample(x, z);
         if (sample.distance() < sample.width()) return riverQuality(sample);
         return (category(4, x, z) & 4) != 0 ? category(1, x, z) : 0;
@@ -652,6 +710,7 @@ public final class FixedMapData {
     public int waterInventoryId(int x, int z) {
         if (!MapCoordinates.contains(x, z)) return 0;
         if (coastDistance(x, z) < 0) return 1;
+        if (basis != null && basis.contains(x,z)) return 0;
         var sample = river.sample(x, z);
         if (sample.distance() < sample.width()) return 2;
         return (category(4, x, z) & 4) != 0 ? 3 : 0;
@@ -671,6 +730,7 @@ public final class FixedMapData {
     public int waterSurface(int x, int z) {
         if (!MapCoordinates.contains(x, z)) return Integer.MIN_VALUE;
         if (coastDistance(x, z) < 0) return 63;
+        if (basis != null && basis.contains(x,z)) return Integer.MIN_VALUE;
         var sample = river.sample(x, z);
         if (sample.distance() < sample.width()) return (int) Math.floor(sample.surface());
         return (category(4, x, z) & 4) != 0 ? waterSurface[at(x, z)] : Integer.MIN_VALUE;
@@ -678,7 +738,7 @@ public final class FixedMapData {
 
     /** 施設・経路の水平保護域。16ブロック格子の被覆により最大24ブロック広く保護する。 */
     public boolean isProtected(int x, int z) {
-        return MapCoordinates.contains(x, z) && protectedArea[at(x, z)];
+        return MapCoordinates.contains(x, z) && !(basis != null && basis.contains(x,z)) && protectedArea[at(x, z)];
     }
 
     /** 範囲内の標高Yを3次補間する。最終画素の外挿はせず、端の値を延長する。 */
@@ -688,6 +748,7 @@ public final class FixedMapData {
     }
 
     double height(double x, double z) {
+        if (basis != null && basis.contains(x,z)) return basis.height(x,z);
         double px = Math.clamp((x - MapCoordinates.MIN) / 16, 0, SIZE - 1);
         double pz = Math.clamp((z - MapCoordinates.MIN) / 16, 0, SIZE - 1);
         int ix = (int) px, iz = (int) pz;

@@ -118,7 +118,7 @@ class LayoutContractTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "火山の標高"):
             validate_landform(self.land)
 
-    def test_preview_cannot_generate_or_update_normal_preset(self):
+    def test_preview_requires_production_input_and_keeps_normal_preset(self):
         from generate import generate, main, ROOT
         preset = ROOT/"modules/world/src/main/resources/data/ashen_frontier/worldgen/world_preset/fixed_map.json"
         before = hashlib.sha256(preset.read_bytes()).hexdigest()
@@ -129,7 +129,7 @@ class LayoutContractTest(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     main(["--input", str(p), "--output", str(p/"output"), *option])
                 self.assertFalse((p/"output").exists())
-            with self.assertRaisesRegex(ValueError, "earth_001専用"):
+            with self.assertRaises(FileNotFoundError):
                 generate(p, p/"output")
             self.assertFalse((p/"output").exists())
         self.assertEqual(before, hashlib.sha256(preset.read_bytes()).hexdigest())

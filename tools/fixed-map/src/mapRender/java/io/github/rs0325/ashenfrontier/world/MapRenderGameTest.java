@@ -105,6 +105,9 @@ public final class MapRenderGameTest {
         var generator = (FixedMapChunkGenerator) helper.getLevel().registryAccess()
                 .registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(key)
                 .value().createWorldDimensions().overworld();
+        var requested = new MapVersion(request.get("map").getAsString(), 1, request.get("manifest_sha256").getAsString());
+        if (!requested.equals(generator.mapVersion()))
+            generator = new FixedMapChunkGenerator(((FixedMapBiomeSource)generator.getBiomeSource()).withMapVersion(requested), requested);
         var terrain = generator.terrain();
         var anchors = new StringBuilder("id,x,z,ground_y,top_y,surface_block,top_block\n");
         for (var value : request.getAsJsonObject("layout").getAsJsonArray("facilities")) {

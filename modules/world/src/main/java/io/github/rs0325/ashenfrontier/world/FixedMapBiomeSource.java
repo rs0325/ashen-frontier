@@ -29,6 +29,9 @@ public final class FixedMapBiomeSource extends BiomeSource {
 
     public MapVersion mapVersion() { return version; }
 
+    /** 同じバイオーム順で検査対象の版を明示する。通常プリセットは変更しない。 */
+    public FixedMapBiomeSource withMapVersion(MapVersion mapVersion) { return new FixedMapBiomeSource(biomes, mapVersion); }
+
     @Override
     protected MapCodec<? extends BiomeSource> codec() { return CODEC; }
 

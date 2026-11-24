@@ -24,6 +24,8 @@ public final class FixedTerrain {
     private record Profile(List<Layer> layers, BlockState basement, double referenceY, Uplift uplift, double ax, double az,
                            double gx, double gz, List<Fault> faults) {}
     private final FixedMapData map;
+    private final Profile basisProfile;
+    private final FixedTerrain backgroundTerrain;
     private final Profile[] profiles = new Profile[6];
     private final BlockState[] soils = new BlockState[4];
     private final FixedContamination contamination;
@@ -41,6 +43,8 @@ public final class FixedTerrain {
 
     public FixedTerrain(MapVersion version) {
         map = FixedMapData.require(version);
+        basisProfile = map.basis() == null ? null : new Profile(List.of(), Blocks.STONE.defaultBlockState(),0,null,0,0,0,0,List.of());
+        backgroundTerrain = map.basis() == null ? null : new FixedTerrain(map.basis().background);
         contamination = new FixedContamination(map);
         clay = block("ashen_frontier:clay_sediment");
         talus = block("ashen_frontier:talus");
@@ -120,6 +124,9 @@ public final class FixedTerrain {
 
     static int surfaceY(FixedMapData map, int x, int z) {
         if (!MapCoordinates.contains(x, z)) return -65;
+        if (map.basis() != null && map.basis().contains(x,z) && map.coastDistance(x,z) >= 0)
+            return (int)Math.round(Math.clamp(map.basis().height(x,z),63,520));
+        if (map.background() != null) return surfaceY(map.background(),x,z);
         return sampleSurface(map, x, z).height;
     }
 
@@ -350,6 +357,10 @@ public final class FixedTerrain {
     /** 列ごとに地層境界を一度計算する。列は呼出し元専有で、全Yの照会に再利用できる。 */
     public Column column(int x, int z) {
         if (!MapCoordinates.contains(x, z)) return new Column(SoilContamination.CLEAN, -65, Integer.MIN_VALUE, null, null, new int[0], null, 0, 0, x, z, null, 0, null, -64, false, null, 0,0,0,1, null, 575, false, Integer.MIN_VALUE);
+        if (basisProfile != null && map.basis().contains(x,z) && map.coastDistance(x,z) >= 0)
+            return new Column(SoilContamination.CLEAN, surfaceY(x,z), Integer.MIN_VALUE, null, null, new int[0], basisProfile,
+                    0,0,x,z,null,0,null,575,false,null,0,0,0,1,null,575,false,Integer.MIN_VALUE);
+        if (backgroundTerrain != null) return backgroundTerrain.column(x,z);
         var relief = sampleSurface(map, x, z);
         int surface = relief.height;
         var profile = profiles[relief.coast >= 0 && map.mountainIsland(x,z) != null ? 3 : map.category(3, x, z)];
