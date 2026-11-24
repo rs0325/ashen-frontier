@@ -248,7 +248,8 @@ public final class ProcessingStation {
         return product.isEmpty();
     }
 
-    private static void inherit(ItemStack source, ItemStack target) {
+    /** 単一原料の腐敗・汚染・放射能・個別栄養を出力へ保持する。数量や摩耗は変えない。単純組立からも使う。 */
+    public static void inherit(ItemStack source, ItemStack target) {
         copy(source, target, ItemProperties.ROT.get());
         copy(source, target, ItemProperties.CONTAMINATION.get());
         copy(source, target, ItemProperties.RADIOACTIVITY.get());

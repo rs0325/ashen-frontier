@@ -1,0 +1,34 @@
+{
+  "values": {
+    "ashen_frontier:chopper": {
+      "mass_kg": 0.7
+    },
+    "ashen_frontier:biface": {
+      "mass_kg": 0.5
+    },
+    "ashen_frontier:stone_flake": {
+      "mass_kg": 0.1
+    },
+    "ashen_frontier:cordage": {
+      "mass_kg": 0.1
+    },
+    "ashen_frontier:fiber_cloth": {
+      "mass_kg": 0.9
+    },
+    "ashen_frontier:tool_handle": {
+      "mass_kg": 0.8
+    },
+    "ashen_frontier:hafted_axe": {
+      "mass_kg": 1.4
+    },
+    "ashen_frontier:stone_adze": {
+      "mass_kg": 1.4
+    },
+    "ashen_frontier:digging_stick": {
+      "mass_kg": 0.8
+    },
+    "ashen_frontier:knapping_surface": {
+      "mass_kg": 1.0
+    }
+  }
+}

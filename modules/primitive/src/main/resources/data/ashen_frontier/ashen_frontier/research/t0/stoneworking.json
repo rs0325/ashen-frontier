@@ -1,0 +1,22 @@
+{
+  "name": "research.ashen_frontier.t0.stoneworking",
+  "description": "research.ashen_frontier.t0.stoneworking.description",
+  "prerequisites": [],
+  "conditions": [
+    {
+      "type": "ashen_frontier:primitive_observation",
+      "id": "pebble"
+    },
+    {
+      "type": "ashen_frontier:primitive_crafting",
+      "id": "chopper"
+    }
+  ],
+  "unlocks": [
+    "ashen_frontier:primitive/biface",
+    "ashen_frontier:primitive/hafted_axe",
+    "ashen_frontier:primitive/stone_adze",
+    "ashen_frontier:primitive/tool_handle_biface",
+    "ashen_frontier:primitive/digging_stick_biface"
+  ]
+}

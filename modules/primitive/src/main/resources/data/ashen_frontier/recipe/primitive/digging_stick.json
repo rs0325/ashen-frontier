@@ -1,0 +1,40 @@
+{
+  "type": "ashen_frontier:fiberworking",
+  "inputs": [
+    {
+      "item": "ashen_frontier:dry_branch"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "ashen_frontier:digging_stick",
+      "count": 1
+    }
+  ],
+  "conditions": {
+    "facility": "ashen_frontier:knapping_surface",
+    "duration_seconds": 20,
+    "catalyst": {
+      "id": "ashen_frontier:stone_flake",
+      "components": {
+        "!ashen_frontier_core:wear": {}
+      }
+    }
+  },
+  "processing": {
+    "inputs": [
+      {
+        "ingredient": 0,
+        "count": 1
+      }
+    ],
+    "loss_kg": 0.2,
+    "tool_wear": 1,
+    "inheritance": [
+      {
+        "ingredient": 0,
+        "output": 0
+      }
+    ]
+  }
+}

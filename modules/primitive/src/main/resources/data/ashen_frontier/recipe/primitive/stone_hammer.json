@@ -1,0 +1,19 @@
+{
+  "type": "ashen_frontier:hammer_assembly",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ashen_frontier:pebble"
+    }
+  ],
+  "result": {
+    "id": "ashen_frontier:stone_hammer",
+    "components": {
+      "!ashen_frontier:quality_profile": {},
+      "ashen_frontier_core:wear": {
+        "value": 0.0,
+        "maximum": 64.0
+      }
+    }
+  }
+}

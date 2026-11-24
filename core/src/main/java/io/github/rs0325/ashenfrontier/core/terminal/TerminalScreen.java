@@ -123,7 +123,8 @@ public final class TerminalScreen extends Screen {
                             ResourceLocation.parse(condition.type()), condition.id());
                     IntSupplier color = () -> complete.getAsBoolean() ? 0x55FF55 : 0xAAAAAA;
                     addLines(Component.translatable("terminal.ashen_frontier.condition",
-                            condition.type() + ":" + condition.id(), ""), 16, color);
+                            Component.translatableWithFallback("research_condition." + condition.type().replace(':', '.') + "." + condition.id(),
+                                    condition.type() + ":" + condition.id()), ""), 16, color);
                     lines.add(new Line(() -> Component.translatable(complete.getAsBoolean()
                             ? "terminal.ashen_frontier.complete" : "terminal.ashen_frontier.incomplete")
                             .getVisualOrderText(), 24, color));
