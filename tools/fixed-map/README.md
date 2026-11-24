@@ -263,3 +263,15 @@ r17の生成ツールは1.14.0。主脈西端は[設計12のr17節](../../docs/d
 末端枝の間の浅い沢はflanks.valleysで固定し、元の固定範囲を除いて適用する。
 
 #93 r3c（生成器1.19.4）は最終の排水評価を標高のコピーで行い、谷を水平な台地へ埋め戻さない。曲がる稜線の最近点の切替えを連続化し、末端枝の分岐位置と長さ・向きを分散する。雪線の端は24ブロック規模の斑にする。制作検査で水平面・同軸の縁・分岐位置・切替え断面、GameTestで実列の雪の孤立点・境界密度を検査する。再生成・検証手順は上記と同じ。
+
+## earth_002の共有契約（#97）
+
+通常生成とプリセットはearth_001を維持する。新版の地形制作は#98以降。D0ではfixtures/earth_002/のlandform.jsonとhydrology.jsonだけをJavaと共用し、配布jarから除外する。本番bundleではない。
+
+契約検査はPython 3.12の既存環境で「python layout_contract.py --input fixtures/earth_002」、テストは「python -m unittest test_layout_contract」で実行する。追加依存なし。座標・標高・幅・所有列の正本は[固定マップAPI](../../docs/fixed-map-api.md)。河川profileは全幅、地形pinのsection_half_widthは片幅。面・谷床・氷面の片幅0は区分包絡参照。regionを地形区分IDで上書きしない。
+
+新版manifestにはlandform_schema_version=1・hydrology_schema_version=1と、filesの追加必須2ファイルのSHA-256を記録する。generate.py --validateは既存PNG・地質に加えて新契約も検査する。新版の通常生成・--update-presetはD0で拒否し、旧地形をearth_002として出力しない。
+
+旧版の全資産・通常プリセットは変更しない。制作ツールを更新したため、旧版を再生成したmanifestのtool.filesのgenerate.pyだけは現スクリプトのhashになる。回帰検査は全生成資産を生バイトで比較し、manifestもこの来歴差を明示して比較する。同じ新ツールからの再生成はmanifestを含め一致させる。
+
+起点25a4e82の同梱manifestにはlayout.jsonの旧入力hash（ef3640…）が残り、追跡入力の実hash（080839…）と一致していない。入力はこの作業で未変更。全9生成資産が一致することを確認し、この既存の来歴差だけを固定した二つのhashで検査する。既定版の署名を変えないため、旧manifest自体は更新しない。

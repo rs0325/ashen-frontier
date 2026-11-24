@@ -177,6 +177,8 @@ def noise(seed):
 
 def load_inputs(input_dir):
     config = json.loads((input_dir / "layout.json").read_text(encoding="utf-8"))
+    if config["map_version"] != "earth_001":
+        raise ValueError("旧地形の生成はearth_001専用です。earth_002は契約fixtureだけを検査してください")
     labels = np.array(Image.open(input_dir / "land.png"))
     if labels.shape != (SIZE, SIZE) or labels.dtype != np.uint8 or not np.isin(labels, range(5)).all():
         raise ValueError("陸海入力は2048²・8bit・値0〜4が必要です")
@@ -877,14 +879,21 @@ def preview(layers, index, path):
 def validate(output, expected_version):
     """指定版に対し、資産の完全性・型と地質プロファイルの参照を検査する。"""
     manifest = json.loads((output/"manifest.json").read_text(encoding="utf-8"))
-    if manifest["map_version"] != expected_version or manifest["format_version"] != 1:
+    if expected_version not in {"earth_001", "earth_002"} or manifest["map_version"] != expected_version or manifest["format_version"] != 1:
         raise ValueError("マップ版・形式が一致しません")
     required = set(RESOURCE_FILES)
+    if expected_version == "earth_002":
+        required.update(("landform.json", "hydrology.json"))
+        if any(type(manifest.get(k)) is not int or manifest[k] != 1 for k in ("landform_schema_version", "hydrology_schema_version")):
+            raise ValueError("地形・水系のschemaが不正です")
     if not required <= manifest["files"].keys():
         raise ValueError("レイヤーが不足しています")
     for name, digest in manifest["files"].items():
         if not (output/name).is_file() or sha(output/name) != digest:
             raise ValueError(f"不足・ハッシュ不一致: {name}")
+    if expected_version == "earth_002":
+        from layout_contract import validate as validate_contract
+        validate_contract(output, expected_version)
     for name in LAYERS:
         expected_mode = "I;16" if name=="height" else "L"
         with Image.open(output/f"{name}.png") as image:
@@ -913,6 +922,10 @@ def main(argv=None):
     args.input = args.input.resolve()
     config = json.loads((args.input/"layout.json").read_text(encoding="utf-8"))
     output = args.output.resolve() if args.output else ROOT/MAP_RESOURCES/config["map_version"]
+    if config["map_version"] == "earth_002" and not args.validate:
+        parser.error("earth_002の地形制作は後続Issueです。D0はlayout_contract.pyで契約だけを検査します")
+    if args.update_preset and config["map_version"] != "earth_001":
+        parser.error("通常プリセットはearth_001を維持します")
     if args.validate:
         validate(output,config["map_version"])
     else:

@@ -57,6 +57,7 @@ public final class FixedMapData {
 
     private FixedMapData(MapVersion version) {
         BundledMaps.require(version);
+        if (version.isPreview()) throw new IllegalStateException("固定マップ版 earth_002: D1・D2の実地形と水面は未制作です。地形・水系契約を明示して検査してください");
         String root = "/data/ashen_frontier/fixed_map/" + version.mapVersion() + "/";
         try {
             seed = json(root + "manifest.json").get("fixed_seed").getAsLong();
@@ -645,6 +646,15 @@ public final class FixedMapData {
         var sample = river.sample(x, z);
         if (sample.distance() < sample.width()) return riverQuality(sample);
         return (category(4, x, z) & 4) != 0 ? category(1, x, z) : 0;
+    }
+
+    /** 初期水体の版内ID。乾燥・範囲外0、海1、旧版の本流/支沢2、独立湖3。現況の残水量ではない。 */
+    public int waterInventoryId(int x, int z) {
+        if (!MapCoordinates.contains(x, z)) return 0;
+        if (coastDistance(x, z) < 0) return 1;
+        var sample = river.sample(x, z);
+        if (sample.distance() < sample.width()) return 2;
+        return (category(4, x, z) & 4) != 0 ? 3 : 0;
     }
 
     int riverQuality(RiverCourse.Sample sample) {
