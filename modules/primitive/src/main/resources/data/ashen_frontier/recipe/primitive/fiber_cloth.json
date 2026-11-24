@@ -1,0 +1,34 @@
+{
+  "type": "ashen_frontier:fiberworking",
+  "inputs": [
+    {
+      "item": "ashen_frontier:cordage"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "ashen_frontier:fiber_cloth",
+      "count": 1
+    }
+  ],
+  "conditions": {
+    "facility": "ashen_frontier:knapping_surface",
+    "duration_seconds": 30,
+    "research": "ashen_frontier:t0/fiberworking"
+  },
+  "processing": {
+    "inputs": [
+      {
+        "ingredient": 0,
+        "count": 9
+      }
+    ],
+    "loss_kg": 0,
+    "inheritance": [
+      {
+        "ingredient": 0,
+        "output": 0
+      }
+    ]
+  }
+}
