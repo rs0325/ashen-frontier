@@ -14,7 +14,7 @@
 | survival | 生理パラメータ、負傷・疾病、睡眠 | core, climate | 第1期 |
 | fauna | 家畜・野生動物・感染動物・海洋生物・旧文明のアンドロイド兵 | core, survival | 第1期（一部） |
 | primitive | Tier 0の手作業（石器、火、簡易な浄水・調理、手動加工） | core | 第1期 |
-| agriculture | 農業・土壌改良・交配・食品加工 | core, climate | 第1期 |
+| agriculture | 農業・土壌改良・交配・食品加工 | core, primitive, climate（環境入力） | 第1期 |
 | kinetics | 回転動力（水車、風車、軸、歯車、動力消費機械） | core | 第1期 |
 | metallurgy | 製錬・鋳造・鍛造・合金 | core, kinetics | 第1期 |
 | steam | ボイラー、圧力容器、蒸気機関、工作機械 | core, kinetics, metallurgy | 第1期 |

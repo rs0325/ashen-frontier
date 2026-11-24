@@ -73,7 +73,7 @@ public final class AshenFrontierEmiPlugin implements EmiPlugin {
 
         private List<FormattedCharSequence> displayLines() {
             var font = Minecraft.getInstance().font;
-            return holder.value().conditions().displayLines().stream()
+            return holder.value().displayLines().stream()
                     .flatMap(line -> font.split(line, 180).stream())
                     .toList();
         }

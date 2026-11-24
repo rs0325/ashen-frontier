@@ -1,0 +1,45 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "${mod_license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "Ashen Frontier Agriculture"
+authors = "${mod_authors}"
+description = "栽培と食品加工の共通登録"
+
+[[dependencies.${mod_id}]]
+modId = "ashen_frontier_core"
+type = "required"
+versionRange = "[${mod_version}]"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neoforge_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "ashen_frontier_primitive"
+type = "required"
+versionRange = "[${mod_version}]"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "ashen_frontier_climate"
+type = "optional"
+versionRange = "[${mod_version}]"
+ordering = "AFTER"
+side = "BOTH"

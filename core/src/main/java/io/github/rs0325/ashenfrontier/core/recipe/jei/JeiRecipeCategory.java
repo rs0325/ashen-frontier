@@ -17,7 +17,7 @@ import net.minecraft.world.item.Items;
 
 final class JeiRecipeCategory implements IRecipeCategory<CommonRecipe> {
     private static final int WIDTH = 180;
-    private static final int HEIGHT = 200;
+    private static final int HEIGHT = 280;
     private static final int TEXT_WIDTH = 180;
     private final RecipeType<CommonRecipe> type;
     private final ResourceLocation id;
@@ -70,7 +70,7 @@ final class JeiRecipeCategory implements IRecipeCategory<CommonRecipe> {
     public void draw(CommonRecipe recipe, IRecipeSlotsView slots, GuiGraphics graphics,
                      double mouseX, double mouseY) {
         var font = Minecraft.getInstance().font;
-        var lines = recipe.conditions().displayLines().stream()
+        var lines = recipe.displayLines().stream()
                 .flatMap(line -> font.split(line, TEXT_WIDTH).stream())
                 .toList();
         for (int i = 0; i < lines.size(); i++) {

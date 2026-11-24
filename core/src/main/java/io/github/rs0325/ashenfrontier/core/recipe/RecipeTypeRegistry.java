@@ -20,6 +20,11 @@ public final class RecipeTypeRegistry {
 
     /** 共通レシピ型とserializerを登録し、後でJEI・EMIカテゴリ用に列挙できるようにする。 */
     public static Supplier<RecipeType<CommonRecipe>> register(IEventBus modBus, ResourceLocation id) {
+        return register(modBus, id, TimeBasis.REAL);
+    }
+
+    /** 型の時間系を固定して登録する。既存の2引数登録は実秒。 */
+    public static Supplier<RecipeType<CommonRecipe>> register(IEventBus modBus, ResourceLocation id, TimeBasis timeBasis) {
         if (REGISTRATIONS.containsKey(id)) {
             throw new IllegalArgumentException("レシピ型が重複しています: " + id);
         }
@@ -32,7 +37,7 @@ public final class RecipeTypeRegistry {
                 serializers.register(id.getPath(), () -> CommonRecipe.serializer(id));
         types.register(modBus);
         serializers.register(modBus);
-        REGISTRATIONS.put(id, new Registration(type, serializer));
+        REGISTRATIONS.put(id, new Registration(type, serializer, timeBasis));
         return type;
     }
 
@@ -43,6 +48,8 @@ public final class RecipeTypeRegistry {
     public static RecipeSerializer<CommonRecipe> serializer(ResourceLocation id) {
         return registration(id).serializer().get();
     }
+
+    public static TimeBasis timeBasis(ResourceLocation id) { return registration(id).timeBasis(); }
 
     public static Map<ResourceLocation, Supplier<RecipeType<CommonRecipe>>> registeredTypes() {
         Map<ResourceLocation, Supplier<RecipeType<CommonRecipe>>> result = new LinkedHashMap<>();
@@ -57,5 +64,6 @@ public final class RecipeTypeRegistry {
     }
 
     private record Registration(DeferredHolder<RecipeType<?>, RecipeType<CommonRecipe>> type,
-                                DeferredHolder<RecipeSerializer<?>, RecipeSerializer<CommonRecipe>> serializer) {}
+                                DeferredHolder<RecipeSerializer<?>, RecipeSerializer<CommonRecipe>> serializer,
+                                TimeBasis timeBasis) {}
 }

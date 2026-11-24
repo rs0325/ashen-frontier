@@ -24,9 +24,10 @@ public final class RelicProperties {
 
     public static void register(IEventBus bus) { COMPONENTS.register(bus); }
 
-    /** 配置・ルート用の密封容器を作る。qualityはBの水/油ID、試薬ID。量はkgで、流体のmBとは換算しない。 */
+    /** 品質付き容器を作る。水容器の0 kgは同IDの空容器。量はkgで、流体のmBとは換算しない。 */
     public static ItemStack container(String id, ResourceLocation quality, double massKg) {
-        if (!RelicCatalog.require(id).behavior().equals("sealed_container") || !Double.isFinite(massKg) || massKg <= 0) {
+        if (!RelicCatalog.require(id).behavior().equals("sealed_container") || !Double.isFinite(massKg)
+                || massKg < 0 || massKg == 0 && !id.equals("sealed_water_container")) {
             throw new IllegalArgumentException("密封容器のIDまたは内容量が不正");
         }
         if (id.equals("sealed_water_container") || id.equals("sealed_oil_container")) {
