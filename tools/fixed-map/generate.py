@@ -23,7 +23,7 @@ OUTPUT = ROOT / MAP_RESOURCES / "earth_001"
 SIZE = 2048
 LAYERS = ("height", "region", "water", "soil", "geology", "coast_river")
 RESOURCE_FILES = tuple(f"{name}.png" for name in LAYERS) + ("index.json", "geology_profiles.json", "underground.json")
-TOOL_VERSION = "1.17.0"
+TOOL_VERSION = "1.19.4"
 
 
 def sha(path):
@@ -58,13 +58,13 @@ def curved_points(points, seed, amplitude=0, spacing=16):
     for i in range(len(values)-1):
         a, b = values[max(0,i-1)], values[i]
         c, d = values[i+1], values[min(len(values)-1,i+2)]
-        length = np.linalg.norm(c-b)
+        length = np.linalg.norm((c-b)[:2])
         count = max(2,math.ceil(length/spacing))
         phase = rng.uniform(0,2*math.pi)
         normal = np.array([-(c-b)[1],(c-b)[0]]) / max(length,1)
         for t in np.linspace(0,1,count,endpoint=False):
             p = .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t)
-            p += normal*amplitude*math.sin(2*math.pi*t+phase)*math.sin(math.pi*t)**2
+            p[:2] += normal*amplitude*math.sin(2*math.pi*t+phase)*math.sin(math.pi*t)**2
             point = np.rint(p).astype(int).tolist()
             if not result or point != result[-1]:
                 result.append(point)
@@ -233,29 +233,92 @@ def ridge_variation(station, scale, seed):
     return values[cell]+(values[cell+1]-values[cell])*t
 
 
-def termination_relief(termination, bx, bz):
-    """西端の支尾根と、その間を海へ抜ける沢の固定断面。"""
-    foundation = termination["base_y"]
-    height = np.full(bx.shape, foundation, np.float32)
-    for points in termination["ridges"]:
+def join_relief(a, b, base):
+    """平野の高さを保ち、交差する支稜の勾配をつなぐ。"""
+    width = np.minimum(16,np.maximum(0,np.minimum(a,b)-base)*2)
+    q = np.clip(np.abs(a-b)/np.maximum(width,1e-9),0,1)
+    return np.maximum(a,b)-width*(.5*q-.75*q*q+.25*q**4)
+
+
+def relax_relief(height):
+    """16ブロック格子の古い斜面の折れを、標準偏差32ブロックでならす。"""
+    result = height.astype(np.float64)
+    for _ in range(4):
+        for axis in (0,1):
+            p = np.pad(np.moveaxis(result,axis,-1),((0,0),(2,2)),mode="edge")
+            result = np.moveaxis((p[:,:-4]+4*p[:,1:-3]+6*p[:,2:-2]+4*p[:,3:-1]+p[:,4:])/16,-1,axis)
+    return result
+
+
+def ridge_relief(terrain, bx, bz, curved=False):
+    """固定した支稜と谷底の断面を重ねる。curvedは固定点を通る曲がる支稜に使う。"""
+    foundation = terrain["base_y"]
+    height = np.full(bx.shape, foundation, np.float64)
+    for points in terrain["ridges"]:
+        area = np.s_[:]
+        if curved:
+            points = curved_points(points,0,spacing=48)
+            pad = max(p[3] for p in points)
+            area = ((bx>=min(p[0] for p in points)-pad) & (bx<=max(p[0] for p in points)+pad)
+                    & (bz>=min(p[1] for p in points)-pad) & (bz<=max(p[1] for p in points)+pad))
+        x,z = bx[area],bz[area]
+        ridge = np.full(x.shape,foundation,dtype=float)
+        nearest = np.full(x.shape,np.inf)
+        total = np.zeros(x.shape)
+        closest = np.full(x.shape,foundation,dtype=float)
         for a,b in zip(points,points[1:]):
             dx,dz = b[0]-a[0],b[1]-a[1]
-            t = np.clip(((bx-a[0])*dx+(bz-a[1])*dz)/(dx*dx+dz*dz),0,1)
-            distance = np.hypot(bx-a[0]-t*dx,bz-a[1]-t*dz)
+            t = np.clip(((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz),0,1)
+            distance = np.hypot(x-a[0]-t*dx,z-a[1]-t*dz)
             width = a[3]+(b[3]-a[3])*t
             crest = a[2]+(b[2]-a[2])*t
-            section = np.maximum(0,1-(distance/width)**1.5)
-            height = np.maximum(height,foundation+(crest-foundation)*section)
-    for points in termination["valleys"]:
+            if curved:
+                toe = np.clip(1-distance/width,0,1)
+                section = toe*toe*(3-2*toe)
+            else:
+                section = np.maximum(0,1-(distance/width)**1.5)
+            candidate = foundation+np.maximum(0,crest-foundation)*section
+            if curved:
+                closest = np.where(distance<nearest,candidate,closest)
+                next_nearest = np.minimum(nearest,distance)
+                decay = np.exp((next_nearest**2-nearest**2)/(2*32**2))
+                weight = np.exp((next_nearest**2-distance**2)/(2*32**2))/np.maximum(distance**2,1e-6)
+                ridge = (ridge-foundation)*decay+(candidate-foundation)*weight+foundation
+                total = total*decay+weight
+                nearest = next_nearest
+            else:
+                ridge = np.maximum(ridge,candidate)
+        if curved:
+            ridge = np.where(nearest==0,closest,foundation+(ridge-foundation)/total)
+        height[area] = join_relief(height[area],ridge,foundation) if curved else np.maximum(height[area],ridge)
+    return cut_valleys(terrain,bx,bz,height)
+
+
+def cut_valleys(terrain, bx, bz, height, weight=1):
+    """固定した沢を、指定した保全域の外側へ連続して入れる。"""
+    for points in terrain["valleys"]:
+        pad = max(p[3] for p in points)
+        area = ((bx>=min(p[0] for p in points)-pad) & (bx<=max(p[0] for p in points)+pad)
+                & (bz>=min(p[1] for p in points)-pad) & (bz<=max(p[1] for p in points)+pad))
+        x,z = bx[area],bz[area]
+        current = height[area]
+        strength = weight if np.isscalar(weight) else weight[area]
         for a,b in zip(points,points[1:]):
             dx,dz = b[0]-a[0],b[1]-a[1]
-            t = np.clip(((bx-a[0])*dx+(bz-a[1])*dz)/(dx*dx+dz*dz),0,1)
-            distance = np.hypot(bx-a[0]-t*dx,bz-a[1]-t*dz)
+            t = np.clip(((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz),0,1)
+            distance = np.hypot(x-a[0]-t*dx,z-a[1]-t*dz)
             width = a[3]+(b[3]-a[3])*t
             cut = np.clip(1-distance/width,0,1)
             cut = cut*cut*(3-2*cut)
             floor = a[2]+(b[2]-a[2])*t
-            height += np.minimum(0,floor-height)*cut
+            current += np.minimum(0,floor-current)*cut*strength
+        height[area] = current
+    return height
+
+
+def termination_relief(termination, bx, bz):
+    """西端の支尾根と、その間を海へ抜ける沢の固定断面。"""
+    height = ridge_relief(termination,bx,bz)
     weight = np.clip((termination["join_x"]-bx)/termination["transition_blocks"],0,1)
     return height,weight*weight*(3-2*weight)
 
@@ -310,11 +373,13 @@ def mountain_relief(config, bx, bz, height, nw):
     return height,influence
 
 
-def grade_walkway(points, height):
-    """徒歩経路の基準高を1/8以下にし、配置図に平坦な路面を焼き込まない。"""
+def grade_walkway(points, height, ends=None):
+    """基準高の勾配を1/8以下にする。ends指定時は両端のYを固定し、配置図に路面を焼き込まない。"""
     points = np.array(points,dtype=float)
     lengths = np.linalg.norm(np.diff(points,axis=0),axis=1)
     levels = np.array([height[int(pixel(p)[1]),int(pixel(p)[0])] for p in points],dtype=float)
+    if ends is not None:
+        levels[0],levels[-1] = ends
     station = np.r_[0,np.cumsum(lengths)]
     start_distance = np.maximum(0,station-128)/8
     end_distance = np.maximum(0,station[-1]-station-128)/8
@@ -326,6 +391,101 @@ def grade_walkway(points, height):
     for i in range(len(levels)-2,-1,-1):
         levels[i] = np.clip(levels[i],levels[i+1]-lengths[i]/8,levels[i+1]+lengths[i]/8)
     return height,[[int(p[0]),int(p[1]),round(float(y),4)] for p,y in zip(points,levels)]
+
+
+def mountain_flanks(config, bx, bz, height, nw, river_profile):
+    """承認済みの稜線・峰・経路を残し、帯状の中腹を支稜と入り込む谷へ分ける。"""
+    target = np.full(height.shape,-np.inf)
+    reference = relax_relief(height)
+    influence = np.zeros(height.shape)
+    # 固定地下高を支える支稜は、裾の短縮で急壁にしない。
+    support = np.zeros(height.shape)
+    ridge_core = np.zeros(height.shape)
+    for x,z,y in config["underground_surface_controls"]:
+        if y<=130:continue
+        t = np.clip((320-np.hypot(bx-x,bz-z))/160,0,1)
+        support = np.maximum(support,t*t*(3-2*t))
+    for mountain in config["mountains"]:
+        distance,station,cross = mountain_coordinates(mountain,bx,bz)
+        radius = mountain["radius_blocks"]
+        reach = radius*(.34+.18*ridge_variation(station,320,config["fixed_seed"]+204+mountain["peak_y"]))
+        core = np.clip((reach-distance)/(reach-radius*.18),0,1)
+        keep = core*core*(3-2*core)
+        for summit in mountain["summits"]:
+            x,z = summit["xz"]
+            angle = math.radians(summit["axis_degrees"])
+            u = ((bx-x)*math.cos(angle)+(bz-z)*math.sin(angle))/summit["radius_blocks"]
+            v = (-(bx-x)*math.sin(angle)+(bz-z)*math.cos(angle))/(summit["radius_blocks"]*summit["aspect"])
+            shoulder = np.clip((np.abs(u)+np.abs(v)-.18)/.32,0,1)
+            u += .16*np.sin(v*9+angle)*shoulder
+            v += .14*np.sin(u*8-angle)*shoulder
+            r = .58*np.abs(u)+.72*np.abs(v)+.24*np.abs(v+u*.7)
+            peak = np.clip((.95-r)/.72,0,1)
+            keep = np.maximum(keep,peak*peak*(3-2*peak))
+        core = np.clip((keep-.8)/.2,0,1)
+        ridge_core = np.maximum(ridge_core,core*core*(3-2*core))
+        low = mountain["flanks"]["base_y"]
+        outer = np.clip((keep-.4)/.5,0,1)
+        outer = 1-outer*outer*(3-2*outer)
+        natural = np.minimum(height,low+(height+(reference-height)*outer-low)*keep)
+        flank = ridge_relief(dict(mountain["flanks"],valleys=[]),bx,bz,curved=True)
+        # 承認半径の内側で裾の位置と広さを変え、複数の支稜を同じ線で切らない。
+        along = station+radius*2*(cross>0)
+        rim = radius*(.80+.18*ridge_variation(along,192,config["fixed_seed"]+205+mountain["peak_y"]))
+        apron = radius*(.20+.10*ridge_variation(along,256,config["fixed_seed"]+206+mountain["peak_y"]))
+        edge = np.clip((rim-distance)/apron,0,1)
+        edge = edge*edge*(3-2*edge)
+        limit = np.clip((radius-distance)/80,0,1)
+        edge = np.maximum(edge,support*limit*limit*(3-2*limit))
+        flank = low+(flank-low)*edge
+        toes = ridge_relief(dict(mountain["flanks"],ridges=mountain["flanks"]["toes"],valleys=[]),bx,bz,curved=True)
+        toes = low+(toes-low)*limit*limit*(3-2*limit)
+        flank = join_relief(flank,toes,low)
+        flank = np.where(flank>low,np.minimum(flank,height+np.maximum(0,flank-height)*(1-keep)),-np.inf)
+        highest = np.maximum(natural,flank)
+        shaped = highest+(join_relief(natural,flank,low)-highest)*(1-keep)
+        target = join_relief(target,shaped,min(m["flanks"]["base_y"] for m in config["mountains"]))
+        reach = np.clip((radius*2.4-distance)/(radius*.6),0,1)
+        influence = np.maximum(influence,reach*reach*(3-2*reach))
+    preserve = np.zeros(height.shape)
+    main = config["mountains"][0]
+    western = np.clip((main["termination"]["join_x"]+320-bx)/320,0,1)
+    preserve = np.maximum(preserve,western*western*(3-2*western))
+    source_x,source_z = config["river"]["points"][0]
+    course = [[x*16-16384,z*16-16384] for x,z,_ in river_profile if z*16-16384<source_z+2200][::8]
+    back = curved_points([[source_x-350,source_z-320],[source_x-100,source_z-440],
+                          [source_x+130,source_z-380],[source_x+300,source_z-160]],0,spacing=48)
+    area = ((bx>=min(min(p[0] for p in course)-440,min(p[0] for p in back)-220))
+            & (bx<=max(max(p[0] for p in course)+440,max(p[0] for p in back)+220))
+            & (bz>=min(min(p[1] for p in course)-440,min(p[1] for p in back)-220))
+            & (bz<=max(p[1] for p in course)+440))
+    distance,station,_ = mountain_coordinates({"points":course},bx[area],bz[area])
+    bend = ridge_variation(station,128,config["fixed_seed"]+202)
+    head = np.clip((340+bend*80-distance)/140,0,1)
+    distance,_,_ = mountain_coordinates({"points":back},bx[area],bz[area])
+    ridge = np.clip((210-distance)/100,0,1)
+    preserve[area] = np.maximum(preserve[area],np.maximum(head*head*(3-2*head),ridge*ridge*(3-2*ridge)))
+    for facility in config["facilities"]:
+        x,z = facility["xz"]
+        t = np.clip((facility["protection_radius"]+160-np.hypot(bx-x,bz-z))/128,0,1)
+        preserve = np.maximum(preserve,t*t*(3-2*t))
+    protected = preserve.copy()
+    pin_distance = np.full(height.shape,np.inf)
+    a = (bx+16384)*.81+(bz+16384)*.59
+    b = -(bx+16384)*.59+(bz+16384)*.81+20000
+    core = 96+48*ridge_variation(a,64,config["fixed_seed"]+213)
+    feather = 128+128*ridge_variation(b,80,config["fixed_seed"]+214)
+    for x,z,y in config["underground_surface_controls"]:
+        distance = np.hypot(bx-x,bz-z)
+        pin_distance = np.minimum(pin_distance,distance+(64 if y<=130 else 0))
+        t = np.clip((core+feather-distance)/feather,0,1) if y>130 else np.clip((176-distance)/80,0,1)
+        preserve = np.maximum(preserve,t*t*(3-2*t))
+    result = height+(target-height)*influence*(1-preserve)*nw
+    free = np.clip((pin_distance-96)/192,0,1)
+    free = free*free*(3-2*free)*(1-protected)*(1-ridge_core)*nw
+    for mountain in config["mountains"]:
+        result = cut_valleys(mountain["flanks"],bx,bz,result,free)
+    return result
 
 
 def island_component(labels, anchor):
@@ -607,6 +767,20 @@ def generate_assets(input_dir, output):
     water[river_mask & np.isin(region,[5,6])] = 6
     flags = coast.astype(np.uint8) | np.where(~land,8,0).astype(np.uint8)
     flags[river_mask & land] |= 2
+    height = np.rint(mountain_flanks(config,bx,bz,height,nw,profile)).astype(np.int16)
+    parent, accumulation = drainage(height.copy(),land)
+    # 経路のX/Zと峠・端点を固定し、新しい山すそに沿う勾配へ戻す。
+    for walkway in walkways:
+        original = walkway["points_x_z_y"]
+        points = [p[:2] for p in original]
+        fixed = [0]+[points.index(s["xz"]) for m in config["mountains"] for s in m["passes"]
+                     if s["route"]==walkway["id"]]+[len(points)-1]
+        fixed.sort()
+        graded = []
+        for a,b in zip(fixed,fixed[1:]):
+            _,section = grade_walkway(points[a:b+1],height,(original[a][2],original[b][2]))
+            graded.extend(section if not graded else section[1:])
+        walkway["points_x_z_y"] = graded
     height[~land] = 40
     layers = dict(height=(height+64).astype(np.uint16), region=region, water=water,
                   soil=soil, geology=geology, coast_river=flags)

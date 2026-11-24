@@ -15,29 +15,29 @@
     "geology.json": "6b8ccdbd12de01c3ca5c7b76eb72e376af2a7052c6824717878146c49ae86775",
     "island_channels.json": "d2cde32c7f3da73c719221ff4ae9e72c24e14282c1a4d9b3cafc13017a47090c",
     "land.png": "fb668e97a8396f13cef32c68a8060cff743bf4e61a3af0c154960d975375dc0e",
-    "layout.json": "2a416c04c03ed5c30fe0725a0fb76b58f197ff6850f5451d3a509c8565aa2a42"
+    "layout.json": "ef36402b8030f59ddb55792c083a934630e8002bda445c6117ad754a14a8aa67"
   },
   "geology_profile_version": "geology_002",
   "tool": {
-    "version": "1.17.0",
+    "version": "1.19.4",
     "python": "3.12",
     "numpy": "2.2.6",
     "pillow": "11.2.1",
     "files": {
-      "tools/fixed-map/generate.py": "e4d32298560e68aa3a2a7184cafdbb8ff0bf3e169b09dbcf05f1db1903461e6f",
+      "tools/fixed-map/generate.py": "e65e643ee81c15b970cdc158a7183db9e9970bb763bc4def52da8308acbcc343",
       "tools/fixed-map/extract_mask.py": "be06ce81562d53d6c1394b81f42b03d9aab0d2c402e5324e4928628aa553feb8",
       "tools/fixed-map/requirements.txt": "d25160758f6f0511b40d2788a949c86bb887869cba64c738e650e7d44fde471d",
       "tools/fixed-map/write_underground.py": "62783c7217e8c53a9813c10182d9cbc542fa2b12a5255501ed0a5b6e54999da9"
     }
   },
   "files": {
-    "height.png": "f6ea7ed9719e2a062616cd563db1781fa9f984bd38c970a71556dac54c067bf9",
+    "height.png": "3b77af0711f10b5fc16f3da7ba2556465ebce45260b693b130d7129a8978910a",
     "region.png": "fb2a464c11b95e72d483c378d4527041846946dd5f5f7a9f936b2ebc94b5ce57",
     "water.png": "c3986612965d12f4b2423f3f7ca86c9cfee626becd01c4ec7fcd15ecfea97598",
     "soil.png": "ab2cd597ed2bea9b2d9aa904ef13706555e7c543114e82c4aef1a23a5b644bcf",
     "geology.png": "cbe93bbcad72510a15a9a15e9096534fbb3f2c0dc841bbac6ff1e8d767ce4fa0",
     "coast_river.png": "f32499722f428ce43bbf2e6aa6c235b5a2ab34b998c4ade8c26d4c71ea73b25c",
-    "index.json": "e0ae13996194254aa19c68642cd7afde750e7b5957ab2c830a9fca7f6cd7cd6b",
+    "index.json": "8e151fcb7d6c02e4ee19eac8251f6d57bf54d3f32d450f2dd5e191e23d2da486",
     "geology_profiles.json": "84b7292cdd28feb3d74ef7cbe92ec9a708f52cd4230fed7d3860a360a23794e4",
     "underground.json": "3240dda60023894244d07bfaaa9773ac842fc3297a552559edb9309104dacd11"
   }
