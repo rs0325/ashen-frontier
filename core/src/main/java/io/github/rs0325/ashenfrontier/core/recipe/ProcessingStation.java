@@ -16,6 +16,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -219,6 +220,16 @@ public final class ProcessingStation {
         tool = wornTool;
         cancel(player);
         return true;
+    }
+
+    /**
+     * 連続した条件を失った加工の時間・熱量だけを0へ戻す。レシピ・材料・槽・評価済み時刻は維持する。
+     * 所有設備のServerLevelを渡す。サーバースレッド外の呼出しはIllegalStateException。
+     */
+    public void resetProgress(ServerLevel level) {
+        if (!level.getServer().isSameThread()) throw new IllegalStateException("加工進捗の変更はサーバースレッド専用です");
+        seconds = 0;
+        energy = 0;
     }
 
     /** 加工だけ停止する。未消費の水とアイテムは槽/入力へ残り、世界へは戻さない。 */

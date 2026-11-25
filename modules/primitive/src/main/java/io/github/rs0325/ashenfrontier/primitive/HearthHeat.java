@@ -51,8 +51,8 @@ public final class HearthHeat {
             temperatureK += burned * 0.05 / CAPACITY_J_K;
         }
         if (burned > 0) temperatureK = Math.min(MAXIMUM_K, temperatureK);
-        temperatureK = ItemPropertyMath.cool(temperatureK, ambientK, gameSeconds - burningGameSeconds, COOLING_TIME_CONSTANT_GAME_SECONDS);
         double delivered = process && before >= 973 && temperatureK >= 973 ? burned * 0.15 : 0;
+        temperatureK = ItemPropertyMath.cool(temperatureK, ambientK, gameSeconds - burningGameSeconds, COOLING_TIME_CONSTANT_GAME_SECONDS);
         return new Step(burned == 0 ? 0 : burned / heatingValueJKg, burned,
                 CAPACITY_J_K * (temperatureK - before), delivered, delivered == 0 ? 0 : burningSeconds, temperatureK);
     }

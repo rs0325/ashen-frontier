@@ -16,8 +16,10 @@ public final class PotteryActions {
     static void register() {
         ResearchManager.registerConditionType(AshenFrontierCore.id("primitive_event"),
                 (player, id) -> id.equals("friction_ignition") || id.equals("ceramic_pot"));
+        ResearchManager.registerConditionType(AshenFrontierCore.id("water_event"),
+                (player, id) -> id.equals("filtered_water") || id.equals("boiled_water"));
         NeoForge.EVENT_BUS.addListener((PlayerInteractEvent.RightClickBlock event) -> {
-            if (event.getLevel().getBlockState(event.getPos()).getBlock() instanceof ThermalStationBlock) event.setUseBlock(TriState.TRUE);
+            if (event.getLevel().getBlockState(event.getPos()).getBlock() instanceof ThermalStationBlock || event.getLevel().getBlockState(event.getPos()).getBlock() instanceof WaterFilterBlock) event.setUseBlock(TriState.TRUE);
         });
         NeoForge.EVENT_BUS.addListener((ItemTooltipEvent event) -> {
             var stack = event.getItemStack();
@@ -31,6 +33,8 @@ public final class PotteryActions {
                     Component.translatable("tooltip.ashen_frontier.wet"));
             if (stack.is(PrimitiveContent.item("ceramic_pot"))) event.getToolTip().add(
                     Component.translatable("tooltip.ashen_frontier.pot_capacity"));
+            if (stack.is(PrimitiveContent.item("water_filter"))) event.getToolTip().add(
+                    Component.translatable("tooltip.ashen_frontier.filter_assembly_dry"));
             if (stack.is(PrimitiveContent.item("fire_drill"))) event.getToolTip().add(
                     Component.translatable("primitive.ashen_frontier.fire_requirements"));
         });

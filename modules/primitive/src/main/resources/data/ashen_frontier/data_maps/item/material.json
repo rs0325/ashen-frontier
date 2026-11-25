@@ -67,6 +67,12 @@
     },
     "minecraft:sand": {
       "mass_kg": 0.5
+    },
+    "minecraft:gravel": {
+      "mass_kg": 1
+    },
+    "ashen_frontier:water_filter": {
+      "mass_kg": 4
     }
   }
 }

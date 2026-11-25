@@ -1,5 +1,6 @@
 package io.github.rs0325.ashenfrontier.core.recipe;
 
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
@@ -27,7 +28,7 @@ import java.util.Optional;
 
 /** 入力・複数出力・共通条件を持つ加工レシピ。 */
 public record CommonRecipe(ResourceLocation typeId, List<Ingredient> inputs, List<ItemStack> outputs,
-                           RecipeConditions conditions, ProcessingData processing) implements Recipe<RecipeInput> {
+                           RecipeConditions conditions, ProcessingData processing, Optional<String> instructions) implements Recipe<RecipeInput> {
     public CommonRecipe {
         inputs = List.copyOf(inputs);
         outputs = outputs.stream().map(ItemStack::copy).toList();
@@ -41,6 +42,11 @@ public record CommonRecipe(ResourceLocation typeId, List<Ingredient> inputs, Lis
         processing.validate(inputs.size(), outputs.size());
     }
 
+    public CommonRecipe(ResourceLocation typeId, List<Ingredient> inputs, List<ItemStack> outputs,
+                        RecipeConditions conditions, ProcessingData processing) {
+        this(typeId, inputs, outputs, conditions, processing, Optional.empty());
+    }
+
     public CommonRecipe(ResourceLocation typeId, List<Ingredient> inputs, List<ItemStack> outputs, RecipeConditions conditions) {
         this(typeId, inputs, outputs, conditions, ProcessingData.EMPTY);
     }
@@ -50,9 +56,10 @@ public record CommonRecipe(ResourceLocation typeId, List<Ingredient> inputs, Lis
                 Ingredient.CODEC.listOf().fieldOf("inputs").forGetter(CommonRecipe::inputs),
                 ItemStack.CODEC.listOf().fieldOf("outputs").forGetter(CommonRecipe::outputs),
                 RecipeConditions.CODEC.fieldOf("conditions").forGetter(CommonRecipe::conditions),
-                ProcessingData.CODEC.optionalFieldOf("processing", ProcessingData.EMPTY).forGetter(CommonRecipe::processing)
-        ).apply(instance, (inputs, outputs, conditions, processing) ->
-                new CommonRecipe(typeId, inputs, outputs, conditions, processing)));
+                ProcessingData.CODEC.optionalFieldOf("processing", ProcessingData.EMPTY).forGetter(CommonRecipe::processing),
+                Codec.STRING.optionalFieldOf("instructions").forGetter(CommonRecipe::instructions)
+        ).apply(instance, (inputs, outputs, conditions, processing, instructions) ->
+                new CommonRecipe(typeId, inputs, outputs, conditions, processing, instructions)));
         StreamCodec<RegistryFriendlyByteBuf, CommonRecipe> streamCodec =
                 ByteBufCodecs.fromCodecWithRegistries(codec.codec());
         return new RecipeSerializer<>() {
@@ -148,6 +155,7 @@ public record CommonRecipe(ResourceLocation typeId, List<Ingredient> inputs, Lis
     private List<Component> displayLines(List<Component> conditionLines) {
         var lines = new ArrayList<>(conditionLines);
         lines.addAll(processing.displayLines());
+        instructions.ifPresent(key -> lines.add(Component.translatable(key)));
         for (int i = 0; i < outputs.size(); i++) {
             var output = outputs.get(i);
             var mass = output.get(RelicProperties.CONTENT_MASS);

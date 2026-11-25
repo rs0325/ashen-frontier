@@ -68,4 +68,18 @@ class HearthHeatTest {
         assertThrows(IllegalArgumentException.class, () -> heat.advance(1, -1, 293, true, false));
         assertThrows(IllegalArgumentException.class, () -> heat.restore(-1, 16_000_000, 293));
     }
+
+    @Test
+    void fuelExhaustionChecksProcessHeatBeforeTheUnpoweredCoolingTail() {
+        var whole = new HearthHeat();
+        whole.restore(30_000, 16_000_000, 973.1);
+        var one = whole.advance(1, 72, 293.15, true, true);
+        var split = new HearthHeat();
+        split.restore(30_000, 16_000_000, 973.1);
+        var powered = split.advance(0.25, 18, 293.15, true, true);
+        var cooling = split.advance(0.75, 54, 293.15, true, true);
+        assertEquals(4500, one.processJoules(), 1e-9);
+        assertEquals(powered.processJoules() + cooling.processJoules(), one.processJoules(), 1e-9);
+        assertEquals(split.temperatureK(), whole.temperatureK(), 1e-9);
+    }
 }

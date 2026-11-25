@@ -2,6 +2,11 @@ package io.github.rs0325.ashenfrontier.primitive;
 
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicProperties;
+import io.github.rs0325.ashenfrontier.core.recipe.WaterTank;
+import io.github.rs0325.ashenfrontier.core.recipe.WaterMass;
+import io.github.rs0325.ashenfrontier.core.water.WaterTankOwner;
+import io.github.rs0325.ashenfrontier.core.water.WaterTransfers;
 import io.github.rs0325.ashenfrontier.core.ItemProperties;
 import io.github.rs0325.ashenfrontier.core.MaterialData;
 import io.github.rs0325.ashenfrontier.core.catalog.FuelData;
@@ -38,9 +43,10 @@ import java.util.OptionalDouble;
 import java.util.UUID;
 
 /** 加工の所有は共通基盤、着火操作と燃料・余熱だけを炉が保持する。M3入力なしでは停止する。 */
-public final class ThermalStationEntity extends BlockEntity {
-    private ProcessingStation station = new ProcessingStation(1, 2, 0.000001);
+public final class ThermalStationEntity extends BlockEntity implements WaterTankOwner {
+    private ProcessingStation station;
     private final HearthHeat heat = new HearthHeat();
+    private final BoilingHeat boilingHeat = new BoilingHeat();
     private ItemStack fuel = ItemStack.EMPTY;
     private ItemStack tinder = ItemStack.EMPTY;
     private ItemStack ignitionTool = ItemStack.EMPTY;
@@ -52,14 +58,20 @@ public final class ThermalStationEntity extends BlockEntity {
     private double frictionSeconds;
     private boolean igniting;
     private boolean lit;
+    private long evaporatedMg;
 
     public ThermalStationEntity(BlockPos pos, BlockState state) {
         super(PrimitiveContent.THERMAL_ENTITY.get(), pos, state);
+        station = new ProcessingStation(1, 2, state.is(PrimitiveContent.HEARTH.get()) ? 4 : 0.000001);
         selected = AshenFrontierCore.id(state.is(PrimitiveContent.HEARTH.get()) ? "primitive/fire_pot" : "primitive/dry_pot");
     }
 
     ProcessingStation station() { return station; }
     HearthHeat heat() { return heat; }
+    @Override
+    public WaterTank waterTank() { return station.water(); }
+    private boolean boiling() { return selected.getPath().startsWith("primitive/boil_water"); }
+    private boolean highAltitude() { return (worldPosition.getY() - 63) * 25 > 2000; }
     boolean lit() { return lit; }
     private boolean hearth() { return getBlockState().is(PrimitiveContent.HEARTH.get()); }
     private ResourceLocation facility() { return AshenFrontierCore.id(hearth() ? "hearth" : "drying_rack"); }
@@ -73,14 +85,32 @@ public final class ThermalStationEntity extends BlockEntity {
         }
         work();
         var held = player.getItemInHand(hand);
-        if (held.isEmpty() && player.isShiftKeyDown()) {
-            if (face == Direction.DOWN) {
+        var storedKg = held.get(RelicProperties.CONTENT_MASS.get());
+        if (storedKg != null && storedKg >= 0 && storedKg <= WaterMass.MAX_KG)
+            held.set(RelicProperties.CONTENT_MASS, WaterMass.toKg(WaterMass.fromKg(storedKg)));
+        if (boiling() && selected.getPath().endsWith("_high") != highAltitude()) {
+            cancelProcessing(player);
+            selected = AshenFrontierCore.id(highAltitude() ? "primitive/boil_water_high" : "primitive/boil_water");
+        }
+        if (hearth() && held.has(RelicProperties.CONTENT_MASS.get())
+                && (!held.is(PrimitiveContent.item("ceramic_pot"))
+                || held.getOrDefault(RelicProperties.CONTENT_MASS.get(), 0.0) > 0 || player.isShiftKeyDown())) {
+            var result = player.isShiftKeyDown()
+                    ? WaterTransfers.tankToContainer(player, hand, this, 4)
+                    : WaterTransfers.containerToTank(player, hand, this, 4);
+            if (result.movedMg() > 0) {
                 station.cancel(player);
+                releaseHeat(boilingHeat.reset());
+            }
+            player.sendSystemMessage(result.message());
+        } else if (held.isEmpty() && player.isShiftKeyDown()) {
+            if (face == Direction.DOWN) {
+                cancelProcessing(player);
                 igniting = false;
                 frictionSeconds = 0;
                 setLit(false);
             } else if (station.active() || igniting) {
-                station.cancel(player);
+                cancelProcessing(player);
                 igniting = false;
                 frictionSeconds = 0;
             } else if (face == Direction.UP) {
@@ -125,6 +155,19 @@ public final class ThermalStationEntity extends BlockEntity {
         }
         describe(player);
         setChanged();
+    }
+
+    private void cancelProcessing(ServerPlayer player) {
+        station.cancel(player);
+        releaseHeat(boilingHeat.releaseVapor());
+    }
+
+    private void releaseHeat(double retainedJ) {
+        if (retainedJ != 0 && fuelProfile != null) {
+            long now = level.getGameTime();
+            NeoForge.EVENT_BUS.post(new CombustionEvent((ServerLevel) level, worldPosition, now, now,
+                    fuelProfile, 0, 0, retainedJ));
+        }
     }
 
     private void resume(ServerPlayer player) {
@@ -229,19 +272,50 @@ public final class ThermalStationEntity extends BlockEntity {
             activeSeconds = step.processSeconds();
             if (lit && heat.fuelJoules() == 0 && fuel.isEmpty()) setLit(false);
         }
+        double gameSeconds = GameTime.gameSeconds(now - from, sample.ticksPerDay());
+        boolean heatingWater = station.active() && boiling() && suitable(environment) && activeSeconds > 0;
+        double poweredGameSeconds = heatingWater ? gameSeconds * (activeSeconds / seconds) : 0;
+        double waterCoolingJ = 0;
+        if (!station.active() || !boiling()) {
+            waterCoolingJ = coolWater(serverLevel, sample, gameSeconds);
+        }
         if (station.active()) {
             if (suitable(environment) && (!hearth() || activeSeconds > 0)) {
-                if (station.advanceInterval(serverPlayer, facility(), sample, processJ, temperature(),
-                        hearth() ? activeSeconds : Double.MAX_VALUE)) suppliedProcessJ = processJ;
-                if (station.finish(serverPlayer, facility(), environment, temperature())) {
+                OptionalDouble processTemperature = temperature();
+                double processSeconds = hearth() ? activeSeconds : Double.MAX_VALUE;
+                double recipeJ = processJ;
+                double retainedJ = processJ;
+                if (boiling()) {
+                    var step = boilingHeat.advance(activeSeconds, poweredGameSeconds,
+                            sample.temperatureK(), sample.pressurePa(), processJ);
+                    if (step.interrupted()) station.resetProgress(serverLevel);
+                    processSeconds = step.hotSeconds();
+                    recipeJ = step.vaporJoules();
+                    retainedJ = step.absorbedJoules();
+                    processTemperature = OptionalDouble.of(step.temperatureK());
+                }
+                boolean advanced = station.advanceInterval(serverPlayer, facility(), sample, recipeJ, processTemperature, processSeconds);
+                if (boiling() || advanced) suppliedProcessJ = retainedJ;
+                if (station.finish(serverPlayer, facility(), environment, processTemperature)) {
+                    if (boiling()) {
+                        evaporatedMg += 200_000;
+                        ResearchManager.report(serverPlayer, AshenFrontierCore.id("water_event"), "boiled_water");
+                        serverPlayer.sendSystemMessage(Component.translatable("primitive.ashen_frontier.boiled_storage"));
+                        boilingHeat.complete();
+                    }
                     if (station.output(0).is(PrimitiveContent.item("ceramic_pot"))) {
                         ResearchManager.report(serverPlayer, AshenFrontierCore.id("primitive_event"), "ceramic_pot");
                     }
                     serverPlayer.sendSystemMessage(Component.translatable("primitive.ashen_frontier.finished"));
                 }
-            } else station.advanceInterval(serverPlayer, facility(), sample, 0, temperature(), 0);
+            } else {
+                if (boiling()) waterCoolingJ = coolWater(serverLevel, sample, gameSeconds);
+                station.advanceInterval(serverPlayer, facility(), sample, 0, temperature(), 0);
+            }
         }
-        if (evaluatedHeat != null) notifyHeat(serverLevel, from, now, evaluatedHeat, suppliedProcessJ);
+        if (heatingWater) waterCoolingJ += coolWater(serverLevel, sample, gameSeconds - poweredGameSeconds);
+        if (!station.active()) waterCoolingJ += boilingHeat.releaseVapor();
+        if (evaluatedHeat != null) notifyHeat(serverLevel, from, now, evaluatedHeat, suppliedProcessJ + waterCoolingJ);
     }
 
     /** 作業・燃焼を進めず、未ロード区間も含む余熱だけを遅延評価する。未接続では時刻を進めない。 */
@@ -254,15 +328,29 @@ public final class ThermalStationEntity extends BlockEntity {
         for (var sample : environment.get()) {
             var step = heat.advance(0, GameTime.gameSeconds(sample.endTick() - sample.startTick(), sample.ticksPerDay()),
                     sample.temperatureK(), false, false);
-            notifyHeat(serverLevel, sample.startTick(), sample.endTick(), step, 0);
+            double waterJ = coolWater(serverLevel, sample,
+                    GameTime.gameSeconds(sample.endTick() - sample.startTick(), sample.ticksPerDay()));
+            if (!station.active()) waterJ += boilingHeat.releaseVapor();
+            notifyHeat(serverLevel, sample.startTick(), sample.endTick(), step, waterJ);
             lastTick = sample.endTick();
         }
         setChanged();
         return true;
     }
 
+    private double coolWater(ServerLevel level, EnvironmentSample sample, double gameSeconds) {
+        double before = boilingHeat.temperatureK();
+        double retainedJ = boilingHeat.cool(gameSeconds, sample.temperatureK());
+        double boilingK = BoilingHeat.boilingK(sample.pressurePa());
+        if (boiling() && (before < boilingK || boilingHeat.temperatureK() < boilingK)) {
+            station.resetProgress(level);
+            retainedJ += boilingHeat.releaseVapor();
+        }
+        return retainedJ;
+    }
+
     private void notifyHeat(ServerLevel serverLevel, long from, long to, HearthHeat.Step step, double suppliedProcessJ) {
-        if (fuelProfile != null && (step.chemicalJoules() > 0 || step.storedJoules() != 0)) {
+        if (fuelProfile != null && (step.chemicalJoules() > 0 || step.storedJoules() != 0 || suppliedProcessJ != 0)) {
             NeoForge.EVENT_BUS.post(new CombustionEvent(serverLevel, worldPosition, from, to, fuelProfile,
                     step.burnedKg(), step.chemicalJoules(), step.storedJoules() + suppliedProcessJ));
         }
@@ -278,12 +366,22 @@ public final class ThermalStationEntity extends BlockEntity {
     private List<RecipeHolder<CommonRecipe>> recipes() {
         return level.getRecipeManager().getRecipes().stream()
                 .filter(h -> h.value() instanceof CommonRecipe r && r.conditions().facility().filter(facility()::equals).isPresent())
+                .filter(h -> !h.id().getPath().startsWith("primitive/boil_water")
+                        || h.id().getPath().endsWith("_high") == highAltitude())
                 .map(h -> new RecipeHolder<>(h.id(), (CommonRecipe) h.value()))
                 .sorted(Comparator.comparing(h -> h.id().toString())).toList();
     }
 
     private void describe(ServerPlayer player) {
         player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.thermal_controls"));
+        var water = station.water().contents();
+        player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.stored_water", water.massKg(),
+                water.quality().<Component>map(q -> Component.translatable("fluid_type." + q.getNamespace() + "." + q.getPath()))
+                        .orElseGet(() -> Component.literal("-"))));
+        if (hearth()) {
+            player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.boiling_controls"));
+            player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.evaporated_water", WaterMass.toKg(evaporatedMg)));
+        }
         var environment = EnvironmentQuery.sample((ServerLevel) level, worldPosition, level.getGameTime(), level.getGameTime());
         if (environment.isEmpty()) player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.environment_missing"));
         else if (!suitable(environment)) player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.unsuitable_environment"));
@@ -346,6 +444,10 @@ public final class ThermalStationEntity extends BlockEntity {
         tag.putBoolean("lit", lit);
         tag.putDouble("friction_seconds", frictionSeconds);
         tag.putLong("last_tick", lastTick);
+        tag.putLong("evaporated_mg", evaporatedMg);
+        if (Double.isFinite(boilingHeat.temperatureK())) tag.putDouble("water_temperature_k", boilingHeat.temperatureK());
+        tag.putDouble("water_reserved_j", boilingHeat.reservedJoules());
+        tag.putDouble("water_sensible_j", boilingHeat.sensibleJoules());
     }
 
     @Override
@@ -362,6 +464,9 @@ public final class ThermalStationEntity extends BlockEntity {
         lit = tag.getBoolean("lit");
         frictionSeconds = tag.getDouble("friction_seconds");
         lastTick = tag.getLong("last_tick");
+        evaporatedMg = tag.getLong("evaporated_mg");
+        boilingHeat.restore(tag.contains("water_temperature_k") ? tag.getDouble("water_temperature_k") : Double.NaN,
+                tag.getDouble("water_reserved_j"), tag.getDouble("water_sensible_j"));
         if (level != null && !level.isClientSide) setLit(lit);
         worker = null;
         igniting = false;
