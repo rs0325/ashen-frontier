@@ -132,3 +132,5 @@ JSONはUTF-8で記述し、以下の全フィールドを指定する。書式�
 ## 固定気候モジュール
 
 climateの依存はcoreとworld。固定気候・太陽・日長履歴の公開API、保存と数値の根拠は[固定気候API](climate-api.md)を参照。モジュール単独の確認は `.\gradlew.bat :climate:1.21.1:test :climate:1.21.1:gameTest --no-daemon`、必須の全体検証は `.\gradlew.bat build gameTest --no-daemon`。
+
+気象セル・イベント・保存カーソルと計測方法は[気象API](weather-api.md)を参照。#134の計算は単体テスト、保存/同期/仕事量はWeatherGameTestsで検証する。
