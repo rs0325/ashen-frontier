@@ -166,9 +166,8 @@ public final class ThermalStationEntity extends BlockEntity {
         if (!(player instanceof ServerPlayer serverPlayer) || !player.isAlive()) { worker = null; coolTo(serverLevel, level.getGameTime()); return; }
         long now = level.getGameTime();
         long from = workTick;
-        workTick = now;
         var environment = coolTo(serverLevel, from)
-                ? EnvironmentQuery.sample(serverLevel, worldPosition, from, now) : Optional.<EnvironmentSample>empty();
+                ? EnvironmentQuery.samples(serverLevel, worldPosition, from, now) : Optional.<List<EnvironmentSample>>empty();
         if (environment.isEmpty()) {
             station.advance(serverPlayer, facility(), Optional.empty(), 0, temperature(), 0);
             worker = null;
@@ -176,8 +175,18 @@ public final class ThermalStationEntity extends BlockEntity {
             setChanged();
             return;
         }
-        var sample = environment.get();
-        double seconds = GameTime.realSeconds(Math.max(0, now - from));
+        workTick = now;
+        for (var sample : environment.get()) workInterval(serverLevel, serverPlayer, sample);
+        if (station.active() || igniting || lit) level.scheduleTick(worldPosition, getBlockState().getBlock(), interval());
+        else worker = null;
+        setChanged();
+    }
+
+    private void workInterval(ServerLevel serverLevel, ServerPlayer serverPlayer, EnvironmentSample sample) {
+        long from = sample.startTick();
+        long now = sample.endTick();
+        double seconds = GameTime.realSeconds(now - from);
+        var environment = Optional.of(sample);
         boolean newlyLit = false;
         if (igniting) {
             var held = serverPlayer.getMainHandItem();
@@ -222,7 +231,7 @@ public final class ThermalStationEntity extends BlockEntity {
         }
         if (station.active()) {
             if (suitable(environment) && (!hearth() || activeSeconds > 0)) {
-                if (station.advance(serverPlayer, facility(), environment, processJ, temperature(),
+                if (station.advanceInterval(serverPlayer, facility(), sample, processJ, temperature(),
                         hearth() ? activeSeconds : Double.MAX_VALUE)) suppliedProcessJ = processJ;
                 if (station.finish(serverPlayer, facility(), environment, temperature())) {
                     if (station.output(0).is(PrimitiveContent.item("ceramic_pot"))) {
@@ -230,12 +239,9 @@ public final class ThermalStationEntity extends BlockEntity {
                     }
                     serverPlayer.sendSystemMessage(Component.translatable("primitive.ashen_frontier.finished"));
                 }
-            } else station.advance(serverPlayer, facility(), Optional.empty(), 0, temperature(), 0);
+            } else station.advanceInterval(serverPlayer, facility(), sample, 0, temperature(), 0);
         }
         if (evaluatedHeat != null) notifyHeat(serverLevel, from, now, evaluatedHeat, suppliedProcessJ);
-        if (station.active() || igniting || lit) level.scheduleTick(worldPosition, getBlockState().getBlock(), interval());
-        else worker = null;
-        setChanged();
     }
 
     /** 作業・燃焼を進めず、未ロード区間も含む余熱だけを遅延評価する。未接続では時刻を進めない。 */
@@ -243,12 +249,14 @@ public final class ThermalStationEntity extends BlockEntity {
         if (!hearth()) return true;
         if (lastTick < 0 || !Double.isFinite(heat.temperatureK())) { lastTick = now; return true; }
         if (now <= lastTick) return true;
-        var environment = EnvironmentQuery.sample(serverLevel, worldPosition, lastTick, now);
+        var environment = EnvironmentQuery.samples(serverLevel, worldPosition, lastTick, now);
         if (environment.isEmpty()) return false;
-        var sample = environment.get();
-        var step = heat.advance(0, GameTime.gameSeconds(now - lastTick, sample.ticksPerDay()), sample.temperatureK(), false, false);
-        notifyHeat(serverLevel, lastTick, now, step, 0);
-        lastTick = now;
+        for (var sample : environment.get()) {
+            var step = heat.advance(0, GameTime.gameSeconds(sample.endTick() - sample.startTick(), sample.ticksPerDay()),
+                    sample.temperatureK(), false, false);
+            notifyHeat(serverLevel, sample.startTick(), sample.endTick(), step, 0);
+            lastTick = sample.endTick();
+        }
         setChanged();
         return true;
     }

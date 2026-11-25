@@ -55,9 +55,10 @@ public final class ItemProperties {
 
     public static Optional<Double> writeCurrentTemperature(ItemStack stack, long gameTime, double ambientK) {
         return currentTemperature(stack, gameTime, ambientK).map(kelvin -> {
-            long recordedAt = ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS);
+            long recordedAt = Math.max(stack.get(TEMPERATURE.get()).gameTime(),
+                    ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS));
             double recordedKelvin = currentTemperature(stack, recordedAt, ambientK).orElseThrow();
-            stack.set(TEMPERATURE.get(), Temperature.of(recordedKelvin, recordedAt));
+            stack.set(TEMPERATURE.get(), new Temperature(ItemPropertyMath.roundDown(recordedKelvin, TEMPERATURE_STEP_K), recordedAt));
             return kelvin;
         });
     }
@@ -110,7 +111,7 @@ public final class ItemProperties {
     }
 
     public record Temperature(double kelvin, long gameTime) {
-        /** 丸めて温度を生成する。標準コンストラクターは値を丸めないため、設定時はこのメソッドを使う。 */
+        /** 温度と時刻を丸める。評価時刻を厳密に保存する場合は温度だけ丸め、標準コンストラクターへ渡す。 */
         public static Temperature of(double kelvin, long gameTime) {
             return new Temperature(ItemPropertyMath.roundDown(kelvin, TEMPERATURE_STEP_K),
                     ItemPropertyMath.floorTime(gameTime, TIME_STEP_TICKS));

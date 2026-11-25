@@ -1,5 +1,14 @@
 # M4: Tier 0（確定）
 
+## M3の確定範囲（2026-11-25）
+
+M3 Q1〜Q8は全て推奨案で承認済み。[14](14-m3-climate-survival.md)を詳細正本とする。M3はA「気候とM4接続」、B「生理・感染」、C「序盤動物」に分割し、Aのみで全体完了としない。
+
+高度な星空/惑星描画・建築被害・精密観測器・重症医療/ワクチン・家畜治療/細胞採取等の移管先は[15](15-phase1-followups.md)。従来の確定目標は維持し、M3の実装時期についてはこの決定を優先する。
+
+既存貯留の蒸発・減水・水位の共有契約は未決定。[#136](https://github.com/rs0325/ashen-frontier/issues/136)と水量正本の[#122](https://github.com/rs0325/ashen-frontier/issues/122)/実配置の[#123](https://github.com/rs0325/ashen-frontier/issues/123)で調整する。非負補給APIへの負量入力や残量の二重保存は行わない。
+
+
 [08-phase1.md](08-phase1.md)のM4を対象とする。2026-11-24、Q1〜Q8をすべて推奨内容で承認。設計正本はdocs/design/13-m4-tier0.md。M2の保全区の具体配置は未決定であり別途承認を要する。
 
 ## 目的
@@ -411,7 +420,7 @@ B時点の台石保存は1入力・容量1 mgを保持している。未リリ�
 
 ### 共有API・研究・表示
 
-- `core/environment/EnvironmentQuery`: サーバースレッドで同期発火するNeoForge Event。位置と開始・終了gameTime tickの区間に対し、M3が既存EnvironmentSampleのSI単位・覆い・換気・日長を提供する。要求区間を覆わない応答はIllegalArgumentException。未応答はOptional.emptyで、設備は進行せず再操作待ちとなる。区間中に条件・日長が変わる場合は、その境界で評価を分ける必要がある。
+- `core/environment/EnvironmentQuery`: サーバースレッドで同期発火するNeoForge Event。位置と開始・終了gameTime tickの区間に対し、M3がEnvironmentSampleのSI単位・覆い・換気・日長を提供する。samplesは連続した区間列を返し、sampleは瞬時/単一区間だけに用いる。応答区間列が要求の開始・終了と一致せず、欠落・重複・ゼロ長の挿入があればIllegalArgumentException。未応答はOptional.emptyで、設備は進行せず再操作待ちとなる。区間中に条件・日長が変わる場合は、その境界で評価を分ける必要がある。
 - `core/environment/CombustionEvent`: 実際に評価した区間、燃料profile、燃焼質量kg、化学発熱量J、設備へ留保した熱Jを通知する。留保熱は炉体蓄熱の増減と実際に加工へ供給した熱の和。冷却だけの区間では質量・化学発熱量0、留保熱は負となる。M3が差分の放出熱とprofile別の排煙を扱い、M4がCO濃度や安全な室内を仮定しない。
 - `ProcessingStation`の温度付きstart/advance/finishは、外気温と別の炉内温度Kを受け取る。advanceのavailableSecondsは型のREAL/GAME時計での適合区間秒数の上限で、実経過を超えて加算しない。負・非有限の値は拒否する。finishは炉内温度を出力の既存温度成分へ刻み、入力・槽・出力を従来どおり一括確定する。
 - `CommonRecipe.serverDisplayLines(ServerPlayer)`はサーバー側の研究状態とSI表記で条件を表示し、クライアント設定へアクセスしない。JEI/EMIは従来のCommonRecipe表示を再利用する。正確な炉の実測温度計は追加せず、設備の状態表示は冷たい・適温等に留める。
@@ -448,6 +457,20 @@ M3の区間入力がなければ、仮の気温で冷却せずlastTickも進め�
 未リリースの炉保存へlast_tickを追加した。冷却時刻を持たない従来の開発用炉・設備アイテムは作り直し、旧形式の移行処理は追加しない。登録IDやCONTENT_MASSの保存形式は変えない。
 
 回帰GameTestは、ロード中の放置、未評価のロード期間を保存した後の未ロード期間、標準のBlockEntity保存/復元とonLoad、日長24000/12000、dayTime変更の無関係、環境未接続と再接続、放熱通知・同時刻再評価を検査する。未ロード期間はBEを取り外し、実チャンク保存と同じsaveWithFullMetadata→loadStatic→onLoadの経路で復元して検証する。さらに構造物から512ブロック離れた専用チャンクを保存し、強制ロードを外して実アンロードを確認後、ディスクから別のBEへ再読込みする試験を行う。試験後に専用の強制ロード・環境入力を解除し、時刻を戻す。単体試験でもGAME秒だけの指数冷却と燃料・加工を進めないことを検査する。
+
+M3の実環境は#132/#133/#134/#135、室内は#137、涵養は#136。単一EnvironmentQueryで複数の日長/天候区間を平均化せず、#132で区間列と炉/棚の呼出し元を改修する。既存APIの説明と実装の改修完了は区別する。
+
+## #132：環境区間列と日長履歴
+
+EnvironmentQuery.samples(level, position, from, to)はOptional<List<EnvironmentSample>>。provide(List)は要求範囲と正確に一致する順序付き区間列を検証し、不変コピーを保持する。正の要求にゼロ長区間は挿入しない。瞬時照会は積算0の1件。単一sampleは複数区間を平均化せずemptyを返す。提供者なしの既定環境は追加しない。
+
+ProcessingStation.advanceIntervalは評価済み時刻に連続する小区間だけを進め、欠落/再送/未来区間ではfalseで進捗を変更しない。不適合時間もavailableSeconds=0として時計だけ区間末尾へ進める。炉/棚のworkが区間順に処理する。未ロードの作業は再開時に時計を合わせて加算せず、余熱のcoolToだけが未評価全区間をGAME冷却する。
+
+DayLengthHistoryは単調tick上の日長変更と保存用changesスナップショットを持つ純粋計算。GameTime.gameSeconds(from,to,history)とTimeBasis.seconds(from,to,history)でGAMEだけを区間積算する。履歴の保存/設定変更の記録を担う本番providerは#133以降で接続し、#132では配布用固定値を設けない。
+
+### #132反証後の修正：製品の温度評価時刻
+
+区間列の途中で完成する製品は、finishへ渡したEnvironmentSample.endTickを温度の記録時刻にする。環境を使わない即時加工は現在時刻。温度の5 K丸めは維持するが、確定時刻を20tick境界へ丸めない。以降のcurrentTemperatureはこの完成時点から冷却する。遅延更新でも元の記録時刻より前へ丸めず、完成前への逆向き評価を避ける。保存/通信の形式は変更しない。
 
 ## 有限水源の分割確定（2026-11-25）
 
