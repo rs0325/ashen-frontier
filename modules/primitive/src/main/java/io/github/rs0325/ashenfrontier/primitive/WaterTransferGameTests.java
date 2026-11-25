@@ -13,6 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -69,6 +70,18 @@ public final class WaterTransferGameTests {
                     from, to, target - current);
         }
         player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+    }
+
+    /** Dも同じ承認済み有限水源fixtureを使い、本番の配置を先取りしない。 */
+    static BlockPos sourceFixture(GameTestHelper h,
+                                  ServerPlayer player, String quality, long massMg) {
+        bind(h.getLevel());
+        var inlet = h.absolutePos(new BlockPos(1, 2, 1));
+        ACCESS.put(inlet, key(quality));
+        h.getLevel().setBlockAndUpdate(inlet, NatureContent.block(quality).defaultBlockState());
+        player.setPos(inlet.getX() + 0.5, inlet.getY() + 1, inlet.getZ() + 0.5);
+        prepareFixture(player, inlet, quality, massMg);
+        return inlet;
     }
 
     @GameTest(template = "empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)

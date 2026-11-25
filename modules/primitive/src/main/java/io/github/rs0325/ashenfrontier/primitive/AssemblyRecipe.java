@@ -4,6 +4,8 @@ import com.mojang.serialization.MapCodec;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import io.github.rs0325.ashenfrontier.core.ItemProperties;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
+import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
+import net.minecraft.world.level.Level;
 import io.github.rs0325.ashenfrontier.core.recipe.ProcessingStation;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
@@ -45,6 +47,19 @@ public final class AssemblyRecipe extends ShapedRecipe {
                 @Override
                 public StreamCodec<RegistryFriendlyByteBuf, Hammer> streamCodec() {
                     return ShapelessRecipe.Serializer.STREAM_CODEC.map(Hammer::new, recipe -> recipe);
+                }
+            });
+
+    private static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<Filter>> FILTER =
+            SERIALIZERS.register("filter_assembly", () -> new RecipeSerializer<>() {
+                @Override
+                public MapCodec<Filter> codec() {
+                    return new ShapelessRecipe.Serializer().codec().xmap(Filter::new, recipe -> recipe);
+                }
+
+                @Override
+                public StreamCodec<RegistryFriendlyByteBuf, Filter> streamCodec() {
+                    return ShapelessRecipe.Serializer.STREAM_CODEC.map(Filter::new, recipe -> recipe);
                 }
             });
 
@@ -91,6 +106,20 @@ public final class AssemblyRecipe extends ShapedRecipe {
         @Override
         public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
             return inherit(input, super.assemble(input, registries), false);
+        }
+    }
+    private static final class Filter extends ShapelessRecipe {
+        private Filter(ShapelessRecipe recipe) {
+            super(recipe.getGroup(), recipe.category(), recipe.getResultItem(RegistryAccess.EMPTY), recipe.getIngredients());
+        }
+
+        @Override
+        public RecipeSerializer<?> getSerializer() { return FILTER.get(); }
+
+        @Override
+        public boolean matches(CraftingInput input, Level level) {
+            return super.matches(input, level)
+                    && input.items().stream().allMatch(stack -> stack.getOrDefault(NatureProperties.MOISTURE.get(), 0.0) == 0);
         }
     }
 }

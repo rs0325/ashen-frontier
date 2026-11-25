@@ -39,6 +39,12 @@ public final class PrimitiveContent {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ThermalStationEntity>> THERMAL_ENTITY =
             ENTITIES.register("primitive_processing", () -> BlockEntityType.Builder.of(ThermalStationEntity::new, HEARTH.get(), DRYING_RACK.get()).build(null));
 
+    public static final DeferredHolder<Block, WaterFilterBlock> FILTER = BLOCKS.register("water_filter",
+            () -> new WaterFilterBlock(BlockBehaviour.Properties.of().strength(0.5f).noOcclusion()
+                    .pushReaction(PushReaction.BLOCK)));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WaterFilterEntity>> FILTER_ENTITY =
+            ENTITIES.register("water_filter", () -> BlockEntityType.Builder.of(WaterFilterEntity::new, FILTER.get()).build(null));
+
     private PrimitiveContent() {}
 
     public static void register(IEventBus bus) {
@@ -69,6 +75,7 @@ public final class PrimitiveContent {
         }
         ENTRIES.put("hearth", ITEMS.register("hearth", () -> new BlockItem(HEARTH.get(), new Item.Properties().stacksTo(1))));
         ENTRIES.put("drying_rack", ITEMS.register("drying_rack", () -> new BlockItem(DRYING_RACK.get(), new Item.Properties().stacksTo(1))));
+        ENTRIES.put("water_filter", ITEMS.register("water_filter", () -> new BlockItem(FILTER.get(), new Item.Properties().stacksTo(1))));
         BLOCKS.register(bus);
         ITEMS.register(bus);
         ENTITIES.register(bus);

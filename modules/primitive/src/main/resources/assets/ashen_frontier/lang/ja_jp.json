@@ -61,5 +61,18 @@
   "primitive.ashen_frontier.heat_hot": "炉は焼成温度を超えています。",
   "primitive.ashen_frontier.heat_suitable": "炉は焼成温度域です。材料・研究・燃料を確認してください。",
   "primitive.ashen_frontier.drying_conditions": "乾燥は覆い・通風があり、凍結せず、相対湿度80%以下の区間だけ進みます。",
-  "primitive.ashen_frontier.stored_water": "台石の槽: %s kg、%s。空土鍋をShift操作して取り出せます。"
+  "primitive.ashen_frontier.stored_water": "台石の槽: %s kg、%s。空土鍋をShift操作して取り出せます。",
+  "block.ashen_frontier.water_filter": "沈殿ろ過槽",
+  "research.ashen_frontier.t0.drinking_water": "飲用水の確保",
+  "research.ashen_frontier.t0.drinking_water.description": "濁水4 kgを半ゲーム日静置し、30実秒ろ過する。生水は局所沸点へ予熱後60実秒、仮想標高2000 m超では180実秒煮沸する。ろ過・煮沸で化学汚染は除けない。煮沸後は冷まし、陶製の蓋を使って保管する。",
+  "research_condition.ashen_frontier.water_event.filtered_water": "静置した濁水をろ過する",
+  "research_condition.ashen_frontier.water_event.boiled_water": "生水を煮沸する",
+  "primitive.ashen_frontier.filter_controls": "ろ過槽：布と空の土鍋を入れ、水入り容器で注水。空手で開始・再開・回収。上面のShift空手で取消、側面で部材回収。土鍋のShift操作で槽から汲み出す。布は10バッチで交換し、保持水は湿った布に残る。",
+  "primitive.ashen_frontier.filter_progress": "静置：%s / 43200 ゲーム秒、布の保持水：%s kg",
+  "primitive.ashen_frontier.boiling_controls": "煮沸：水入り土鍋で炉の槽へ生水4 kgを移し、空の土鍋を入れる。上面のShift空手で製法選択、空手で開始・再開。土鍋のShift操作で槽から汲み出す。実供給熱と局所気圧が必要。",
+  "primitive.ashen_frontier.boiled_storage": "煮沸後は冷まし、陶製の蓋を使って保管する。化学汚染は煮沸で除けない。",
+  "primitive.ashen_frontier.filter_recipe": "半ゲーム日静置してから30実秒ろ過する。1バッチにつき濁水0.4 kgを布に保持し、10バッチで布を交換する。化学汚染は除けない。",
+  "primitive.ashen_frontier.boil_recipe": "生水4 kgを局所気圧の沸点まで予熱し、連続60実秒（仮想標高2000 m超は180実秒）保持する。沸点未満で保持をやり直す。出力3.8 kg、蒸発0.2 kg。冷まして蓋付き保管。化学汚染は除けない。",
+  "primitive.ashen_frontier.evaporated_water": "累計蒸発量：%s kg",
+  "tooltip.ashen_frontier.filter_assembly_dry": "ろ過槽の組立は乾いた土鍋・砂・砂利のみ。湿った材料は自由水を失わず拒否します。"
 }

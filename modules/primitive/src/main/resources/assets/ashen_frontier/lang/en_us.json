@@ -61,5 +61,18 @@
   "primitive.ashen_frontier.heat_hot": "The hearth is above the firing range.",
   "primitive.ashen_frontier.heat_suitable": "The hearth is in the firing range. Check materials, research and fuel.",
   "primitive.ashen_frontier.drying_conditions": "Drying advances only in covered, ventilated, unfrozen conditions at no more than 80% relative humidity.",
-  "primitive.ashen_frontier.stored_water": "Surface tank: %s kg, %s. Sneak-use with an empty ceramic pot to withdraw water."
+  "primitive.ashen_frontier.stored_water": "Surface tank: %s kg, %s. Sneak-use with an empty ceramic pot to withdraw water.",
+  "block.ashen_frontier.water_filter": "Settling Filter",
+  "research.ashen_frontier.t0.drinking_water": "Drinking Water",
+  "research.ashen_frontier.t0.drinking_water.description": "Settle 4 kg of turbid water for half a game day, then filter for 30 real seconds. Boil raw water for 60 real seconds after reaching the local boiling point (180 seconds above 2000 m). Filtering and boiling do not remove chemical pollution. Let boiled water cool and store it covered with a ceramic lid.",
+  "research_condition.ashen_frontier.water_event.filtered_water": "Filter a settled batch of turbid water",
+  "research_condition.ashen_frontier.water_event.boiled_water": "Boil a batch of raw water",
+  "primitive.ashen_frontier.filter_controls": "Filter: insert cloth and an empty pot; filled container transfers water in. Empty hand starts/resumes or collects. Sneak with empty hand on top cancels; on the side retrieves parts. Sneak with a pot draws water out. Replace cloth after 10 batches; retained water stays in the wet cloth.",
+  "primitive.ashen_frontier.filter_progress": "Settling: %s / 43200 game seconds; water retained in cloth: %s kg",
+  "primitive.ashen_frontier.boiling_controls": "Boiling: put 4 kg of raw water into the hearth tank with a filled pot, then insert an empty pot. Sneak with an empty hand on top selects a recipe; empty hand starts/resumes. Sneak with a pot draws tank water out. Heat and local air pressure are required.",
+  "primitive.ashen_frontier.boiled_storage": "Let the boiled water cool; store it under a ceramic lid. Boiling does not remove chemical pollution.",
+  "primitive.ashen_frontier.filter_recipe": "Settle for half a game day before filtering for 30 real seconds. Each batch leaves 0.4 kg of turbid water in the cloth. Replace the cloth after 10 batches. Chemical pollution is not removed.",
+  "primitive.ashen_frontier.boil_recipe": "Preheat to the local boiling point, then hold continuously for 60 real s (180 above virtual elevation 2000 m). Cooling below boiling resets the hold. Output 3.8 kg; evaporation 0.2 kg. Cool and cover; chemicals remain.",
+  "primitive.ashen_frontier.evaporated_water": "Cumulative evaporation: %s kg",
+  "tooltip.ashen_frontier.filter_assembly_dry": "Assemble the filter only from a dry pot, sand and gravel. Wet materials are rejected without losing their free water."
 }
