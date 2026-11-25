@@ -3,6 +3,8 @@ package io.github.rs0325.ashenfrontier.primitive;
 import com.mojang.authlib.GameProfile;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import io.github.rs0325.ashenfrontier.core.ItemProperties;
+import io.github.rs0325.ashenfrontier.core.MaterialData;
+import io.github.rs0325.ashenfrontier.core.time.GameTime;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureContent;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
 import io.github.rs0325.ashenfrontier.core.catalog.RelicContent;
@@ -60,6 +62,7 @@ public class PotteryGameTests {
     private record Climate(long day, double temperature, double humidity, boolean covered, boolean ventilated) {}
     private static final Map<Site, Climate> SAMPLES = new HashMap<>();
     private static final Map<Site, List<CombustionEvent>> EMISSIONS = new HashMap<>();
+    private static final Map<Site, java.util.function.Consumer<EnvironmentQuery>> SERIES = new HashMap<>();
     private static boolean registered;
 
     @GameTest(template = "pottery_empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
@@ -668,6 +671,257 @@ public class PotteryGameTests {
         return hearth;
     }
 
+
+    @GameTest(template = "pottery_empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
+    public static void environmentSeriesRejectsGapsOverlapAndUnrequestedAccumulations(GameTestHelper helper) {
+        var player = player(helper);
+        long before = helper.getLevel().getGameTime();
+        var site = new Site(helper.getLevel(), helper.absolutePos(RACK));
+        try {
+            environment(helper, RACK, 24000, 293.15, 0.5, true, true);
+            var first = new EnvironmentSample(before, before + 10, 24000, 293.15, 101325, 0.5,
+                    1, 10, Optional.of(id("raw_water")), true, true);
+            var second = new EnvironmentSample(before + 10, before + 20, 12000, 283.15, 101325, 0.5,
+                    3, 20, Optional.of(id("raw_water")), true, true);
+            SERIES.put(site, e -> {
+                var values = new ArrayList<>(List.of(first, second));
+                e.provide(values);
+                values.clear();
+            });
+            check(EnvironmentQuery.samples(site.level, site.pos, before, before + 20).orElseThrow().size() == 2,
+                    "提供後に元のリストを変更しても区間列を保持");
+            var values = EnvironmentQuery.samples(site.level, site.pos, before, before + 20).orElseThrow();
+            check(values.stream().mapToDouble(EnvironmentSample::precipitationKgM2).sum() == 4
+                    && values.stream().mapToDouble(EnvironmentSample::solarJoulesM2).sum() == 30, "積算は各小区間の分だけ");
+            check(EnvironmentQuery.sample(site.level, site.pos, before, before + 20).isEmpty(), "単一APIで複数区間を平均化しない");
+            for (int i = 0; i < 1000; i++) EnvironmentQuery.samples(site.level, site.pos, before, before + 20);
+            var durations = new long[2000];
+            for (int i = 0; i < durations.length; i++) {
+                long began = System.nanoTime();
+                EnvironmentQuery.samples(site.level, site.pos, before, before + 20);
+                durations[i] = System.nanoTime() - began;
+            }
+            java.util.Arrays.sort(durations);
+            System.out.println("ENVIRONMENT_QUERY_BENCHMARK count=2000 segments=2 p95_us="
+                    + durations[1899] / 1000.0 + " max_us=" + durations[1999] / 1000.0);
+            for (var invalid : List.of(List.<EnvironmentSample>of(), List.of(first),
+                    List.of(sample(before - 1, before + 20)), List.of(sample(before, before + 21)),
+                    List.of(first, sample(before + 11, before + 20)),
+                    List.of(first, sample(before + 9, before + 20)),
+                    List.of(first, sample(before + 10, before + 10), second))) {
+                SERIES.put(site, e -> rejectsInterval(() -> e.provide(invalid)));
+                check(EnvironmentQuery.samples(site.level, site.pos, before, before + 20).isEmpty(), "不正な区間を応答へ採用しない");
+            }
+            rejectsInterval(() -> EnvironmentQuery.samples(site.level, site.pos, before + 1, before));
+            rejectsInterval(() -> new EnvironmentSample(before, before, 24000, 293.15, 101325, 0.5,
+                    1, 0, Optional.of(id("raw_water")), true, true));
+            rejectsInterval(() -> new EnvironmentSample(before, before, 24000, 293.15, 101325, 0.5,
+                    0, 1, Optional.empty(), true, true));
+            SERIES.put(site, e -> e.provide(sample(e.startTick(), e.endTick())));
+            check(EnvironmentQuery.sample(site.level, site.pos, before, before).orElseThrow().solarJoulesM2() == 0,
+                    "ゼロ長は積算0の単一状態");
+            SERIES.remove(site);
+            SAMPLES.remove(site);
+            check(EnvironmentQuery.samples(site.level, site.pos, before, before + 20).isEmpty(), "未接続の既定環境なし");
+            helper.succeed();
+        } finally { cleanup(helper, player, before); }
+    }
+
+    @GameTest(template = "pottery_empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
+    public static void coolingSplitsDayLengthAndTemperatureAcrossRestoration(GameTestHelper helper) {
+        var player = player(helper);
+        long before = helper.getLevel().getGameTime();
+        long dayBefore = helper.getLevel().getDayTime();
+        try {
+            var hearth = hotExtinguishedHearth(helper, player);
+            long start = helper.getLevel().getGameTime();
+            var site = new Site(helper.getLevel(), hearth.getBlockPos());
+            splitEnvironment(site, new long[]{start + 500}, new long[]{24000, 12000},
+                    new double[]{293.15, 283.15}, new boolean[]{true, true});
+            var events = new ArrayList<CombustionEvent>();
+            EMISSIONS.put(site, events);
+            var saved = hearth.saveWithFullMetadata(helper.getLevel().registryAccess());
+            double fuel = hearth.heat().fuelJoules();
+            helper.getLevel().removeBlockEntity(site.pos);
+            advance(helper, 1000);
+            helper.getLevel().setDayTime(999999);
+            var loaded = (ThermalStationEntity) BlockEntity.loadStatic(site.pos, hearth.getBlockState(), saved,
+                    helper.getLevel().registryAccess());
+            helper.getLevel().setBlockEntity(loaded);
+            loaded.onLoad();
+            loaded.work();
+            double middle = 293.15 + (1000 - 293.15) * Math.exp(-0.25);
+            double expected = 283.15 + (middle - 283.15) * Math.exp(-0.5);
+            check(Math.abs(loaded.heat().temperatureK() - expected) < 1e-8, "日長/気温を変更前後で分割して未ロード冷却");
+            check(loaded.heat().fuelJoules() == fuel && loaded.station().output(0).isEmpty(), "未ロードで燃焼/加工なし");
+            check(events.size() == 2 && events.get(0).startTick() == start && events.get(0).endTick() == start + 500
+                    && events.get(1).startTick() == start + 500, "放熱通知も実際の小区間");
+            loaded.work();
+            check(events.size() == 2, "同時刻再評価で二重通知しない");
+            SERIES.remove(site); SAMPLES.remove(site);
+            advance(helper, 500); loaded.work();
+            check(loaded.heat().temperatureK() == expected, "未接続では冷却時刻も温度も進めない");
+            splitEnvironment(site, new long[]{start + 500}, new long[]{24000, 12000},
+                    new double[]{293.15, 283.15}, new boolean[]{true, true});
+            loaded.work();
+            check(Math.abs(loaded.heat().temperatureK() - (283.15 + (expected - 283.15) * Math.exp(-0.5))) < 1e-8,
+                    "再接続で未評価区間から再開");
+            helper.succeed();
+        } finally { helper.getLevel().setDayTime(dayBefore); cleanup(helper, player, before); }
+    }
+
+    @GameTest(template = "pottery_empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
+    public static void dryingCreditsOnlySuitableSegmentsWithTheirOwnDayLength(GameTestHelper helper) {
+        var player = player(helper);
+        long before = helper.getLevel().getGameTime();
+        try {
+            helper.setBlock(RACK, PrimitiveContent.DRYING_RACK.get());
+            var rack = (ThermalStationEntity) helper.getLevel().getBlockEntity(helper.absolutePos(RACK));
+            environment(helper, RACK, 24000, 293.15, 0.5, true, true);
+            use(rack, player, pottery("green_pot", "pot"));
+            use(rack, player, ItemStack.EMPTY);
+            long start = helper.getLevel().getGameTime();
+            splitEnvironment(new Site(helper.getLevel(), rack.getBlockPos()), new long[]{start + 4000, start + 8000},
+                    new long[]{24000, 12000, 12000}, new double[]{293.15, 293.15, 293.15}, new boolean[]{true, false, true});
+            advance(helper, 12000); rack.work();
+            check(rack.station().output(0).isEmpty(), "不適合4000tickを乾燥時間へ加えない");
+            check(Math.abs(rack.station().save(helper.getLevel().registryAccess()).getDouble("seconds") - 43200) < 1e-8,
+                    "各適合区間の日長でGAME秒へ換算");
+            rack.work();
+            check(rack.station().save(helper.getLevel().registryAccess()).getDouble("seconds") == 43200,
+                    "同時刻の評価で乾燥時間を増やさない");
+            advance(helper, 6000); rack.work();
+            check(rack.station().output(0).is(PrimitiveContent.item("dried_pot")), "残り半ゲーム日で一度だけ乾燥完了");
+            helper.succeed();
+        } finally { cleanup(helper, player, before); }
+    }
+
+    @GameTest(template = "pottery_empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
+    public static void burningStopsAtTheVentilationBoundaryWithoutChangingItsClock(GameTestHelper helper) {
+        var player = player(helper);
+        long before = helper.getLevel().getGameTime();
+        try {
+            var hearth = hotExtinguishedHearth(helper, player);
+            use(hearth, player, new ItemStack(PrimitiveContent.item("tinder")));
+            use(hearth, player, extract(player, PrimitiveContent.item("fire_drill"), 1));
+            advance(helper, 600); hearth.work();
+            hearth.heat().restore(hearth.heat().fuelJoules(), 16000000, 1000);
+            long start = helper.getLevel().getGameTime();
+            var site = new Site(helper.getLevel(), hearth.getBlockPos());
+            splitEnvironment(site, new long[]{start + 100}, new long[]{24000, 12000},
+                    new double[]{293.15, 283.15}, new boolean[]{true, false});
+            var events = new ArrayList<CombustionEvent>();
+            EMISSIONS.put(site, events);
+            double fuel = hearth.heat().fuelJoules();
+            var reference = new HearthHeat();
+            reference.restore(fuel, 16000000, 1000);
+            reference.advance(5, 360, 293.15, true, false);
+            reference.advance(5, 720, 283.15, false, false);
+            advance(helper, 200); hearth.work();
+            check(Math.abs(hearth.heat().fuelJoules() - (fuel - 600000)) < 1e-6,
+                    "日長変更後も燃焼はREAL秒で、換気不適合の後半は燃やさない");
+            check(Math.abs(hearth.heat().temperatureK() - reference.temperatureK()) < 1e-8, "発熱とGAME放熱を区間合成");
+            check(events.size() == 2 && events.get(0).energyJoules() == 600000 && events.get(1).energyJoules() == 0,
+                    "燃焼と無燃焼の通知を分ける");
+            hearth.work();
+            check(events.size() == 2, "燃焼も通知も二重評価しない");
+            helper.succeed();
+        } finally { cleanup(helper, player, before); }
+    }
+
+    @GameTest(template = "pottery_empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
+    public static void processingRejectsReplayedAndSkippedIntervals(GameTestHelper helper) {
+        var player = player(helper);
+        long before = helper.getLevel().getGameTime();
+        try {
+            var station = new ProcessingStation(1, 2, 0.000001);
+            station.setInput(player, 0, pottery("green_pot", "pot"));
+            check(station.start(player, id("primitive/dry_pot"), id("drying_rack"), Optional.of(sample(before, before))),
+                    "既存の乾燥加工を開始");
+            advance(helper, 200);
+            check(station.advanceInterval(player, id("drying_rack"), sample(before, before + 100), 0, OptionalDouble.empty(), Double.MAX_VALUE),
+                    "現在時刻より前の小区間を進める");
+            check(!station.advanceInterval(player, id("drying_rack"), sample(before, before + 100), 0, OptionalDouble.empty(), Double.MAX_VALUE),
+                    "再送区間を拒否");
+            check(!station.advanceInterval(player, id("drying_rack"), sample(before + 101, before + 200), 0, OptionalDouble.empty(), Double.MAX_VALUE),
+                    "欠落区間を拒否");
+            check(station.advanceInterval(player, id("drying_rack"), sample(before + 100, before + 200), 0, OptionalDouble.empty(), Double.MAX_VALUE),
+                    "連続した次区間から再開");
+            check(station.save(helper.getLevel().registryAccess()).getDouble("seconds") == 720, "合計200tickだけ進捗");
+            rejectsInterval(() -> station.advanceInterval(player, id("drying_rack"), sample(before + 200, before + 200),
+                    1, OptionalDouble.empty(), Double.MAX_VALUE));
+            var restored = ProcessingStation.load(station.save(helper.getLevel().registryAccess()), helper.getLevel().registryAccess());
+            advance(helper, 200);
+            check(!restored.advanceInterval(player, id("drying_rack"), sample(before + 200, before + 400), 0, OptionalDouble.empty(), Double.MAX_VALUE),
+                    "保存復元の未ロード区間を加工へ加算しない");
+            helper.succeed();
+        } finally { cleanup(helper, player, before); }
+    }
+
+
+    @GameTest(template = "pottery_empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
+    public static void firedProductKeepsItsCompletionTimeBeforeLaterIntervals(GameTestHelper helper) {
+        var player = player(helper);
+        long before = helper.getLevel().getGameTime();
+        try {
+            var hearth = hotExtinguishedHearth(helper, player);
+            use(hearth, player, new ItemStack(PrimitiveContent.item("tinder")));
+            use(hearth, player, extract(player, PrimitiveContent.item("fire_drill"), 1));
+            advance(helper, 600); hearth.work();
+            hearth.heat().restore(hearth.heat().fuelJoules(), 16000000, 1000);
+            use(hearth, player, pottery("dried_pot", "pot"));
+            use(hearth, player, ItemStack.EMPTY);
+            check(hearth.station().active(), "焼成を実操作で開始");
+            long start = helper.getLevel().getGameTime();
+            long completed = ((start + 2419) / 20) * 20 + 7;
+            splitEnvironment(new Site(helper.getLevel(), hearth.getBlockPos()), new long[]{completed},
+                    new long[]{24000, 24000}, new double[]{293.15, 293.15}, new boolean[]{true, true});
+            advance(helper, (int) (completed + 600 - start));
+            hearth.work();
+            var pot = hearth.station().output(0);
+            check(pot.is(PrimitiveContent.item("ceramic_pot")), "応答列の途中で焼成完了");
+            var recorded = pot.get(ItemProperties.TEMPERATURE);
+            check(recorded.gameTime() == completed, "温度の記録時刻は現在時刻でなく完成区間の末尾");
+            double capacity = MaterialData.get(pot.getItem()).orElseThrow().massKg()
+                    * MaterialData.get(pot.getItem()).orElseThrow().specificHeatJKgK().orElseThrow();
+            double expected = 293.15 + (recorded.kelvin() - 293.15) * Math.exp(-GameTime.gameSeconds(600) / capacity);
+            double current = ItemProperties.currentTemperature(pot, helper.getLevel().getGameTime(), 293.15).orElseThrow();
+            check(Math.abs(current - expected) < 1e-8 && current < recorded.kelvin(), "完成後600tickの製品冷却を含む");
+            var fresh = pot.copy();
+            ItemProperties.writeCurrentTemperature(fresh, completed + 1, 293.15);
+            check(fresh.get(ItemProperties.TEMPERATURE).gameTime() == completed
+                    && fresh.get(ItemProperties.TEMPERATURE).kelvin() == recorded.kelvin(),
+                    "直後の遅延更新でも記録時刻を完成前へ丸めず、逆向きに加熱しない");
+            helper.succeed();
+        } finally { cleanup(helper, player, before); }
+    }
+
+    private static void rejectsInterval(Runnable operation) {
+        try { operation.run(); } catch (IllegalArgumentException expected) { return; }
+        throw new AssertionError("不正な区間を受け付けました");
+    }
+
+    private static void splitEnvironment(Site site, long[] boundaries, long[] days, double[] temperatures, boolean[] suitable) {
+        SERIES.put(site, event -> {
+            var parts = new ArrayList<EnvironmentSample>();
+            long start = event.startTick();
+            int index = 0;
+            while (index < boundaries.length && boundaries[index] <= start) index++;
+            while (index < boundaries.length && boundaries[index] < event.endTick()) {
+                parts.add(intervalSample(start, boundaries[index], days[index], temperatures[index], suitable[index]));
+                start = boundaries[index++];
+            }
+            parts.add(intervalSample(start, event.endTick(), days[index], temperatures[index], suitable[index]));
+            event.provide(parts);
+        });
+    }
+
+    private static EnvironmentSample intervalSample(long from, long to, long day, double temperature, boolean suitable) {
+        return new EnvironmentSample(from, to, day, temperature, 101325, suitable ? 0.5 : 0.9,
+                0, 0, Optional.empty(), suitable, suitable);
+    }
+
+
     private static EnvironmentSample sample(long from, long to) {
         return new EnvironmentSample(from, to, 24000, 293.15, 101325, 0.5, 0, 0, Optional.empty(), true, true);
     }
@@ -681,6 +935,8 @@ public class PotteryGameTests {
                                     double humidity, boolean covered, boolean ventilated) {
         if (!registered) {
             NeoForge.EVENT_BUS.addListener((EnvironmentQuery event) -> {
+                var series = SERIES.get(new Site(event.level(), event.position()));
+                if (series != null) { series.accept(event); return; }
                 var value = SAMPLES.get(new Site(event.level(), event.position()));
                 if (value != null) event.provide(new EnvironmentSample(event.startTick(), event.endTick(), value.day,
                         value.temperature, 101325, value.humidity, 0, 0, Optional.empty(), value.covered, value.ventilated));
@@ -711,6 +967,8 @@ public class PotteryGameTests {
 
     private static void cleanup(GameTestHelper helper, ServerPlayer player, long before) {
         SAMPLES.keySet().removeIf(site -> site.level == helper.getLevel()
+                && new AABB(Vec3.atLowerCornerOf(helper.absolutePos(BlockPos.ZERO)), Vec3.atLowerCornerOf(helper.absolutePos(new BlockPos(16, 6, 16)))).contains(Vec3.atCenterOf(site.pos)));
+        SERIES.keySet().removeIf(site -> site.level == helper.getLevel()
                 && new AABB(Vec3.atLowerCornerOf(helper.absolutePos(BlockPos.ZERO)), Vec3.atLowerCornerOf(helper.absolutePos(new BlockPos(16, 6, 16)))).contains(Vec3.atCenterOf(site.pos)));
         EMISSIONS.keySet().removeIf(site -> site.level == helper.getLevel()
                 && new AABB(Vec3.atLowerCornerOf(helper.absolutePos(BlockPos.ZERO)), Vec3.atLowerCornerOf(helper.absolutePos(new BlockPos(16, 6, 16)))).contains(Vec3.atCenterOf(site.pos)));

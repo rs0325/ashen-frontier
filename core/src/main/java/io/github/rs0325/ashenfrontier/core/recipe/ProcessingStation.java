@@ -1,6 +1,7 @@
 package io.github.rs0325.ashenfrontier.core.recipe;
 
 import io.github.rs0325.ashenfrontier.core.ItemProperties;
+import io.github.rs0325.ashenfrontier.core.ItemPropertyMath;
 import io.github.rs0325.ashenfrontier.core.MaterialData;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
 import io.github.rs0325.ashenfrontier.core.environment.EnvironmentSample;
@@ -123,19 +124,45 @@ public final class ProcessingStation {
     public boolean advance(ServerPlayer player, ResourceLocation facility,
                            Optional<EnvironmentSample> environment, double energyJoules,
                            OptionalDouble processTemperatureK, double availableSeconds) {
+        return advanceUntil(player, facility, environment, energyJoules, processTemperatureK,
+                availableSeconds, player.serverLevel().getGameTime());
+    }
+
+    /**
+     * 区間列の1区間を評価する。startTickが設備の評価済み時刻に一致する場合だけ進める。
+     * 重複/欠落/未来の区間はfalseで時計も進捗も変えない。復元直後は現在時刻に合わせ、未ロードの作業を加算しない。
+     * 不適合時間を飛ばす場合も同じ区間を渡し、availableSecondsを0にする。
+     */
+    public boolean advanceInterval(ServerPlayer player, ResourceLocation facility, EnvironmentSample environment,
+                                   double energyJoules, OptionalDouble processTemperatureK, double availableSeconds) {
+        WaterTank.requireServer(player);
+        if (clockPending) {
+            lastTick = player.serverLevel().getGameTime();
+            clockPending = false;
+        }
+        if (environment.startTick() == environment.endTick() && energyJoules != 0) {
+            throw new IllegalArgumentException("ゼロ長区間へ熱量は供給できません");
+        }
+        if (environment.startTick() != lastTick || environment.endTick() > player.serverLevel().getGameTime()) return false;
+        return advanceUntil(player, facility, Optional.of(environment), energyJoules, processTemperatureK,
+                availableSeconds, environment.endTick());
+    }
+
+    private boolean advanceUntil(ServerPlayer player, ResourceLocation facility, Optional<EnvironmentSample> environment,
+                                 double energyJoules, OptionalDouble processTemperatureK, double availableSeconds, long now) {
         WaterTank.requireServer(player);
         if (!Double.isFinite(availableSeconds) || availableSeconds < 0) throw new IllegalArgumentException("適合区間秒数が不正です");
         if (!Double.isFinite(energyJoules) || energyJoules < 0) throw new IllegalArgumentException("供給熱量が不正です");
         var recipe = unchanged(player);
         if (recipe.isEmpty()) return false;
-        long now = player.serverLevel().getGameTime();
         if (clockPending) {
             lastTick = now;
             clockPending = false;
         }
         long from = lastTick;
+        if (now < from) return false;
         lastTick = now;
-        if (now < from || !conditions(player, recipe.get(), facility, environment, Double.MAX_VALUE, Double.MAX_VALUE, processTemperatureK)
+        if (!conditions(player, recipe.get(), facility, environment, Double.MAX_VALUE, Double.MAX_VALUE, processTemperatureK)
                 || environment.filter(e -> e.startTick() > from || e.endTick() < now).isPresent()) return false;
         TimeBasis basis = RecipeTypeRegistry.timeBasis(recipe.get().typeId());
         seconds += Math.min(availableSeconds, basis.seconds(now - from, environment.map(EnvironmentSample::ticksPerDay).orElse(GameTime.TICKS_PER_DAY)));
@@ -151,6 +178,7 @@ public final class ProcessingStation {
         return finish(player, facility, environment, OptionalDouble.empty());
     }
 
+    /** 製品温度は環境区間の末尾の温度として記録する。環境なしの即時加工では現在時刻を使う。 */
     public boolean finish(ServerPlayer player, ResourceLocation facility, Optional<EnvironmentSample> environment,
                           OptionalDouble processTemperatureK) {
         WaterTank.requireServer(player);
@@ -171,7 +199,9 @@ public final class ProcessingStation {
         }
         inheritMoisture(moistureKg, products);
         if (processTemperatureK.isPresent()) {
-            for (var product : products) product.set(ItemProperties.TEMPERATURE, ItemProperties.Temperature.of(processTemperatureK.getAsDouble(), player.serverLevel().getGameTime()));
+            long completedAt = environment.map(EnvironmentSample::endTick).orElse(player.serverLevel().getGameTime());
+            double kelvin = ItemPropertyMath.roundDown(processTemperatureK.getAsDouble(), ItemProperties.TEMPERATURE_STEP_K);
+            for (var product : products) product.set(ItemProperties.TEMPERATURE, new ItemProperties.Temperature(kelvin, completedAt));
         }
         var plannedOutputs = outputs.stream().map(ItemStack::copy).collect(Collectors.toCollection(ArrayList::new));
         for (ItemStack product : products) if (!insert(plannedOutputs, product.copy())) return false;
