@@ -25,6 +25,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.gametest.GameTestHolder;
+import net.neoforged.neoforge.common.IOUtilities;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import java.security.MessageDigest;
 import java.util.HexFormat;
@@ -157,6 +158,7 @@ public final class ClimateGameTests {
             helper.assertTrue(ClimateQuery.sample(level, new BlockPos(16384, 63, 0), 0).isEmpty(), "実APIの範囲外");
             helper.assertTrue(level.getChunkSource().getLoadedChunksCount() == 0, "照会でチャンクをロードしない");
             level.getDataStorage().save();
+            IOUtilities.waitUntilIOWorkerComplete();
         }
         try (var access = source.createAccess("fixture");
              var level = new ServerLevel(server, Util.backgroundExecutor(),
