@@ -1,6 +1,7 @@
 package io.github.rs0325.ashenfrontier.primitive;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.logging.LogUtils;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import io.github.rs0325.ashenfrontier.core.ItemProperties;
 import io.github.rs0325.ashenfrontier.core.MaterialData;
@@ -10,6 +11,7 @@ import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
 import io.github.rs0325.ashenfrontier.core.catalog.RelicContent;
 import io.github.rs0325.ashenfrontier.core.catalog.RelicProperties;
 import io.github.rs0325.ashenfrontier.core.environment.CombustionEvent;
+import io.github.rs0325.ashenfrontier.core.environment.CombustionSourceQuery;
 import io.github.rs0325.ashenfrontier.core.environment.EnvironmentQuery;
 import io.github.rs0325.ashenfrontier.core.environment.EnvironmentSample;
 import io.github.rs0325.ashenfrontier.core.recipe.ProcessingStation;
@@ -364,6 +366,7 @@ public class PotteryGameTests {
             double reserve = loaded.heat().fuelJoules();
             int queued = stored(loaded, "fuel").getCount();
             empty(player);
+            var identityBefore = loaded.saveWithoutMetadata(helper.getLevel().registryAccess());
             check(player.gameMode.destroyBlock(pos), "燃料残量と出力を持つ炉を破壊");
             var drops = helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(pos).inflate(1));
             check(drops.size() == 1 && drops.getFirst().getItem().is(PrimitiveContent.item("hearth")), "炉と全内容は1個の回収物");
@@ -371,6 +374,14 @@ public class PotteryGameTests {
             drops.getFirst().discard();
             move(helper, player, RESTORED);
             var rebuilt = place(helper, player, RESTORED, recovered);
+            var identityAfter = rebuilt.saveWithoutMetadata(helper.getLevel().registryAccess());
+            check(identityBefore.getUUID("source_id").equals(identityAfter.getUUID("source_id"))
+                    && identityAfter.getLong("notification_sequence") >= identityBefore.getLong("notification_sequence"),
+                    "回収・再配置で発生源IDと単調な番号を引き継ぐ");
+            helper.setBlock(HEARTH, PrimitiveContent.HEARTH.get());
+            var replacement = (ThermalStationEntity) helper.getLevel().getBlockEntity(helper.absolutePos(HEARTH));
+            check(!replacement.saveWithoutMetadata(helper.getLevel().registryAccess()).getUUID("source_id").equals(identityAfter.getUUID("source_id")),
+                    "同じ場所の新品設備には別のIDを割り当てる");
             check(rebuilt.heat().fuelJoules() == reserve && stored(rebuilt, "fuel").getCount() == queued, "部分燃料と未燃焼の薪を再配置で保存");
             check(rebuilt.station().output(0).getCount() == 1, "完成出力も保持");
             advance(helper, 24000); rebuilt.work();
@@ -754,6 +765,9 @@ public class PotteryGameTests {
             double middle = 293.15 + (1000 - 293.15) * Math.exp(-0.25);
             double expected = 283.15 + (middle - 283.15) * Math.exp(-0.5);
             check(Math.abs(loaded.heat().temperatureK() - expected) < 1e-8, "日長/気温を変更前後で分割して未ロード冷却");
+            check(!events.isEmpty() && events.getFirst().sourceId().equals(saved.getUUID("source_id"))
+                    && events.getFirst().sequence() == saved.getLong("notification_sequence") + 1,
+                    "BlockEntity復元後も同じIDの次番号から通知する");
             check(loaded.heat().fuelJoules() == fuel && loaded.station().output(0).isEmpty(), "未ロードで燃焼/加工なし");
             check(events.size() == 2 && events.get(0).startTick() == start && events.get(0).endTick() == start + 500
                     && events.get(1).startTick() == start + 500, "放熱通知も実際の小区間");
@@ -826,6 +840,8 @@ public class PotteryGameTests {
                     "燃焼と無燃焼の通知を分ける");
             hearth.work();
             check(events.size() == 2, "燃焼も通知も二重評価しない");
+            check(events.get(0).sourceId().equals(events.get(1).sourceId())
+                    && events.get(1).sequence() == events.get(0).sequence() + 1, "燃焼と放熱で同じ発生源の番号を進める");
             helper.succeed();
         } finally { cleanup(helper, player, before); }
     }
@@ -942,6 +958,11 @@ public class PotteryGameTests {
                 if (value != null) event.provide(new EnvironmentSample(event.startTick(), event.endTick(), value.day,
                         value.temperature, 101325, value.humidity, 0, 0, Optional.empty(), value.covered, value.ventilated));
             });
+            NeoForge.EVENT_BUS.addListener((CombustionSourceQuery query) -> {
+                for (var events : EMISSIONS.values()) for (var event : events)
+                    if (event.level().getServer() == query.level().getServer() && event.sourceId().equals(query.sourceId()))
+                        query.provide(event.sequence());
+            });
             NeoForge.EVENT_BUS.addListener((CombustionEvent event) -> {
                 var events = EMISSIONS.get(new Site(event.level(), event.position()));
                 if (events != null) events.add(event);
@@ -1054,4 +1075,111 @@ public class PotteryGameTests {
     }
 
     private static void check(boolean result, String message) { if (!result) throw new GameTestAssertException(message); }
+
+    @GameTest(template = "pottery_empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
+    public static void copiedEquipmentHasIndependentNotificationIdentity(GameTestHelper helper) {
+        var player = player(helper);
+        long before = helper.getLevel().getGameTime();
+        try {
+            var original = hotExtinguishedHearth(helper, player);
+            var recovered = new ItemStack(PrimitiveContent.item("hearth"));
+            original.saveToItem(recovered, helper.getLevel().registryAccess());
+            player.gameMode.changeGameModeForPlayer(GameType.CREATIVE);
+            var ground = helper.absolutePos(RESTORED.below());
+            helper.getLevel().setBlockAndUpdate(ground, Blocks.STONE.defaultBlockState());
+            move(helper, player, RESTORED);
+            player.setItemInHand(InteractionHand.MAIN_HAND, recovered);
+            player.gameMode.useItemOn(player, helper.getLevel(), recovered, InteractionHand.MAIN_HAND,
+                    new BlockHitResult(Vec3.atCenterOf(ground).add(0, .5, 0), Direction.UP, ground, false));
+            check(!recovered.isEmpty(), "クリエイティブ配置で回収アイテムを消費しない");
+            var copy = (ThermalStationEntity) helper.getLevel().getBlockEntity(helper.absolutePos(RESTORED));
+            var source = original.saveWithoutMetadata(helper.getLevel().registryAccess()).getUUID("source_id");
+            var copied = copy.saveWithoutMetadata(helper.getLevel().registryAccess()).getUUID("source_id");
+            check(!source.equals(copied), "同じ回収アイテムの複製には別の発生源IDを付ける");
+            environment(helper, RESTORED, 24000, 293.15, .5, true, true);
+            var first = new ArrayList<CombustionEvent>(); var second = new ArrayList<CombustionEvent>();
+            EMISSIONS.put(new Site(helper.getLevel(), original.getBlockPos()), first);
+            EMISSIONS.put(new Site(helper.getLevel(), copy.getBlockPos()), second);
+            advance(helper, 20); original.work(); copy.work();
+            check(!first.isEmpty() && !second.isEmpty() && !first.getFirst().sourceId().equals(second.getFirst().sourceId()),
+                    "複製した両方の放熱を独立した通知として発行");
+            helper.succeed();
+        } finally { cleanup(helper, player, before); }
+    }
+
+    @GameTest(template = "pottery_empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
+    public static void savedHearthReturnsAfterOneAndTenGameYearsWithoutReburning(GameTestHelper helper) {
+        var player = player(helper);
+        long before = helper.getLevel().getGameTime();
+        try {
+            var fixture = hotExtinguishedHearth(helper, player);
+            var saved = fixture.saveWithFullMetadata(helper.getLevel().registryAccess());
+            var pos = fixture.getBlockPos(); var state = fixture.getBlockState();
+            long start = helper.getLevel().getGameTime();
+            double fuel = fixture.heat().fuelJoules();
+            var events = new ArrayList<CombustionEvent>();
+            EMISSIONS.put(new Site(helper.getLevel(), pos), events);
+            for (int years : new int[]{1, 10}) {
+                helper.getLevel().removeBlockEntity(pos);
+                helper.getLevel().getServer().getWorldData().overworldData().setGameTime(start + years * 24L * 24000);
+                events.clear();
+                var loaded = (ThermalStationEntity) BlockEntity.loadStatic(pos, state, saved, helper.getLevel().registryAccess());
+                helper.getLevel().setBlockEntity(loaded);
+                long begun = System.nanoTime();
+                loaded.onLoad(); loaded.work();
+                long elapsed = System.nanoTime() - begun;
+                check(loaded.heat().fuelJoules() == fuel && loaded.station().output(0).isEmpty(), "年単位の未ロード時間に再燃焼・加工を加算しない");
+                check(!events.isEmpty() && events.stream().allMatch(e -> e.burnedKg() == 0 && e.energyJoules() == 0),
+                        "保存済みの炉から余熱だけを実通知する");
+                double released = events.stream().mapToDouble(e -> -e.retainedHeatJoules()).sum();
+                check(Math.abs(released - 500 * (1000 - 293.15)) < 1e-5, "1年・10年後にも蓄熱353425 Jを全量精算");
+                check(events.getFirst().startTick() == start && events.getLast().endTick() == helper.getLevel().getGameTime(),
+                        "通知は復帰時刻への付替えではなく元の冷却区間");
+                LogUtils.getLogger().info("M3-137 actual saved hearth years={} restore_work_ms={} released_J={}", years, elapsed/1e6, released);
+            }
+            helper.succeed();
+        } finally { cleanup(helper, player, before); }
+    }
+
+    @GameTest(template = "pottery_empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
+    public static void staleCreativeItemCannotReuseRetiredSourceIdentity(GameTestHelper helper) {
+        var player = player(helper);
+        long before = helper.getLevel().getGameTime();
+        try {
+            var fixture = hotExtinguishedHearth(helper, player);
+            var stale = new ItemStack(PrimitiveContent.item("hearth"));
+            fixture.saveToItem(stale, helper.getLevel().registryAccess());
+            var originalId = fixture.saveWithoutMetadata(helper.getLevel().registryAccess()).getUUID("source_id");
+            helper.getLevel().removeBlockEntity(fixture.getBlockPos());
+            helper.setBlock(RESTORED, Blocks.AIR);
+            var ground = helper.absolutePos(RESTORED.below());
+            helper.getLevel().setBlockAndUpdate(ground, Blocks.STONE.defaultBlockState());
+            player.gameMode.changeGameModeForPlayer(GameType.CREATIVE);
+            move(helper, player, RESTORED);
+            player.setItemInHand(InteractionHand.MAIN_HAND, stale);
+            player.gameMode.useItemOn(player, helper.getLevel(), stale, InteractionHand.MAIN_HAND,
+                    new BlockHitResult(Vec3.atCenterOf(ground).add(0, .5, 0), Direction.UP, ground, false));
+            check(!stale.isEmpty(), "クリエイティブ配置後も古い回収アイテムが残る");
+            var original = (ThermalStationEntity) helper.getLevel().getBlockEntity(helper.absolutePos(RESTORED));
+            environment(helper, RESTORED, 24000, 293.15, .5, true, true);
+            var events = new ArrayList<CombustionEvent>();
+            EMISSIONS.put(new Site(helper.getLevel(), original.getBlockPos()), events);
+            advance(helper, 20); original.work();
+            advance(helper, 20); original.work();
+            check(events.size() >= 2, "配置済みの炉が通知番号を進める");
+            player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            check(player.gameMode.destroyBlock(original.getBlockPos()), "通知済みの原本を実撤去");
+            player.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
+            move(helper, player, HEARTH);
+            var replacement = place(helper, player, HEARTH, stale.copy());
+            var newId = replacement.saveWithoutMetadata(helper.getLevel().registryAccess()).getUUID("source_id");
+            check(!originalId.equals(newId), "原本の撤去後も古い複製は受領済み番号から別IDへ分ける");
+            var replacementEvents = new ArrayList<CombustionEvent>();
+            EMISSIONS.put(new Site(helper.getLevel(), replacement.getBlockPos()), replacementEvents);
+            advance(helper, 20); replacement.work();
+            check(!replacementEvents.isEmpty() && replacementEvents.stream().allMatch(e -> e.sourceId().equals(newId)),
+                    "古い複製の放熱も新IDで通知し、元の受領番号と衝突しない");
+            helper.succeed();
+        } finally { cleanup(helper, player, before); }
+    }
 }

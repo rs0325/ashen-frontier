@@ -13,9 +13,11 @@ import net.minecraft.world.level.saveddata.SavedData;
 public final class ClimateClock extends SavedData {
     static final String ID = "ashen_frontier_climate_clock";
     private final DayLengthHistory history;
+    private long revision;
 
     ClimateClock(long ticksPerDay) { this(new DayLengthHistory(0, ticksPerDay)); }
-    private ClimateClock(DayLengthHistory history) { this.history = history; }
+    private ClimateClock(DayLengthHistory history) { this.history = history;revision=history.changes().size()-1; }
+    long revision() { return revision; }
 
     static ClimateClock get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(new Factory<>(() -> {
@@ -37,6 +39,7 @@ public final class ClimateClock extends SavedData {
         if (last.ticksPerDay() == value) return true;
         if (tick <= last.tick()) return false;
         history.change(tick, value);
+        revision++;
         setDirty();
         return true;
     }

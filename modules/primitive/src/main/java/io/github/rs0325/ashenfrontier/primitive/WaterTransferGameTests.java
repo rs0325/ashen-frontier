@@ -136,7 +136,8 @@ public final class WaterTransferGameTests {
         h.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierPrimitive.MOD_ID, timeoutTicks = 220)
+    // gameTimeを進めるfixtureから、非同期の実チャンク再読込みを分離する。
+    @GameTest(template = "empty", templateNamespace = AshenFrontierPrimitive.MOD_ID, timeoutTicks = 220, batch = "water_transfer_disk")
     public static void actualChunkUnloadAndDiskLoadKeepTheTankAndZeroSource(GameTestHelper h) {
         var level = h.getLevel(); bind(level);
         var far = h.absolutePos(new BlockPos(1025, 2, 1));

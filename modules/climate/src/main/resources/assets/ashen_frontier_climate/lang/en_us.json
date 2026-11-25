@@ -1,0 +1,11 @@
+{
+  "room_status.ashen_frontier_climate.indoor": "Indoors (safety requires separate exposure assessment)",
+  "room_status.ashen_frontier_climate.outdoor": "Outdoors",
+  "room_status.ashen_frontier_climate.scanning": "Surveying room: wait for discovery",
+  "room_status.ashen_frontier_climate.unloaded": "Unloaded boundary: load the surrounding chunks",
+  "room_status.ashen_frontier_climate.limit": "Room too large: divide into at most 4096 air cells",
+  "room_status.ashen_frontier_climate.blocked": "Not an air position: query above equipment or at eye level",
+  "room_status.ashen_frontier_climate.missing_boundary": "Outside environment unavailable or missing history",
+  "room_status.ashen_frontier_climate.history_missing": "Historical geometry unavailable: query the current time",
+  "room_status.ashen_frontier_climate.disabled": "Indoor model disabled by configuration"
+}

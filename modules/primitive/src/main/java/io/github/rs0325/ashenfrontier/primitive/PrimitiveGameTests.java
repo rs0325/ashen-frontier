@@ -127,7 +127,8 @@ public class PrimitiveGameTests {
         }
     }
 
-    @GameTest(template = "empty", templateNamespace = AshenFrontierPrimitive.MOD_ID, timeoutTicks = 260)
+    // gameTimeを進めるfixtureと分離し、実際のscheduled tickだけを検査する。
+    @GameTest(template = "empty", templateNamespace = AshenFrontierPrimitive.MOD_ID, timeoutTicks = 260, batch = "primitive_scheduled_clock")
     public static void scheduledWorkUsesRealSecondsAndCompletesOnlyOnce(GameTestHelper helper) {
         var player = player(helper);
         var table = fixtureSurface(helper);

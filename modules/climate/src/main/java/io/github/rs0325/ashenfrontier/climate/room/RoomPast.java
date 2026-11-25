@@ -1,0 +1,404 @@
+package io.github.rs0325.ashenfrontier.climate.room;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.TreeMap;
+import java.util.TreeSet;
+
+/** 通知の到着時刻ではなく、観測済みの構成境界で古い増分を再生する。 */
+final class RoomPast {
+    static final int LIMIT = 64;
+    private static final RoomPhysics.Amount ZERO = new RoomPhysics.Amount(0, 0, 0, 0);
+    record Delta(RoomPhysics.Amount amount, RoomPhysics.Amount exchange) {}
+    record Stamp(long tick, int id) implements Comparable<Stamp> {
+        @Override public int compareTo(Stamp other) { int time = Long.compare(tick, other.tick); return time != 0 ? time : Integer.compare(id, other.id); }
+    }
+    static final class Model {
+        final int id;
+        final long from;
+        long until = Long.MAX_VALUE;
+        final long[] cells;
+        final int walls, openings;
+        final int cellsHash;
+        final double height;
+        double temperature = Double.NaN;
+        boolean published;
+        long preparedVersion = -1;
+        Model(int id, long from, long[] cells, int walls, int openings, double height) {
+            this.id = id; this.from = from; this.cells = cells; this.cellsHash = Arrays.hashCode(cells); this.walls = walls; this.openings = openings; this.height = height;
+        }
+        private Model(Model first, long until) {
+            id = first.id; from = first.from; cells = first.cells; cellsHash = first.cellsHash;
+            walls = first.walls; openings = first.openings; height = first.height;
+            this.until = until; temperature = first.temperature; published = true;
+        }
+        @Override public int hashCode() { return id * 31 + Long.hashCode(from) * 31 + Long.hashCode(until) + cellsHash; }
+        @Override public boolean equals(Object other) {
+            if (this == other) return true;
+            return other instanceof Model m && id == m.id && from == m.from && until == m.until && walls == m.walls
+                    && openings == m.openings && height == m.height && Double.compare(temperature, m.temperature) == 0
+                    && Arrays.equals(cells, m.cells);
+        }
+        boolean sameGeometry(Model other) {
+            return from == other.from && walls == other.walls && openings == other.openings && height == other.height
+                    && Double.compare(temperature, other.temperature) == 0 && Arrays.equals(cells, other.cells);
+        }
+        boolean contains(long cell) { return Arrays.binarySearch(cells, cell) >= 0; }
+    }
+    @FunctionalInterface interface Boundaries {
+        Optional<List<RoomAir.Boundary>> get(BlockPos pos, long from, long to);
+    }
+    private static final class Line {
+        final Model owner;
+        final TreeMap<Stamp, Model> rows;
+        Line before;
+        Line(Model owner, TreeMap<Stamp, Model> rows, Line before) {
+            this.owner = owner; this.rows = rows; this.before = before;
+        }
+    }
+    private final Map<Long, Line> cells = new HashMap<>();
+    private long version;
+
+    long version() { return version; }
+    void prepare(Model model) { model.preparedVersion = version; }
+    private static TreeMap<Stamp, Model> visible(Line line) {
+        while (line != null && line.owner != null && !line.owner.published) line = line.before;
+        if (line != null && line.owner != null) line.before = null;
+        return line == null ? null : line.rows;
+    }
+    private TreeMap<Stamp, Model> rows(long cell) { return visible(cells.get(cell)); }
+    private static Line without(Line line, Model model) {
+        if (line == null) return null;
+        if (line.owner == model) return line.before;
+        for (var next = line; next.before != null; next = next.before)
+            if (next.before.owner == model) { next.before = next.before.before; break; }
+        return line;
+    }
+    /** 1セル分の置換を準備する。公開前は元の索引だけが照会・保存に見える。 */
+    void bind(long cell, Model model) {
+        if (model.preparedVersion < 0) prepare(model);
+        var before = without(cells.get(cell), model);
+        if (before != null && (before.owner == null || before.owner.published))
+            before = new Line(null, before.rows, null);
+        var current = visible(before);
+        var prepared = current == null ? new TreeMap<Stamp, Model>() : new TreeMap<>(current);
+        prepared.put(new Stamp(model.from, model.id), model);
+        while (prepared.size() > LIMIT) {
+            var first = prepared.pollFirstEntry().getValue();
+            var second = prepared.pollFirstEntry().getValue();
+            var coarse = new Model(first, second.until);
+            prepared.put(new Stamp(coarse.from, coarse.id), coarse);
+        }
+        cells.put(cell, new Line(model, prepared, before));
+    }
+    /** 全セルの準備が済み、以降に他の公開がなければ、可視性だけを原子的に切り替える。 */
+    boolean publish(Model model) {
+        if (model.preparedVersion != version) return false;
+        model.published = true; version++; return true;
+    }
+    void end(Model model, long tick) { model.until = tick; version++; }
+    void discard(Model model) {
+        if (model.published) throw new IllegalStateException("公開済みの構成は取り消せません");
+        for (long cell : model.cells) {
+            var line = without(cells.get(cell), model);
+            if (line == null) cells.remove(cell); else cells.put(cell, line);
+        }
+    }
+    void resolve(Model model) {
+        if (!Double.isFinite(model.temperature)) return;
+        for (long cell : model.cells) {
+            var rows = rows(cell);
+            var coarse = rows == null ? null : rows.get(new Stamp(model.from, model.id));
+            if (coarse != null && !Double.isFinite(coarse.temperature) && coarse.walls == model.walls
+                    && coarse.openings == model.openings && Arrays.equals(coarse.cells, model.cells))
+                coarse.temperature = model.temperature;
+        }
+        version++;
+    }
+    private Model at(long cell, long tick) {
+        var rows = rows(cell);
+        if (rows == null) return null;
+        var row = rows.floorEntry(new Stamp(tick, Integer.MAX_VALUE));
+        while (row != null && !row.getValue().published) row = rows.lowerEntry(row.getKey());
+        return row == null ? null : row.getValue();
+    }
+    void cuts(long cell, long from, long to, TreeSet<Long> cuts) {
+        var rows = rows(cell);
+        if (rows != null) for (var model : rows.values()) if (model.published) {
+            if (model.from > from && model.from < to) cuts.add(model.from);
+            if (model.until > from && model.until < to) cuts.add(model.until);
+        }
+    }
+
+    Optional<Map<Long, Delta>> response(long source, long from, long to, long end,
+                                       RoomPhysics.Amount input, Boundaries outside) {
+        return response(source, from, to, end, input, -1, outside);
+    }
+    Optional<Map<Long, Delta>> response(long source, long from, long to, long end,
+                                       RoomPhysics.Amount input, int context, Boundaries outside) {
+        if (end < from) return Optional.of(Map.of());
+        if (at(source, from) == null) return Optional.empty();
+        var reachable = new HashSet<Long>();
+        var enqueued = new HashSet<Long>();
+        var expandedModels = new HashSet<Model>();
+        var queue = new ArrayList<Long>(); queue.add(source); enqueued.add(source);
+        var cuts = new TreeSet<Long>(List.of(from, Math.min(to, end), end));
+        for (int n = 0; n < queue.size(); n++) {
+            long cell = queue.get(n);
+            if (!reachable.add(cell)) continue;
+            cuts(cell, from, end, cuts);
+            var rows = rows(cell);
+            if (rows != null) for (var model : rows.values())
+                if (model.published && model.from <= end && model.until >= from && expandedModels.add(model))
+                    for (long other : model.cells) if (enqueued.add(other)) queue.add(other);
+        }
+        var values = new HashMap<Long, Delta>();
+        var births = new HashSet<Model>();
+        for (long cell : reachable) {
+            var rows = rows(cell);
+            if (rows != null) for (var model : rows.values())
+                if (model.published && model.from > from && model.from <= end) births.add(model);
+        }
+        if (from == to) {
+            Model owner = null;
+            var sourceRows = rows(source);
+            if (context >= 0 && sourceRows != null) owner = sourceRows.values().stream().filter(m -> m.published && m.id == context).findFirst().orElse(null);
+            if (owner == null) inject(values, source, from, input);
+            else {
+                for (long cell : owner.cells) values.put(cell, new Delta(RoomHistory.scale(input, 1.0/owner.cells.length), ZERO));
+                var later = new HashSet<Model>();
+                for (long cell : reachable) { var rows = rows(cell);
+                    if (rows != null) for (var m : rows.values()) if (m.published && m.from == from && m.id > context) later.add(m); }
+                for (var m : later.stream().sorted(java.util.Comparator.comparingInt(m -> m.id)).toList()) mix(values, m);
+            }
+        }
+        var times = new ArrayList<>(cuts);
+        for (int n = 0; n + 1 < times.size(); n++) {
+            long a = times.get(n), b = times.get(n + 1);
+            var active = new ArrayList<Model>();
+            var held = new HashSet<Long>();
+            var involved = new HashSet<Long>(values.keySet());
+            if (from != to && a < to) involved.add(source);
+            for (long cell : involved) {
+                var model = at(cell, a);
+                if (model == null || a >= model.until) held.add(cell);
+                else if (active.stream().noneMatch(model::sameGeometry)) active.add(model);
+            }
+            var next = new HashMap<Long, Delta>(values);
+            for (long cell : held) {
+                var prior = values.getOrDefault(cell, new Delta(ZERO, ZERO));
+                var addition = cell == source && from != to && a < to
+                        ? RoomHistory.scale(input, (double) (b - a) / (to - from)) : ZERO;
+                next.put(cell, new Delta(RoomHistory.plus(prior.amount, addition), prior.exchange));
+            }
+            for (var model : active) {
+                if (model.openings > 0 && !Double.isFinite(model.temperature)) return Optional.empty();
+                var members = members(model, a);
+                var amount = ZERO; var exchanged = ZERO;
+                for (long cell : members) {
+                    var value = values.getOrDefault(cell, new Delta(ZERO, ZERO));
+                    amount = RoomHistory.plus(amount, value.amount); exchanged = RoomHistory.plus(exchanged, value.exchange);
+                }
+                var rows = outside.get(BlockPos.of(model.cells[0]), a, b);
+                if (rows.isEmpty()) return Optional.empty();
+                boolean feeds = members.contains(source) && from != to && a < to;
+                var rate = feeds ? input.rate(20.0 / (to - from)) : RoomPhysics.Rate.ZERO;
+                for (var row : rows.get()) {
+                    double seconds = (row.to() - row.from()) / 20.0;
+                    double volume = model.cells.length, capacity = RoomPhysics.capacity(volume, model.walls);
+                    double q = model.openings == 0 ? 0 : RoomPhysics.flow(model.openings, model.height, model.temperature, row.air());
+                    double heatLambda = (q * RoomPhysics.capacity(volume, 0) / volume + model.walls) / capacity;
+                    double gasLambda = q / volume;
+                    var after = new RoomPhysics.Amount(
+                            RoomPhysics.evolve(amount.heatJ(), 0, rate.heatW(), heatLambda, seconds),
+                            RoomPhysics.evolve(amount.coMol(), 0, rate.coMolS(), gasLambda, seconds),
+                            RoomPhysics.evolve(amount.co2Mol(), 0, rate.co2MolS(), gasLambda, seconds),
+                            RoomPhysics.evolve(amount.oxygenMol(), 0, rate.oxygenMolS(), gasLambda, seconds));
+                    var added = new RoomPhysics.Amount(rate.heatW() * seconds, rate.coMolS() * seconds,
+                            rate.co2MolS() * seconds, rate.oxygenMolS() * seconds);
+                    exchanged = RoomHistory.plus(exchanged, RoomHistory.plus(added,
+                            RoomHistory.plus(amount, RoomHistory.scale(after, -1))));
+                    amount = after;
+                }
+                var value = new Delta(RoomHistory.scale(amount, 1.0 / members.size()),
+                        RoomHistory.scale(exchanged, 1.0 / members.size()));
+                for (long cell : members) next.put(cell, value);
+            }
+            values = next;
+            for (var model : births.stream().filter(m -> m.from == b).sorted(java.util.Comparator.comparingInt(m -> m.id)).toList()) mix(values, model);
+        }
+        return Optional.of(values);
+    }
+    private void mix(Map<Long, Delta> values, Model model) {
+        var amount = ZERO; var exchange = ZERO;
+        for (long cell : model.cells) {
+            var value = values.getOrDefault(cell, new Delta(ZERO, ZERO));
+            amount = RoomHistory.plus(amount, value.amount); exchange = RoomHistory.plus(exchange, value.exchange);
+        }
+        var value = new Delta(RoomHistory.scale(amount, 1.0/model.cells.length), RoomHistory.scale(exchange, 1.0/model.cells.length));
+        for (long cell : model.cells) values.put(cell, value);
+    }
+
+    private List<Long> members(Model model, long tick) {
+        var result = new ArrayList<Long>();
+        for (long cell : model.cells) {
+            var owner = at(cell, tick);
+            if (owner != null && tick < owner.until && model.sameGeometry(owner)) result.add(cell);
+        }
+        return result;
+    }
+
+    private void inject(Map<Long, Delta> values, long source, long tick, RoomPhysics.Amount amount) {
+        var model = at(source, tick);
+        if (tick >= model.until) values.put(source, new Delta(amount, ZERO));
+        else {
+            var members = members(model, tick);
+            for (long cell : members) values.put(cell, new Delta(RoomHistory.scale(amount, 1.0 / members.size()), ZERO));
+        }
+    }
+
+    record Historical(Model model, RoomPhysics.State state) {}
+    boolean known(long cell, long tick) {
+        var model = at(cell, tick);
+        return model != null && tick < model.until;
+    }
+    Optional<Historical> historical(long cell, long tick, List<RoomHistory.Entry> inputs, Boundaries outside) {
+        var model = at(cell, tick);
+        if (model == null || tick >= model.until) return Optional.empty();
+        var base = background(cell, tick, outside);
+        if (base.isEmpty()) return Optional.empty();
+        var values = base.get();
+        for (var input : inputs) {
+            if (input.from() > tick || !values.containsKey(input.position())
+                    || input.amount().heatJ() == 0 && input.amount().coMol() == 0 && input.amount().co2Mol() == 0 && input.amount().oxygenMol() == 0) continue;
+            var delta = response(input.position(), input.from(), input.to(), tick, input.amount(), input.context(), outside);
+            if (delta.isEmpty()) return Optional.empty();
+            for (var entry : delta.get().entrySet()) {
+                var old = values.get(entry.getKey());
+                if (old != null) values.put(entry.getKey(), new Delta(RoomHistory.plus(old.amount, entry.getValue().amount),
+                        RoomHistory.plus(old.exchange, entry.getValue().exchange)));
+            }
+        }
+        var total = ZERO;
+        for (long position : model.cells) {
+            var value = values.get(position);
+            if (value != null) total = RoomHistory.plus(total, value.amount);
+        }
+        return Optional.of(new Historical(model, RoomPhysics.state(total, model.cells.length, model.walls)));
+    }
+    private Optional<Map<Long, Delta>> background(long source, long end, Boundaries outside) {
+        var reachable = new HashSet<Long>(); var queue = new ArrayList<Long>(); queue.add(source); reachable.add(source);
+        var models = new HashMap<Integer, Model>();
+        for (int n = 0; n < queue.size(); n++) {
+            var rows = rows(queue.get(n));
+            if (rows == null) continue;
+            for (var model : rows.values()) if (model.published && model.from <= end && models.putIfAbsent(model.id, model) == null)
+                for (long cell : model.cells) if (reachable.add(cell)) queue.add(cell);
+        }
+        var cuts = new TreeSet<Long>(); cuts.add(end);
+        for (var model : models.values()) {
+            cuts.add(model.from); if (model.until < end) cuts.add(model.until);
+        }
+        var values = new HashMap<Long, Delta>();
+        var ambient = new HashMap<Model, RoomPhysics.Amount>();
+        var times = new ArrayList<>(cuts);
+        for (int n = 0; n < times.size(); n++) {
+            long a = times.get(n);
+            for (var model : models.values().stream().filter(m -> m.from == a).sorted(java.util.Comparator.comparingInt(m -> m.id)).toList()) {
+                for (long cell : model.cells) if (!values.containsKey(cell)) {
+                    var initial = ambient.get(model);
+                    if (initial == null) {
+                        var rows = outside.get(BlockPos.of(model.cells[0]), a, a);
+                        if (rows.isEmpty()) return Optional.empty();
+                        initial = RoomHistory.scale(RoomPhysics.amount(RoomPhysics.State.ambient(rows.get().getFirst().air()),
+                                model.cells.length, model.walls), 1.0/model.cells.length); ambient.put(model, initial);
+                    }
+                    values.put(cell, new Delta(initial, RoomHistory.scale(initial, -1)));
+                }
+                mix(values, model);
+            }
+            if (n + 1 == times.size()) break;
+            long b = times.get(n + 1);
+            var active = new ArrayList<Model>();
+            for (long cell : values.keySet()) {
+                var model = at(cell, a);
+                if (model != null && a < model.until && active.stream().noneMatch(model::sameGeometry)) active.add(model);
+            }
+            for (var model : active) {
+                if (model.openings > 0 && !Double.isFinite(model.temperature)) return Optional.empty();
+                var positions = members(model, a);
+                var amount = ZERO; var exchanged = ZERO;
+                for (long cell : positions) { var value = values.get(cell);
+                    amount = RoomHistory.plus(amount, value.amount); exchanged = RoomHistory.plus(exchanged, value.exchange); }
+                var rows = outside.get(BlockPos.of(model.cells[0]), a, b);
+                if (rows.isEmpty()) return Optional.empty();
+                for (var row : rows.get()) {
+                    double volume = model.cells.length, capacity = RoomPhysics.capacity(volume, model.walls);
+                    double q = model.openings == 0 ? 0 : RoomPhysics.flow(model.openings, model.height, model.temperature, row.air());
+                    double heatLambda = (q * RoomPhysics.capacity(volume, 0)/volume + model.walls)/capacity;
+                    double gasLambda = q/volume, seconds = (row.to()-row.from())/20.0, share = (double) positions.size()/volume;
+                    var target = RoomHistory.scale(RoomPhysics.amount(RoomPhysics.State.ambient(row.air()), volume, model.walls), share);
+                    var after = new RoomPhysics.Amount(
+                            RoomPhysics.evolve(amount.heatJ(), target.heatJ(), 0, heatLambda, seconds),
+                            RoomPhysics.evolve(amount.coMol(), target.coMol(), 0, gasLambda, seconds),
+                            RoomPhysics.evolve(amount.co2Mol(), target.co2Mol(), 0, gasLambda, seconds),
+                            RoomPhysics.evolve(amount.oxygenMol(), target.oxygenMol(), 0, gasLambda, seconds));
+                    exchanged = RoomHistory.plus(exchanged, RoomHistory.plus(amount, RoomHistory.scale(after, -1))); amount = after;
+                }
+                var value = new Delta(RoomHistory.scale(amount, 1.0/positions.size()), RoomHistory.scale(exchanged, 1.0/positions.size()));
+                for (long cell : positions) values.put(cell, value);
+            }
+        }
+        return Optional.of(values);
+    }
+
+    void save(CompoundTag tag) {
+        var models = new ArrayList<Model>();
+        var indices = new HashMap<Model, Integer>();
+        var locations = new ListTag();
+        cells.forEach((cell, line) -> {
+            var rows = visible(line);
+            if (rows == null || rows.isEmpty()) return;
+            var row = new CompoundTag(); row.putLong("cell", cell); var ids = new ArrayList<Integer>();
+            for (var model : rows.values()) if (model.published) {
+                ids.add(indices.computeIfAbsent(model, key -> { models.add(key); return models.size() - 1; }));
+            }
+            row.putIntArray("models", ids); locations.add(row);
+        });
+        var records = new ListTag();
+        for (var model : models) {
+            var row = new CompoundTag(); row.putInt("id", model.id); row.putLong("from", model.from); row.putLong("until", model.until);
+            row.putLongArray("cells", model.cells); row.putInt("walls", model.walls); row.putInt("openings", model.openings);
+            row.putDouble("height", model.height); row.putDouble("temperature", model.temperature); records.add(row);
+        }
+        tag.put("past_models", records); tag.put("past_cells", locations);
+    }
+    static RoomPast load(CompoundTag tag) {
+        var result = new RoomPast(); var models = new ArrayList<Model>();
+        for (var element : tag.getList("past_models", 10)) {
+            var row = (CompoundTag) element;
+            var model = new Model(row.getInt("id"), row.getLong("from"), row.getLongArray("cells"), row.getInt("walls"),
+                    row.getInt("openings"), row.getDouble("height"));
+            model.until = row.getLong("until"); model.temperature = row.getDouble("temperature"); model.published = true;
+            models.add(model);
+        }
+        for (var element : tag.getList("past_cells", 10)) {
+            var row = (CompoundTag) element; var rows = new TreeMap<Stamp, Model>();
+            for (int id : row.getIntArray("models")) { var model = models.get(id); rows.put(new Stamp(model.from, model.id), model); }
+            if (rows.size() > LIMIT) throw new IllegalArgumentException("過去構成の保持上限を超えています");
+            result.cells.put(row.getLong("cell"), new Line(null, rows, null));
+        }
+        return result;
+    }
+    Model model(long cell, long from, int id) {
+        var rows = rows(cell); return rows == null ? null : rows.get(new Stamp(from, id));
+    }
+}
