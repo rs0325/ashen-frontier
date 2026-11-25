@@ -1,5 +1,6 @@
 package io.github.rs0325.ashenfrontier.climate;
 
+import io.github.rs0325.ashenfrontier.climate.room.RoomAir;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
@@ -46,6 +47,7 @@ public final class AshenFrontierClimate {
 
     public AshenFrontierClimate(IEventBus bus, ModContainer container) {
         container.registerConfig(ModConfig.Type.SERVER, SPEC);
+        RoomAir.install(container);
         bus.addListener(WeatherCellsPayload::register);
         bus.addListener(AshenFrontierClimate::reload);
         NeoForge.EVENT_BUS.addListener(AshenFrontierClimate::beforeStart);

@@ -1,0 +1,9 @@
+{
+  "ashen_frontier:dry_wood": {
+    "carbon": 0.5,
+    "hydrogen": 0.06,
+    "oxygen": 0.44,
+    "coKgPerKg": 0.1263,
+    "source": "EPA AP-42 1.9 fireplaces: CO 126.3 g/kg乾燥薪。FAO木材（無灰・無水）: C50%, H6%, O44%。石囲い炉への代表値適用はゲーム近似。"
+  }
+}

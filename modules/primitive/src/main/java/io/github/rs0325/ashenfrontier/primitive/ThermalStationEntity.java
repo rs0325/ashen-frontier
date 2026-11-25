@@ -11,6 +11,7 @@ import io.github.rs0325.ashenfrontier.core.ItemProperties;
 import io.github.rs0325.ashenfrontier.core.MaterialData;
 import io.github.rs0325.ashenfrontier.core.catalog.FuelData;
 import io.github.rs0325.ashenfrontier.core.environment.CombustionEvent;
+import io.github.rs0325.ashenfrontier.core.environment.CombustionSourceQuery;
 import io.github.rs0325.ashenfrontier.core.environment.EnvironmentQuery;
 import io.github.rs0325.ashenfrontier.core.environment.EnvironmentSample;
 import io.github.rs0325.ashenfrontier.core.recipe.CommonRecipe;
@@ -37,6 +38,11 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.Comparator;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.WeakHashMap;
+import java.lang.ref.WeakReference;
+import net.minecraft.server.MinecraftServer;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -44,6 +50,7 @@ import java.util.UUID;
 
 /** 加工の所有は共通基盤、着火操作と燃料・余熱だけを炉が保持する。M3入力なしでは停止する。 */
 public final class ThermalStationEntity extends BlockEntity implements WaterTankOwner {
+    private static final Map<MinecraftServer, Map<UUID, WeakReference<ThermalStationEntity>>> SOURCES = new WeakHashMap<>();
     private ProcessingStation station;
     private final HearthHeat heat = new HearthHeat();
     private final BoilingHeat boilingHeat = new BoilingHeat();
@@ -52,6 +59,8 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
     private ItemStack ignitionTool = ItemStack.EMPTY;
     private ResourceLocation selected;
     private ResourceLocation fuelProfile;
+    private UUID sourceId = UUID.randomUUID();
+    private long notificationSequence;
     private UUID worker;
     private long workTick;
     private long lastTick = -1;
@@ -162,11 +171,49 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
         releaseHeat(boilingHeat.releaseVapor());
     }
 
+    private void claimSource() {
+        if (level == null || level.isClientSide || !level.getServer().isSameThread()) return;
+        var sources = SOURCES.computeIfAbsent(level.getServer(), key -> new HashMap<>());
+        var reference = sources.get(sourceId);
+        var other = reference == null ? null : reference.get();
+        long received = CombustionSourceQuery.lastSequence((ServerLevel) level, sourceId);
+        if (received > notificationSequence || other != null && other != this && !other.isRemoved() && sourceId.equals(other.sourceId)) {
+            sourceId = UUID.randomUUID();
+            notificationSequence = 0;
+            setChanged();
+        }
+        sources.put(sourceId, new WeakReference<>(this));
+    }
+
+    private void releaseSource() {
+        if (level != null && !level.isClientSide && level.getServer().isSameThread()) {
+            var sources = SOURCES.get(level.getServer());
+            if (sources != null) {
+                var reference = sources.get(sourceId);
+                if (reference != null && reference.get() == this) sources.remove(sourceId);
+            }
+        }
+    }
+
+    @Override
+    public void setRemoved() {
+        releaseSource();
+        super.setRemoved();
+    }
+
+    private long nextSequence() {
+        claimSource();
+        notificationSequence = Math.incrementExact(notificationSequence);
+        setChanged();
+        return notificationSequence;
+    }
+
     private void releaseHeat(double retainedJ) {
         if (retainedJ != 0 && fuelProfile != null) {
             long now = level.getGameTime();
+            long sequence = nextSequence();
             NeoForge.EVENT_BUS.post(new CombustionEvent((ServerLevel) level, worldPosition, now, now,
-                    fuelProfile, 0, 0, retainedJ));
+                    fuelProfile, 0, 0, retainedJ, sourceId, sequence));
         }
     }
 
@@ -351,8 +398,9 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
 
     private void notifyHeat(ServerLevel serverLevel, long from, long to, HearthHeat.Step step, double suppliedProcessJ) {
         if (fuelProfile != null && (step.chemicalJoules() > 0 || step.storedJoules() != 0 || suppliedProcessJ != 0)) {
+            long sequence = nextSequence();
             NeoForge.EVENT_BUS.post(new CombustionEvent(serverLevel, worldPosition, from, to, fuelProfile,
-                    step.burnedKg(), step.chemicalJoules(), step.storedJoules() + suppliedProcessJ));
+                    step.burnedKg(), step.chemicalJoules(), step.storedJoules() + suppliedProcessJ, sourceId, sequence));
         }
     }
 
@@ -424,6 +472,7 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
     public void onLoad() {
         super.onLoad();
         if (level != null && !level.isClientSide) {
+            claimSource();
             setLit(lit);
             if (hearth()) level.scheduleTick(worldPosition, getBlockState().getBlock(), interval());
         }
@@ -433,6 +482,8 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         var ops = RegistryOps.create(NbtOps.INSTANCE, registries);
+        tag.putUUID("source_id", sourceId);
+        tag.putLong("notification_sequence", notificationSequence);
         tag.put("processing", station.save(registries));
         tag.put("fuel", ItemStack.OPTIONAL_CODEC.encodeStart(ops, fuel).getOrThrow());
         tag.put("tinder", ItemStack.OPTIONAL_CODEC.encodeStart(ops, tinder).getOrThrow());
@@ -452,9 +503,16 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
 
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        releaseSource();
         super.loadAdditional(tag, registries);
         var ops = RegistryOps.create(NbtOps.INSTANCE, registries);
-        if (tag.contains("processing")) station = ProcessingStation.load(tag.getCompound("processing"), registries);
+        if (tag.contains("processing")) {
+            if (!tag.hasUUID("source_id") || !tag.contains("notification_sequence") || tag.getLong("notification_sequence") < 0)
+                throw new IllegalArgumentException("熱設備の通知識別情報が不正です");
+            sourceId = tag.getUUID("source_id");
+            notificationSequence = tag.getLong("notification_sequence");
+            station = ProcessingStation.load(tag.getCompound("processing"), registries);
+        }
         fuel = ItemStack.OPTIONAL_CODEC.parse(ops, tag.get("fuel")).getOrThrow();
         tinder = ItemStack.OPTIONAL_CODEC.parse(ops, tag.get("tinder")).getOrThrow();
         selected = ResourceLocation.parse(tag.getString("selected"));
@@ -470,5 +528,6 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
         if (level != null && !level.isClientSide) setLit(lit);
         worker = null;
         igniting = false;
+        claimSource();
     }
 }
