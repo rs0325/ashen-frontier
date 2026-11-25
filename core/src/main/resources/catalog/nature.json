@@ -26,7 +26,8 @@
     "mohs": "https://www.nps.gov/articles/mohs-hardness-scale.htm",
     "spodumene": "https://gq.mines.gouv.qc.ca/lexique-stratigraphique/province-du-superieur/suite-de-spodumene_en/",
     "bituminous_sample": "https://pubs.usgs.gov/circ/c1143/html/text.html",
-    "uranium_pegmatite": "https://pubs.usgs.gov/bul/1064/report.pdf"
+    "uranium_pegmatite": "https://pubs.usgs.gov/bul/1064/report.pdf",
+    "dry_wood_fao": "https://www.fao.org/sustainable-forest-management/toolbox/modules/wood-energy/in-more-depth/en/"
   },
   "fuel_profiles": {
     "peat": {
@@ -71,6 +72,12 @@
         "sulfur_fraction": 0.021
       },
       "source": "oil"
+    },
+    "dry_wood": {
+      "values": {
+        "heating_value_j_kg": 16000000.0
+      },
+      "source": "dry_wood_fao"
     }
   },
   "entries": [
@@ -1307,7 +1314,8 @@
       "behavior": "保管・後続工程用",
       "domain": "primitive",
       "mass_kg": 1.0,
-      "sprite": 29
+      "sprite": 29,
+      "fuel": "dry_wood"
     },
     {
       "id": "plant_fiber",

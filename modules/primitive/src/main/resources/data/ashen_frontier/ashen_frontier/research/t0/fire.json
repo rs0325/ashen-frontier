@@ -1,0 +1,14 @@
+{
+  "name": "research.ashen_frontier.t0.fire",
+  "description": "research.ashen_frontier.t0.fire.description",
+  "prerequisites": [],
+  "conditions": [
+    {
+      "type": "ashen_frontier:primitive_event",
+      "id": "friction_ignition"
+    }
+  ],
+  "unlocks": [
+    "ashen_frontier:primitive/fire_pot"
+  ]
+}

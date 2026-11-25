@@ -1,0 +1,38 @@
+{
+  "type": "ashen_frontier:fiberworking",
+  "inputs": [
+    {
+      "type": "neoforge:components",
+      "items": "ashen_frontier:plant_fiber",
+      "components": {
+        "ashen_frontier:moisture_kg": 0.0
+      },
+      "strict": false
+    }
+  ],
+  "outputs": [
+    {
+      "id": "ashen_frontier:tinder",
+      "count": 10
+    }
+  ],
+  "conditions": {
+    "facility": "ashen_frontier:knapping_surface",
+    "duration_seconds": 10
+  },
+  "processing": {
+    "inputs": [
+      {
+        "ingredient": 0,
+        "count": 1
+      }
+    ],
+    "loss_kg": 0,
+    "inheritance": [
+      {
+        "ingredient": 0,
+        "output": 0
+      }
+    ]
+  }
+}

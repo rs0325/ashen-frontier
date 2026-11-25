@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "lit=false": {
+      "model": "ashen_frontier:block/hearth"
+    },
+    "lit=true": {
+      "model": "ashen_frontier:block/hearth_lit"
+    }
+  }
+}

@@ -15,9 +15,13 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+
+import java.util.List;
 
 /** 入出力は右クリック、稼働中だけ20tick間隔で更新する台石。 */
 public final class KnappingSurfaceBlock extends Block implements EntityBlock {
@@ -50,6 +54,13 @@ public final class KnappingSurfaceBlock extends Block implements EntityBlock {
     @Override
     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
         if (level.getBlockEntity(pos) instanceof KnappingSurfaceEntity entity) entity.work();
+    }
+
+    @Override
+    protected List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
+        if (params.getOptionalParameter(LootContextParams.BLOCK_ENTITY)
+                instanceof KnappingSurfaceEntity entity && entity.storesWater()) return List.of();
+        return super.getDrops(state, params);
     }
 
     @Override

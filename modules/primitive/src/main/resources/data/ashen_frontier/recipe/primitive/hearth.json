@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ashen_frontier:pebble"
+    },
+    {
+      "item": "ashen_frontier:pebble"
+    },
+    {
+      "item": "minecraft:clay_ball"
+    }
+  ],
+  "result": {
+    "id": "ashen_frontier:hearth"
+  }
+}

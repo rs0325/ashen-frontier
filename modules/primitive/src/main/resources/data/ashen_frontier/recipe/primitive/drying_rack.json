@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ashen_frontier:dry_branch"
+    },
+    {
+      "item": "ashen_frontier:dry_branch"
+    },
+    {
+      "item": "ashen_frontier:cordage"
+    },
+    {
+      "item": "ashen_frontier:cordage"
+    }
+  ],
+  "result": {
+    "id": "ashen_frontier:drying_rack"
+  }
+}

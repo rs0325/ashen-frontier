@@ -234,7 +234,8 @@ public class PrimitiveGameTests {
             emptyHand(player);
             check(player.gameMode.destroyBlock(table.getBlockPos()), "素手で台石破壊");
             check(dropCount(helper, "knapping_surface") == 1 && dropCount(helper, "stone_hammer") == 1 && dropCount(helper, "flint") == 1,
-                    "設備・原料・打撃具を1回だけ回収");
+                    "設備・原料・打撃具を1回だけ回収: table=" + dropCount(helper, "knapping_surface")
+                            + ", hammer=" + dropCount(helper, "stone_hammer") + ", flint=" + dropCount(helper, "flint"));
             player.gameMode.destroyBlock(table.getBlockPos());
             check(dropCount(helper, "stone_hammer") == 1 && dropCount(helper, "flint") == 1, "破壊の重複操作で増えない");
             helper.succeed();
