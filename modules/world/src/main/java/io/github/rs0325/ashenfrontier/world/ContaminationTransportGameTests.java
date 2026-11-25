@@ -286,6 +286,9 @@ public final class ContaminationTransportGameTests {
             helper.assertTrue(level.getChunkAt(pos) != reloaded[0], "清浄化したチャンクもディスクから再読み込み");
             helper.assertTrue(recorded(level, pos) && BlockContamination.get(level, pos).orElseThrow().equals(SoilContamination.CLEAN), "清浄化の明示値が消えずに保存される");
             helper.assertTrue(BlockContamination.get(nether, pos).orElseThrow().equals(SECOND), "他ディメンションは清浄化されない");
+        }).thenWaitUntil(() -> {
+            helper.assertTrue(unloaded(level, pos), "最終確認後の通常チャンクもアンロードされる");
+            helper.assertTrue(unloaded(nether, pos), "最終確認後の別ディメンションもアンロードされる");
         }).thenSucceed();
     }
 }
