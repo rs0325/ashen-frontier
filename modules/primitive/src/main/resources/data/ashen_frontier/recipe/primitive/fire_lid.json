@@ -1,0 +1,45 @@
+{
+  "type": "ashen_frontier:firing",
+  "inputs": [
+    {
+      "type": "neoforge:components",
+      "items": "ashen_frontier:dried_pot",
+      "components": {
+        "ashen_frontier:pottery_form": "lid"
+      },
+      "strict": false
+    }
+  ],
+  "outputs": [
+    {
+      "id": "ashen_frontier:ceramic_lid",
+      "count": 5
+    }
+  ],
+  "conditions": {
+    "facility": "ashen_frontier:hearth",
+    "duration_seconds": 120,
+    "energy_joules": 2100000,
+    "temperature_k": {
+      "min": 973,
+      "max": 1123
+    },
+    "research": "ashen_frontier:t0/pottery"
+  },
+  "processing": {
+    "inputs": [
+      {
+        "ingredient": 0,
+        "count": 1
+      }
+    ],
+    "loss_kg": 0,
+    "requires_environment": true,
+    "inheritance": [
+      {
+        "ingredient": 0,
+        "output": 0
+      }
+    ]
+  }
+}

@@ -5,16 +5,18 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.rs0325.ashenfrontier.core.UnitDisplay;
 import io.github.rs0325.ashenfrontier.core.Units;
 import io.github.rs0325.ashenfrontier.core.research.ResearchDefinitionsUpdate;
+import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
 import io.github.rs0325.ashenfrontier.core.research.ResearchProgressUpdate;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.Optional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 /** 全加工レシピで共有するSI単位の条件。 */
 public record RecipeConditions(Optional<Range> temperatureK, Optional<Range> pressurePa,
@@ -59,12 +61,20 @@ public record RecipeConditions(Optional<Range> temperatureK, Optional<Range> pre
         return displayLines(TimeBasis.REAL);
     }
 
-    public List<Component> displayLines(TimeBasis timeBasis) {
+    public List<Component> displayLines(TimeBasis timeBasis) { return displayLines(timeBasis, Optional.empty()); }
+
+    /** 専用サーバーではクライアント設定を参照せずSI単位で条件を案内する。 */
+    public List<Component> serverDisplayLines(TimeBasis timeBasis, ServerPlayer player) { return displayLines(timeBasis, Optional.of(player)); }
+
+    private List<Component> displayLines(TimeBasis timeBasis, Optional<ServerPlayer> player) {
+        boolean clientUnits = player.isEmpty();
         List<Component> lines = new ArrayList<>();
         temperatureK.ifPresent(range -> lines.add(Component.translatable("recipe.ashen_frontier.temperature",
-                UnitDisplay.temperature(range.min()), UnitDisplay.temperature(range.max()))));
+                clientUnits ? UnitDisplay.temperature(range.min()) : Units.temperature(range.min(), true),
+                clientUnits ? UnitDisplay.temperature(range.max()) : Units.temperature(range.max(), true))));
         pressurePa.ifPresent(range -> lines.add(Component.translatable("recipe.ashen_frontier.pressure",
-                UnitDisplay.pressure(range.min()), UnitDisplay.pressure(range.max()))));
+                clientUnits ? UnitDisplay.pressure(range.min()) : Units.pressure(range.min(), true),
+                clientUnits ? UnitDisplay.pressure(range.max()) : Units.pressure(range.max(), true))));
         durationSeconds.ifPresent(value -> lines.add(Component.translatable("recipe.ashen_frontier.duration_" + timeBasis.name().toLowerCase(Locale.ROOT),
                 Units.format(value, "s"))));
         energyJoules.ifPresent(value -> lines.add(Component.translatable("recipe.ashen_frontier.energy",
@@ -80,8 +90,11 @@ public record RecipeConditions(Optional<Range> temperatureK, Optional<Range> pre
             lines.add(Component.translatable("recipe.ashen_frontier.facility", name));
         });
         research.ifPresent(id -> {
-            Component name = ResearchDefinitionsUpdate.clientName(id);
-            boolean unlocked = ResearchProgressUpdate.isClientUnlocked(id);
+            Component name = player.isPresent()
+                    ? Component.translatable(ResearchManager.tree().definitions().get(id.toString()).name())
+                    : ResearchDefinitionsUpdate.clientName(id);
+            boolean unlocked = player.map(p -> ResearchManager.isUnlocked(p, id))
+                    .orElseGet(() -> ResearchProgressUpdate.isClientUnlocked(id));
             lines.add(Component.translatable(unlocked ? "recipe.ashen_frontier.research"
                     : "recipe.ashen_frontier.research_locked", name));
         });

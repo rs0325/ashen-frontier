@@ -1,0 +1,47 @@
+{
+  "type": "ashen_frontier:knapping",
+  "inputs": [
+    {
+      "item": "minecraft:clay_ball"
+    },
+    {
+      "item": "minecraft:sand"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "ashen_frontier:green_pot",
+      "count": 1,
+      "components": {
+        "ashen_frontier:pottery_form": "pot"
+      }
+    }
+  ],
+  "conditions": {
+    "facility": "ashen_frontier:knapping_surface",
+    "duration_seconds": 10
+  },
+  "processing": {
+    "inputs": [
+      {
+        "ingredient": 0,
+        "count": 2
+      },
+      {
+        "ingredient": 1,
+        "count": 1
+      }
+    ],
+    "water": {
+      "quality": "ashen_frontier:raw_water",
+      "mass_kg": 0.5
+    },
+    "loss_kg": 0,
+    "inheritance": [
+      {
+        "ingredient": 0,
+        "output": 0
+      }
+    ]
+  }
+}

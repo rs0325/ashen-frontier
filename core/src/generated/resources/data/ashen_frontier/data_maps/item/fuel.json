@@ -10,6 +10,10 @@
       "sulfur_fraction": 0.012,
       "volatile_fraction": 0.322
     },
+    "ashen_frontier:dry_branch": {
+      "heating_value_j_kg": 1.6E7,
+      "profile": "ashen_frontier:dry_wood"
+    },
     "ashen_frontier:lignite": {
       "profile": "ashen_frontier:lignite"
     },

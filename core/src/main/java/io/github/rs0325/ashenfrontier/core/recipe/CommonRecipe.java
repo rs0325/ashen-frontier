@@ -7,10 +7,11 @@ import io.github.rs0325.ashenfrontier.core.catalog.RelicProperties;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -19,10 +20,10 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.ArrayList;
 
 /** 入力・複数出力・共通条件を持つ加工レシピ。 */
 public record CommonRecipe(ResourceLocation typeId, List<Ingredient> inputs, List<ItemStack> outputs,
@@ -136,7 +137,16 @@ public record CommonRecipe(ResourceLocation typeId, List<Ingredient> inputs, Lis
 
     /** 端末・設備・JEI/EMIが共有する条件表示。実秒/ゲーム秒と容器成分を省略しない。 */
     public List<Component> displayLines() {
-        var lines = new ArrayList<>(conditions.displayLines(RecipeTypeRegistry.timeBasis(typeId)));
+        return displayLines(conditions.displayLines(RecipeTypeRegistry.timeBasis(typeId)));
+    }
+
+    /** 設備のサーバー側メッセージ用。JEI/EMIは従来のクライアント表示を用いる。 */
+    public List<Component> serverDisplayLines(ServerPlayer player) {
+        return displayLines(conditions.serverDisplayLines(RecipeTypeRegistry.timeBasis(typeId), player));
+    }
+
+    private List<Component> displayLines(List<Component> conditionLines) {
+        var lines = new ArrayList<>(conditionLines);
         lines.addAll(processing.displayLines());
         for (int i = 0; i < outputs.size(); i++) {
             var output = outputs.get(i);

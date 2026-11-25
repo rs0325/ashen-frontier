@@ -21,6 +21,7 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -28,18 +29,19 @@ import java.util.UUID;
 
 /**
  * 台石の操作アダプタ。入力・工具・全出力・進捗の正本はProcessingStation。
- * 原料1スロット、工具1個、出力2スロット。液体の入出力は提供しない。
+ * 原料4スロット、工具1個、出力2スロット。成形水は共通の槽へ容器から実移送する。
  * 所持品から実際に移した物だけを、サーバーの操作内で共通基盤へ渡す。
  */
 public final class KnappingSurfaceEntity extends BlockEntity {
     private static final ResourceLocation FACILITY = AshenFrontierCore.id("knapping_surface");
-    private ProcessingStation station = new ProcessingStation(1, 2, 0.000001);
+    private ProcessingStation station = new ProcessingStation(4, 2, 4);
     private ResourceLocation selected = AshenFrontierCore.id("primitive/chopper");
     private UUID worker;
 
     public KnappingSurfaceEntity(BlockPos pos, BlockState state) { super(PrimitiveContent.SURFACE_ENTITY.get(), pos, state); }
 
     ProcessingStation station() { return station; }
+    boolean storesWater() { return station.water().contents().massKg() > 0; }
 
     /** ブロックの右クリックを処理する。上面のShift操作は選択、側面は回収。作業中のShift操作は取消。 */
     public void interact(ServerPlayer player, InteractionHand hand, Direction face) {
@@ -61,6 +63,10 @@ public final class KnappingSurfaceEntity extends BlockEntity {
                 if (!choices.isEmpty()) selected = choices.get((current + 1) % choices.size()).id();
             }
             describe(player);
+        } else if ((held.is(RelicContent.item("sealed_water_container")) || held.is(PrimitiveContent.item("ceramic_pot"))) && !station.active()) {
+            if (player.isShiftKeyDown() && held.is(PrimitiveContent.item("ceramic_pot"))) {
+                station.water().toContainer(player, held, 4, 4);
+            } else station.water().fromContainer(player, held, player.isShiftKeyDown() ? 4 : 1);
         } else if (!held.isEmpty() && !station.active()) {
             if (held.is(RelicContent.item("stone_hammer")) || held.is(PrimitiveContent.item("stone_flake"))
                     || held.is(PrimitiveContent.item("biface"))) {
@@ -69,16 +75,15 @@ public final class KnappingSurfaceEntity extends BlockEntity {
                 if (!moved.has(ItemProperties.WEAR)) moved.set(ItemProperties.WEAR, ItemProperties.Wear.of(0, 64));
                 station.setTool(player, moved);
             } else {
-                ItemStack input = station.input(0);
-                if (!input.isEmpty() && !ItemStack.isSameItemSameComponents(input, held)) {
-                    describe(player);
-                    return;
-                }
-                int count = Math.min(player.isShiftKeyDown() ? held.getCount() : 1, held.getMaxStackSize() - input.getCount());
-                if (count > 0) {
+                for (int slot = 0; slot < station.inputSlots(); slot++) {
+                    ItemStack input = station.input(slot);
+                    if (!input.isEmpty() && !ItemStack.isSameItemSameComponents(input, held)) continue;
+                    int count = Math.min(player.isShiftKeyDown() ? held.getCount() : 1, held.getMaxStackSize() - input.getCount());
+                    if (count <= 0) continue;
                     if (input.isEmpty()) input = held.copyWithCount(count); else input.grow(count);
-                    station.setInput(player, 0, input);
+                    station.setInput(player, slot, input);
                     if (!player.isCreative()) held.shrink(count);
+                    break;
                 }
             }
             describe(player);
@@ -130,18 +135,29 @@ public final class KnappingSurfaceEntity extends BlockEntity {
 
     private void describe(ServerPlayer player) {
         player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.controls"));
+        var water = station.water().contents();
+        player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.stored_water", water.massKg(),
+                water.quality().<Component>map(q -> Component.translatable("fluid_type." + q.getNamespace() + "." + q.getPath()))
+                        .orElseGet(() -> Component.literal("-"))));
+
         recipes().stream().filter(h -> h.id().equals(selected)).findFirst().ifPresent(holder -> {
             var recipe = holder.value();
             player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.selected", recipe.outputs().getFirst().getHoverName()));
+            var output = recipe.outputs().getFirst();
+            if (output.has(PotteryProperties.FORM)) player.sendSystemMessage(Component.translatable(
+                    "tooltip.ashen_frontier.pottery_form",
+                    Component.translatable("pottery_form.ashen_frontier." + output.get(PotteryProperties.FORM))));
             recipe.inputs().forEach(input -> player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.input", input.getItems()[0].getHoverName())));
-            recipe.displayLines().forEach(player::sendSystemMessage);
+            recipe.serverDisplayLines(player).forEach(player::sendSystemMessage);
         });
         player.sendSystemMessage(Component.translatable(station.active() ? "primitive.ashen_frontier.working" : "primitive.ashen_frontier.ready"));
     }
 
     private void withdraw(ServerPlayer player) {
-        give(player, station.input(0));
-        station.setInput(player, 0, ItemStack.EMPTY);
+        for (int i = 0; i < station.inputSlots(); i++) {
+            give(player, station.input(i));
+            station.setInput(player, i, ItemStack.EMPTY);
+        }
         give(player, station.tool());
         station.setTool(player, ItemStack.EMPTY);
         for (int i = 0; i < 2; i++) give(player, station.takeOutput(player, i, 64));
@@ -154,7 +170,16 @@ public final class KnappingSurfaceEntity extends BlockEntity {
     /** 破壊時だけ所有物をドロップする。設備自体の回収は通常のlootへ委ねる。 */
     public void dropContents() {
         if (level.isClientSide) return;
-        for (ItemStack stack : List.of(station.input(0), station.tool(), station.output(0), station.output(1))) {
+        if (storesWater()) {
+            var stack = new ItemStack(getBlockState().getBlock());
+            saveToItem(stack, level.registryAccess());
+            Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5, stack);
+            return;
+        }
+        var contents = new ArrayList<ItemStack>();
+        for (int i = 0; i < station.inputSlots(); i++) contents.add(station.input(i));
+        contents.addAll(List.of(station.tool(), station.output(0), station.output(1)));
+        for (ItemStack stack : contents) {
             Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5, stack);
         }
     }
