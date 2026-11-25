@@ -11,6 +11,12 @@ public final class GameTime {
         return elapsedTicks * REAL_SECONDS_PER_TICK;
     }
 
+    /** 日長変更ごとに分割し、要求区間のゲーム秒を積算する。 */
+    public static double gameSeconds(long from, long to, DayLengthHistory history) {
+        return history.intervals(from, to).stream()
+                .mapToDouble(i -> gameSeconds(i.endTick() - i.startTick(), i.ticksPerDay())).sum();
+    }
+
     public static double gameSeconds(long elapsedTicks) {
         return gameSeconds(elapsedTicks, TICKS_PER_DAY);
     }
