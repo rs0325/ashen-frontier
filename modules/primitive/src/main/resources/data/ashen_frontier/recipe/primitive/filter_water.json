@@ -1,0 +1,48 @@
+{
+  "type": "ashen_frontier:water_treatment",
+  "inputs": [
+    {
+      "type": "neoforge:components",
+      "items": "ashen_frontier:ceramic_pot",
+      "components": {
+        "ashen_frontier:content_mass_kg": 0.0
+      },
+      "strict": false
+    }
+  ],
+  "outputs": [
+    {
+      "id": "ashen_frontier:ceramic_pot",
+      "count": 1,
+      "components": {
+        "ashen_frontier:content_mass_kg": 3.6,
+        "ashen_frontier:quality_profile": "ashen_frontier:raw_water"
+      }
+    }
+  ],
+  "conditions": {
+    "facility": "ashen_frontier:water_filter",
+    "duration_seconds": 30,
+    "research": "ashen_frontier:t0/pottery",
+    "catalyst": {
+      "id": "ashen_frontier:fiber_cloth",
+      "count": 1
+    }
+  },
+  "processing": {
+    "water": {
+      "quality": "ashen_frontier:turbid_water",
+      "mass_kg": 4
+    },
+    "loss_kg": 0.4,
+    "requires_environment": true,
+    "inheritance": [
+      {
+        "ingredient": 0,
+        "output": 0
+      }
+    ],
+    "tool_wear": 1
+  },
+  "instructions": "primitive.ashen_frontier.filter_recipe"
+}

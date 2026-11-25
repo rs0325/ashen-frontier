@@ -1,0 +1,18 @@
+{
+  "name": "research.ashen_frontier.t0.drinking_water",
+  "description": "research.ashen_frontier.t0.drinking_water.description",
+  "prerequisites": [
+    "ashen_frontier:t0/pottery"
+  ],
+  "conditions": [
+    {
+      "type": "ashen_frontier:water_event",
+      "id": "filtered_water"
+    },
+    {
+      "type": "ashen_frontier:water_event",
+      "id": "boiled_water"
+    }
+  ],
+  "unlocks": []
+}

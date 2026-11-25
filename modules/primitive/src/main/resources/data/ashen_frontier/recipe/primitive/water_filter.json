@@ -1,0 +1,22 @@
+{
+  "type": "ashen_frontier:filter_assembly",
+  "ingredients": [
+    {
+      "type": "neoforge:components",
+      "items": "ashen_frontier:ceramic_pot",
+      "components": {
+        "ashen_frontier:content_mass_kg": 0.0
+      },
+      "strict": false
+    },
+    {
+      "item": "minecraft:sand"
+    },
+    {
+      "item": "minecraft:gravel"
+    }
+  ],
+  "result": {
+    "id": "ashen_frontier:water_filter"
+  }
+}
