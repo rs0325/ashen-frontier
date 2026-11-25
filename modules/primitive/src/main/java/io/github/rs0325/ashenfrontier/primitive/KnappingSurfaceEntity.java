@@ -5,6 +5,9 @@ import io.github.rs0325.ashenfrontier.core.ItemProperties;
 import io.github.rs0325.ashenfrontier.core.catalog.RelicContent;
 import io.github.rs0325.ashenfrontier.core.recipe.CommonRecipe;
 import io.github.rs0325.ashenfrontier.core.recipe.ProcessingStation;
+import io.github.rs0325.ashenfrontier.core.recipe.WaterTank;
+import io.github.rs0325.ashenfrontier.core.water.WaterTankOwner;
+import io.github.rs0325.ashenfrontier.core.water.WaterTransfers;
 import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -32,7 +35,7 @@ import java.util.UUID;
  * 原料4スロット、工具1個、出力2スロット。成形水は共通の槽へ容器から実移送する。
  * 所持品から実際に移した物だけを、サーバーの操作内で共通基盤へ渡す。
  */
-public final class KnappingSurfaceEntity extends BlockEntity {
+public final class KnappingSurfaceEntity extends BlockEntity implements WaterTankOwner {
     private static final ResourceLocation FACILITY = AshenFrontierCore.id("knapping_surface");
     private ProcessingStation station = new ProcessingStation(4, 2, 4);
     private ResourceLocation selected = AshenFrontierCore.id("primitive/chopper");
@@ -41,6 +44,8 @@ public final class KnappingSurfaceEntity extends BlockEntity {
     public KnappingSurfaceEntity(BlockPos pos, BlockState state) { super(PrimitiveContent.SURFACE_ENTITY.get(), pos, state); }
 
     ProcessingStation station() { return station; }
+    @Override
+    public WaterTank waterTank() { return station.water(); }
     boolean storesWater() { return station.water().contents().massKg() > 0; }
 
     /** ブロックの右クリックを処理する。上面のShift操作は選択、側面は回収。作業中のShift操作は取消。 */
@@ -65,8 +70,8 @@ public final class KnappingSurfaceEntity extends BlockEntity {
             describe(player);
         } else if ((held.is(RelicContent.item("sealed_water_container")) || held.is(PrimitiveContent.item("ceramic_pot"))) && !station.active()) {
             if (player.isShiftKeyDown() && held.is(PrimitiveContent.item("ceramic_pot"))) {
-                station.water().toContainer(player, held, 4, 4);
-            } else station.water().fromContainer(player, held, player.isShiftKeyDown() ? 4 : 1);
+                player.sendSystemMessage(WaterTransfers.tankToContainer(player, hand, this, 4).message());
+            } else player.sendSystemMessage(WaterTransfers.containerToTank(player, hand, this, player.isShiftKeyDown() ? 4 : 1).message());
         } else if (!held.isEmpty() && !station.active()) {
             if (held.is(RelicContent.item("stone_hammer")) || held.is(PrimitiveContent.item("stone_flake"))
                     || held.is(PrimitiveContent.item("biface"))) {

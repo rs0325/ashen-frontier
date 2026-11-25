@@ -90,5 +90,15 @@
   "crop_species.ashen_frontier.flax": "Flax",
   "crop_species.ashen_frontier.willow": "Willow",
   "crop_species.ashen_frontier.oyster_mushroom": "Oyster Mushroom",
-  "tooltip.ashen_frontier.content_empty": "Contents: Empty"
+  "tooltip.ashen_frontier.content_empty": "Contents: Empty",
+  "water.ashen_frontier.success": "Transferred %s kg.",
+  "water.ashen_frontier.partial": "Transferred %s kg up to available space or water.",
+  "water.ashen_frontier.no_binding": "Water source is not connected. Placement integration is required.",
+  "water.ashen_frontier.no_source": "This is not an accessible water source.",
+  "water.ashen_frontier.depleted": "Source depleted. Approved rainfall and recharge must replenish it.",
+  "water.ashen_frontier.full": "Destination full or no transferable water.",
+  "water.ashen_frontier.quality_mismatch": "Different water qualities cannot be mixed.",
+  "water.ashen_frontier.invalid_container": "Hold one refillable container. Sealed containers can only be emptied.",
+  "water.ashen_frontier.unloaded": "The intake chunk is not loaded.",
+  "water.ashen_frontier.access_denied": "Access to the intake or station is denied."
 }
