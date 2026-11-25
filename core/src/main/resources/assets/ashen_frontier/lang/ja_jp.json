@@ -90,5 +90,15 @@
   "crop_species.ashen_frontier.flax": "亜麻",
   "crop_species.ashen_frontier.willow": "ヤナギ",
   "crop_species.ashen_frontier.oyster_mushroom": "ヒラタケ",
-  "tooltip.ashen_frontier.content_empty": "内容量: 空"
+  "tooltip.ashen_frontier.content_empty": "内容量: 空",
+  "water.ashen_frontier.success": "%s kgを移しました。",
+  "water.ashen_frontier.partial": "空き量または残量まで%s kgを移しました。",
+  "water.ashen_frontier.no_binding": "水源が未接続です。配置基盤の接続が必要です。",
+  "water.ashen_frontier.no_source": "ここは採水可能な水源ではありません。",
+  "water.ashen_frontier.depleted": "水源が枯れています。承認された降水・涵養による補給が必要です。",
+  "water.ashen_frontier.full": "受取先が満杯か、移せる水がありません。",
+  "water.ashen_frontier.quality_mismatch": "異なる水質は混ぜられません。",
+  "water.ashen_frontier.invalid_container": "補給可能な容器を1個だけ持ってください。密封容器は払出しのみです。",
+  "water.ashen_frontier.unloaded": "入口のチャンクが読み込まれていません。",
+  "water.ashen_frontier.access_denied": "入口または設備への操作が許可されていません。"
 }
