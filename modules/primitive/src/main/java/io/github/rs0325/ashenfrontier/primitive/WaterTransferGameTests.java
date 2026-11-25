@@ -145,10 +145,10 @@ public final class WaterTransferGameTests {
         WaterTransfers.sourceToTank(player, inlet, WaterSourceKey.Kind.SURFACE, InteractionHand.MAIN_HAND, original, 4);
         player.discard();
         level.getDataStorage().save();
-            net.neoforged.neoforge.common.IOUtilities.waitUntilIOWorkerComplete();
+        net.neoforged.neoforge.common.IOUtilities.waitUntilIOWorkerComplete();
         level.getChunkSource().save(true);
         level.setChunkForced(cx, cz, false);
-        h.runAfterDelay(80, () -> {
+        ChunkReloadFixture.afterUnload(h, original, () -> {
             try {
                 h.assertTrue(level.getChunkSource().getChunkNow(cx, cz) == null, "実際にアンロードされた");
                 level.getChunkAt(far);
@@ -208,7 +208,7 @@ public final class WaterTransferGameTests {
         level.getChunkSource().save(true);
         player.discard();
         level.setChunkForced(cx, cz, false);
-        h.runAfterDelay(80, () -> {
+        ChunkReloadFixture.afterUnload(h, owner, () -> {
             h.assertTrue(level.getChunkSource().getChunkNow(cx, cz) == null, "再起動fixtureを実アンロードして残す");
             AshenFrontierCore.LOGGER.info("WATER_RESTART_PROBE restored_from_previous_jvm={} source_mg=2000000 tank_mg=4000000 container_mg=2000000 total_mg=8000000", restored);
             h.succeed();
@@ -238,6 +238,39 @@ public final class WaterTransferGameTests {
         h.assertTrue(WaterTransfers.tankToContainer(player, InteractionHand.OFF_HAND, owner, 1).status() == WaterTransfers.Status.FULL, "同品質の容量不足はFULL");
         level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
         h.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = AshenFrontierPrimitive.MOD_ID, timeoutTicks = 220)
+    public static void pendingUnloadDoesNotCountAsADiskReload(GameTestHelper h) {
+        var level = h.getLevel();
+        var far = h.absolutePos(new BlockPos(2049, 2, 1));
+        var cache = level.getChunkSource();
+        int cx = far.getX() >> 4, cz = far.getZ() >> 4;
+        level.setChunkForced(cx, cz, true);
+        var chunk = level.getChunkAt(far);
+        level.setBlock(far, PrimitiveContent.SURFACE.get().defaultBlockState(), Block.UPDATE_CLIENTS);
+        var original = level.getBlockEntity(far);
+        cache.save(true);
+        level.setChunkForced(cx, cz, false);
+        // unloadQueueの実行予算だけを使い切り、CIで観測した不可視・未破棄の状態を作る。
+        for (int n = 0; n < 4; n++) cache.tick(() -> false, false);
+        h.assertTrue(cache.getChunkNow(cx, cz) == null && !original.isRemoved(), "不可視でも元BEはpendingUnloadsに残る");
+        h.assertTrue(level.getChunkAt(far) == chunk && level.getBlockEntity(far) == original,
+                "この段階の再要求はディスクでなく元のチャンクを復帰させる");
+        for (int n = 0; n < 4; n++) cache.tick(() -> false, false);
+        h.assertTrue(cache.getChunkNow(cx, cz) == null && !original.isRemoved(), "再び実アンロードを保留");
+        AshenFrontierCore.LOGGER.info("PENDING_UNLOAD_REPRO visible=false original_removed={} early_reload_same=true", original.isRemoved());
+        ChunkReloadFixture.afterUnload(h, original, () -> {
+            try {
+                var reloaded = level.getChunkAt(far);
+                h.assertTrue(reloaded != chunk && level.getBlockEntity(far) != original,
+                        "待機後はpendingUnloadsを復帰させずディスクから新しいチャンク/BEを読む");
+                h.succeed();
+            } finally {
+                level.setBlock(far, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+                level.setChunkForced(cx, cz, false);
+            }
+        });
     }
 
 }

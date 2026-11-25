@@ -17,6 +17,7 @@ import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -623,7 +624,7 @@ public class PotteryGameTests {
             player.discard();
             level.getChunkSource().save(true);
             level.setChunkForced(chunkX, chunkZ, false);
-            helper.runAfterDelay(80, () -> {
+            ChunkReloadFixture.afterUnload(helper, original, () -> {
                 long restoreTick = level.getGameTime();
                 try {
                     check(level.getChunkSource().getChunkNow(chunkX, chunkZ) == null, "チャンクの実アンロードを確認");
@@ -1052,5 +1053,5 @@ public class PotteryGameTests {
         check(table.saveWithoutMetadata(player.registryAccess()).getString("selected").equals(id("primitive/" + name).toString()), "台石で製法選択 " + name);
     }
 
-    private static void check(boolean result, String message) { if (!result) throw new AssertionError(message); }
+    private static void check(boolean result, String message) { if (!result) throw new GameTestAssertException(message); }
 }
