@@ -58,7 +58,8 @@ public final class WeatherReplay {
         }
         return used;
     }
-    private Interval observation(long start,long end) {
+    private Interval observation(long start,long end) { return observationAt(x,z,start,end); }
+    Interval observationAt(int x,int z,long start,long end) {
         var state=spatial(frame,x,z);
         double a=time.seconds(start),b=time.seconds(end);
         var settings=timeline.at(frame.tick());

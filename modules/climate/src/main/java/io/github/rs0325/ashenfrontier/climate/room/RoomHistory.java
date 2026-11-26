@@ -50,10 +50,13 @@ final class RoomHistory {
         return reconstructed;
     }
 
+    long compactionBoundary() {
+        return recent.size()>LIMIT?recent.stream().mapToLong(Entry::to).sorted().skip(LIMIT/2).findFirst().orElseThrow():checkpoint;
+    }
     boolean compactIfNeeded() {
         boolean reconstructed = false;
         if (recent.size() > LIMIT) {
-            long cut = recent.stream().mapToLong(Entry::to).sorted().skip(LIMIT / 2).findFirst().orElseThrow();
+            long cut=compactionBoundary();
             compact(cut);
             reconstructed = true;
         }

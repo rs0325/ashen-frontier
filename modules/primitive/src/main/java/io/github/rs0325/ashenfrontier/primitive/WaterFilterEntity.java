@@ -1,5 +1,6 @@
 package io.github.rs0325.ashenfrontier.primitive;
 
+import io.github.rs0325.ashenfrontier.core.environment.EnvironmentRetention;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import io.github.rs0325.ashenfrontier.core.ItemProperties;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
@@ -34,6 +35,9 @@ import java.util.UUID;
 public final class WaterFilterEntity extends BlockEntity implements WaterTankOwner {
     private ProcessingStation station = new ProcessingStation(1, 1, 4);
     private UUID worker;
+    private UUID environmentOwner=UUID.randomUUID();
+    private long environmentGeneration,environmentFrom;
+    private boolean environmentActive;
     private long lastTick;
     private double settlingSeconds;
     private boolean clockPending;
@@ -83,6 +87,7 @@ public final class WaterFilterEntity extends BlockEntity implements WaterTankOwn
             if (!station.output(0).isEmpty()) give(player, station.takeOutput(player, 0, 1));
             else {
                 long now = level.getGameTime();
+                retainEnvironment(now);
                 var environment = EnvironmentQuery.sample((ServerLevel) level, worldPosition, now, now);
                 if (station.active() || station.start(player, AshenFrontierCore.id("primitive/filter_water"),
                         AshenFrontierCore.id("water_filter"), environment)) {
@@ -95,6 +100,7 @@ public final class WaterFilterEntity extends BlockEntity implements WaterTankOwn
                 }
             }
         }
+        if(worker==null||!station.active())releaseEnvironment();
         var water = station.water().contents();
         player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.stored_water", water.massKg(),
                 water.quality().<Component>map(q -> Component.translatable("fluid_type." + q.getNamespace() + "." + q.getPath()))
@@ -115,11 +121,16 @@ public final class WaterFilterEntity extends BlockEntity implements WaterTankOwn
     public void work() {
         if (!(level instanceof ServerLevel server) || worker == null || !station.active()) return;
         var entity = server.getPlayerByUUID(worker);
-        if (!(entity instanceof ServerPlayer player)) { worker = null; return; }
+        if (!(entity instanceof ServerPlayer player)) { worker = null;releaseEnvironment();return; }
         long now = server.getGameTime();
         if (clockPending) { lastTick = now; clockPending = false; }
-        var environment = EnvironmentQuery.samples(server, worldPosition, lastTick, now);
-        if (environment.isEmpty()) { worker = null; return; }
+        var request = EnvironmentQuery.query(server, worldPosition, lastTick, now);
+        var environment=request.values();
+        if (environment.isEmpty()) {
+            player.sendSystemMessage(Component.translatable(request.reason().orElse("primitive.ashen_frontier.environment_missing")));
+            level.scheduleTick(worldPosition,getBlockState().getBlock(),200);
+            return;
+        }
         for (var sample : environment.get()) {
             double elapsed = GameTime.gameSeconds(sample.endTick() - sample.startTick(), sample.ticksPerDay());
             double needed = Math.max(0, 43200 - settlingSeconds);
@@ -139,8 +150,35 @@ public final class WaterFilterEntity extends BlockEntity implements WaterTankOwn
             }
         }
         lastTick = now;
+        if(environmentActive)environment(EnvironmentRetention.Action.COMMIT,lastTick);
+        if(!station.active())releaseEnvironment();
         if (station.active()) level.scheduleTick(worldPosition, getBlockState().getBlock(), 200);
         setChanged();
+    }
+
+    private void retainEnvironment(long now) {
+        if(environmentActive)return;
+        environmentGeneration=Math.incrementExact(environmentGeneration);environmentFrom=now;lastTick=now;environmentActive=true;
+        var accepted=environment(EnvironmentRetention.Action.RETAIN,now);
+        if(accepted.isPresent()&&!accepted.get()) {
+            environmentOwner=UUID.randomUUID();environmentGeneration=1;
+            environment(EnvironmentRetention.Action.RETAIN,now);
+        }
+    }
+    private Optional<Boolean> environment(EnvironmentRetention.Action action,long tick) {
+        return EnvironmentRetention.request((ServerLevel)level,environmentOwner,
+                environmentGeneration,worldPosition.above(),environmentFrom,tick,0,action);
+    }
+    private void releaseEnvironment() {
+        if(!environmentActive||!(level instanceof ServerLevel))return;
+        environment(EnvironmentRetention.Action.END,lastTick);
+        environment(EnvironmentRetention.Action.COMMIT,lastTick);
+        environment(EnvironmentRetention.Action.RELEASE,lastTick);
+        environmentActive=false;setChanged();
+    }
+    @Override public void onLoad() {
+        super.onLoad();
+        if(level instanceof ServerLevel)releaseEnvironment();
     }
 
     private static void give(ServerPlayer player, ItemStack stack) {
@@ -149,6 +187,7 @@ public final class WaterFilterEntity extends BlockEntity implements WaterTankOwn
 
     public void dropStored() {
         if (level.isClientSide) return;
+        releaseEnvironment();
         var stack = new ItemStack(getBlockState().getBlock());
         saveToItem(stack, level.registryAccess());
         Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5, stack);
@@ -159,6 +198,9 @@ public final class WaterFilterEntity extends BlockEntity implements WaterTankOwn
         super.saveAdditional(tag, registries);
         tag.put("processing", station.save(registries));
         tag.putDouble("settling_seconds", settlingSeconds);
+        tag.putUUID("environment_owner",environmentOwner);tag.putLong("environment_generation",environmentGeneration);
+        tag.putLong("environment_from",environmentFrom);tag.putBoolean("environment_active",environmentActive);
+        tag.putLong("environment_tick",lastTick);
     }
 
     @Override
@@ -166,6 +208,9 @@ public final class WaterFilterEntity extends BlockEntity implements WaterTankOwn
         super.loadAdditional(tag, registries);
         if (tag.contains("processing")) station = ProcessingStation.load(tag.getCompound("processing"), registries);
         settlingSeconds = tag.getDouble("settling_seconds");
+        if(tag.hasUUID("environment_owner"))environmentOwner=tag.getUUID("environment_owner");
+        environmentGeneration=tag.getLong("environment_generation");environmentFrom=tag.getLong("environment_from");
+        environmentActive=tag.getBoolean("environment_active");lastTick=tag.getLong("environment_tick");
         worker = null;
         clockPending = true;
     }

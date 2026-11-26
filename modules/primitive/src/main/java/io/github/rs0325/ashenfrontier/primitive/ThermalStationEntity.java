@@ -1,5 +1,7 @@
 package io.github.rs0325.ashenfrontier.primitive;
 
+import io.github.rs0325.ashenfrontier.core.environment.EnvironmentBudget;
+import io.github.rs0325.ashenfrontier.core.environment.EnvironmentRetention;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
 import io.github.rs0325.ashenfrontier.core.catalog.RelicProperties;
@@ -64,9 +66,13 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
     private UUID worker;
     private long workTick;
     private long lastTick = -1;
+    private long coolingTarget=-1,workTarget=-1;
+    private long leaseGeneration,leaseFrom,handoffTick=-1;
+    private BlockPos heatReference;
     private double frictionSeconds;
     private boolean igniting;
     private boolean lit;
+    private boolean restored,discardClosed;
     private long evaporatedMg;
 
     public ThermalStationEntity(BlockPos pos, BlockState state) {
@@ -92,8 +98,15 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
             player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.busy"));
             return;
         }
-        work();
+        scheduledWork();
         var held = player.getItemInHand(hand);
+        if(hearth()&&lastTick<level.getGameTime()) {
+            if(held.isEmpty()&&!player.isShiftKeyDown()&&(!station.output(0).isEmpty()||!station.output(1).isEmpty())) {
+                collect(player);setChanged();return;
+            }
+            player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.environment_missing"));
+            return;
+        }
         var storedKg = held.get(RelicProperties.CONTENT_MASS.get());
         if (storedKg != null && storedKg >= 0 && storedKg <= WaterMass.MAX_KG)
             held.set(RelicProperties.CONTENT_MASS, WaterMass.toKg(WaterMass.fromKg(storedKg)));
@@ -140,7 +153,7 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
                     && (!fuel.isEmpty() || heat.fuelJoules() > 0) && environment.filter(e -> e.covered() && e.ventilated()).isPresent()) {
                 igniting = true;
                 ignitionTool = held.copy();
-                resume(player);
+                resume(player,false);
             } else {
                 player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.fire_requirements"));
             }
@@ -158,7 +171,9 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
             else {
                 long now = level.getGameTime();
                 var environment = EnvironmentQuery.sample((ServerLevel) level, worldPosition, now, now);
-                if (station.active() || suitable(environment) && (station.start(player, selected, facility(), environment, temperature()) || lit)) resume(player);
+                boolean continuing=station.active();
+                if (continuing || suitable(environment) && (station.start(player, selected, facility(), environment, temperature()) || lit))
+                    resume(player,continuing);
                 else player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.environment_missing"));
             }
         }
@@ -178,8 +193,9 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
         var other = reference == null ? null : reference.get();
         long received = CombustionSourceQuery.lastSequence((ServerLevel) level, sourceId);
         if (received > notificationSequence || other != null && other != this && !other.isRemoved() && sourceId.equals(other.sourceId)) {
-            sourceId = UUID.randomUUID();
-            notificationSequence = 0;
+            sourceId = UUID.randomUUID();notificationSequence=0;
+            leaseGeneration=0;handoffTick=-1;coolingTarget=-1;
+            heatReference=worldPosition.immutable();lastTick=level.getGameTime();
             setChanged();
         }
         sources.put(sourceId, new WeakReference<>(this));
@@ -217,11 +233,86 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
         }
     }
 
-    private void resume(ServerPlayer player) {
-        worker = player.getUUID();
-        workTick = level.getGameTime();
-        station.advance(player, facility(), Optional.empty(), 0, temperature(), 0);
+    private void resume(ServerPlayer player,boolean continuing) {
+        if(!continuing||worker==null||!worker.equals(player.getUUID())) {
+            worker=player.getUUID();
+            workTick=level.getGameTime();workTarget=-1;
+            station.advance(player,facility(),Optional.empty(),0,temperature(),0);
+        }
         level.scheduleTick(worldPosition, getBlockState().getBlock(), interval());
+    }
+
+    static boolean sourceInUse(ServerLevel level,UUID id) {
+        var sources=SOURCES.get(level.getServer());
+        var reference=sources==null?null:sources.get(id);
+        var entity=reference==null?null:reference.get();
+        return entity!=null&&!entity.isRemoved();
+    }
+
+    boolean settleDiscarded(ServerLevel server,long until) {
+        if(!coolTo(server,until))return false;
+        var environment=hearth()?EnvironmentQuery.sample(server,reference(),until,until):Optional.<EnvironmentSample>empty();
+        if(hearth()&&environment.isEmpty())return false;
+        double ambient=hearth()?environment.orElseThrow().temperatureK():Double.NaN;
+        double retained=Double.isFinite(heat.temperatureK())?500*(ambient-heat.temperatureK()):0;
+        retained+=boilingHeat.reset();
+        if(retained!=0&&fuelProfile!=null) {
+            NeoForge.EVENT_BUS.post(new CombustionEvent(server,reference(),until,until,fuelProfile,
+                    0,0,retained,sourceId,nextSequence()));
+        }
+        if(hearth())heat.restore(0,0,ambient);
+        EnvironmentRetention.request(server,sourceId,leaseGeneration,
+                reference().above(),leaseFrom,until,notificationSequence,
+                EnvironmentRetention.Action.END);
+        commitEnvironment(server,until);discardClosed=true;setChanged();
+        return EnvironmentRetention.request(server,sourceId,leaseGeneration,
+                reference().above(),leaseFrom,until,notificationSequence,
+                EnvironmentRetention.Action.RELEASE).orElse(false);
+    }
+
+    private BlockPos reference() { return heatReference==null?worldPosition:heatReference; }
+
+    private void retainEnvironment(ServerLevel server) {
+        long now=server.getGameTime();
+        if(leaseGeneration==0) {
+            leaseGeneration=1;leaseFrom=now;heatReference=worldPosition.immutable();
+            setChanged();
+        }
+        var accepted=EnvironmentRetention.request(server,sourceId,leaseGeneration,
+                reference().above(),leaseFrom,now,notificationSequence,
+                EnvironmentRetention.Action.RETAIN);
+        if(accepted.isPresent()&&!accepted.get()) {
+            releaseSource();sourceId=UUID.randomUUID();notificationSequence=0;
+            leaseGeneration=1;leaseFrom=now;heatReference=worldPosition.immutable();lastTick=now;discardClosed=false;
+            handoffTick=-1;coolingTarget=-1;claimSource();setChanged();
+            EnvironmentRetention.request(server,sourceId,leaseGeneration,
+                    reference().above(),leaseFrom,now,0,
+                    EnvironmentRetention.Action.RETAIN);
+        }
+        if(!reference().equals(worldPosition)&&handoffTick<0) {
+            handoffTick=now;setChanged();
+            EnvironmentRetention.request(server,sourceId,leaseGeneration+1,
+                    worldPosition.above(),handoffTick,now,notificationSequence,
+                    EnvironmentRetention.Action.RETAIN);
+        }
+        if(!hearth()&&handoffTick>=0) { lastTick=handoffTick;handoff(server); }
+    }
+
+    private void commitEnvironment(ServerLevel server,long through) {
+        EnvironmentRetention.request(server,sourceId,leaseGeneration,
+                reference().above(),leaseFrom,through,notificationSequence,
+                EnvironmentRetention.Action.COMMIT);
+    }
+
+    private void handoff(ServerLevel server) {
+        var type=EnvironmentRetention.Action.END;
+        EnvironmentRetention.request(server,sourceId,leaseGeneration,
+                reference().above(),leaseFrom,handoffTick,notificationSequence,type);
+        commitEnvironment(server,handoffTick);
+        EnvironmentRetention.request(server,sourceId,leaseGeneration,
+                reference().above(),leaseFrom,handoffTick,notificationSequence,
+                EnvironmentRetention.Action.RELEASE);
+        leaseGeneration++;leaseFrom=handoffTick;heatReference=worldPosition.immutable();handoffTick=-1;setChanged();
     }
 
     private static ItemStack insert(ServerPlayer player, ItemStack held, ItemStack stored) {
@@ -249,25 +340,46 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
                 && (hearth() || e.temperatureK() > 273.15 && e.relativeHumidity() <= 0.8)).isPresent();
     }
 
-    public void work() {
+    public void work() { work(System.nanoTime()+300_000); }
+    void scheduledWork() {
+        if(!(level instanceof ServerLevel server))return;
+        long start=System.nanoTime(),remaining=EnvironmentBudget.remaining(server);
+        if(remaining<=0) { level.scheduleTick(worldPosition,getBlockState().getBlock(),1);return; }
+        try { work(start+Math.min(300_000,remaining)); }
+        finally { EnvironmentBudget.charge(server,System.nanoTime()-start); }
+    }
+    private void work(long deadline) {
         if (!(level instanceof ServerLevel serverLevel)) return;
-        if (worker == null) { coolTo(serverLevel, level.getGameTime()); return; }
-        var player = serverLevel.getPlayerByUUID(worker);
-        if (!(player instanceof ServerPlayer serverPlayer) || !player.isAlive()) { worker = null; coolTo(serverLevel, level.getGameTime()); return; }
-        long now = level.getGameTime();
-        long from = workTick;
-        var environment = coolTo(serverLevel, from)
-                ? EnvironmentQuery.samples(serverLevel, worldPosition, from, now) : Optional.<List<EnvironmentSample>>empty();
-        if (environment.isEmpty()) {
-            station.advance(serverPlayer, facility(), Optional.empty(), 0, temperature(), 0);
-            worker = null;
-            serverPlayer.sendSystemMessage(Component.translatable("primitive.ashen_frontier.environment_missing"));
-            setChanged();
+        retainEnvironment(serverLevel);
+        if (worker == null) {
+            boolean complete=false;
+            for(int count=0;count<128;count++) {
+                long before=lastTick;
+                complete=coolTo(serverLevel,level.getGameTime());
+                if(complete||before==lastTick||System.nanoTime()>=deadline)break;
+            }
+            if(!complete)level.scheduleTick(worldPosition,getBlockState().getBlock(),1);
             return;
         }
-        workTick = now;
-        for (var sample : environment.get()) workInterval(serverLevel, serverPlayer, sample);
-        if (station.active() || igniting || lit) level.scheduleTick(worldPosition, getBlockState().getBlock(), interval());
+        var player = serverLevel.getPlayerByUUID(worker);
+        if (!(player instanceof ServerPlayer serverPlayer) || !player.isAlive()) { worker=null;work(deadline);return; }
+        long now = level.getGameTime();
+        long from = workTick;
+        if(workTarget<0)workTarget=now;
+        var request=coolTo(serverLevel,from)?EnvironmentQuery.query(serverLevel,worldPosition,from,workTarget):null;
+        var environment=request==null?Optional.<List<EnvironmentSample>>empty():request.values();
+        if (environment.isEmpty()) {
+            serverPlayer.sendSystemMessage(Component.translatable(request==null?"primitive.ashen_frontier.environment_missing":
+                    request.reason().orElse("primitive.ashen_frontier.environment_missing")));
+            level.scheduleTick(worldPosition,getBlockState().getBlock(),interval());
+            setChanged();return;
+        }
+        var sample=environment.get().getFirst();
+        workInterval(serverLevel,serverPlayer,sample);
+        workTick=sample.endTick();
+        if(workTick==workTarget)workTarget=-1;
+        if (station.active() || igniting || lit)
+            level.scheduleTick(worldPosition,getBlockState().getBlock(),workTick<now?1:interval());
         else worker = null;
         setChanged();
     }
@@ -362,17 +474,24 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
         }
         if (heatingWater) waterCoolingJ += coolWater(serverLevel, sample, gameSeconds - poweredGameSeconds);
         if (!station.active()) waterCoolingJ += boilingHeat.releaseVapor();
-        if (evaluatedHeat != null) notifyHeat(serverLevel, from, now, evaluatedHeat, suppliedProcessJ + waterCoolingJ);
+        if (evaluatedHeat != null)notifyHeat(serverLevel,from,now,evaluatedHeat,suppliedProcessJ+waterCoolingJ);
+        if(!hearth())lastTick=now;
+        commitEnvironment(serverLevel,now);
     }
 
     /** 作業・燃焼を進めず、未ロード区間も含む余熱だけを遅延評価する。未接続では時刻を進めない。 */
     private boolean coolTo(ServerLevel serverLevel, long now) {
+        retainEnvironment(serverLevel);
         if (!hearth()) return true;
+        if(handoffTick>=0&&lastTick>=handoffTick)handoff(serverLevel);
         if (lastTick < 0 || !Double.isFinite(heat.temperatureK())) { lastTick = now; return true; }
         if (now <= lastTick) return true;
-        var environment = EnvironmentQuery.samples(serverLevel, worldPosition, lastTick, now);
-        if (environment.isEmpty()) return false;
-        for (var sample : environment.get()) {
+        long end=handoffTick>=0?Math.min(now,handoffTick):now;
+        if(coolingTarget<0)coolingTarget=Math.min(end,lastTick+600);
+        var environment=EnvironmentQuery.samples(serverLevel,reference(),lastTick,coolingTarget);
+        if(environment.isEmpty())return false;
+        // 放熱の通知を受けた室の次区間は、通知後に再照会する。
+        for (var sample : environment.get().subList(0,1)) {
             var step = heat.advance(0, GameTime.gameSeconds(sample.endTick() - sample.startTick(), sample.ticksPerDay()),
                     sample.temperatureK(), false, false);
             double waterJ = coolWater(serverLevel, sample,
@@ -381,8 +500,11 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
             notifyHeat(serverLevel, sample.startTick(), sample.endTick(), step, waterJ);
             lastTick = sample.endTick();
         }
+        commitEnvironment(serverLevel,lastTick);
+        coolingTarget=-1;
+        if(handoffTick>=0&&lastTick>=handoffTick)handoff(serverLevel);
         setChanged();
-        return true;
+        return lastTick>=now;
     }
 
     private double coolWater(ServerLevel level, EnvironmentSample sample, double gameSeconds) {
@@ -399,7 +521,7 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
     private void notifyHeat(ServerLevel serverLevel, long from, long to, HearthHeat.Step step, double suppliedProcessJ) {
         if (fuelProfile != null && (step.chemicalJoules() > 0 || step.storedJoules() != 0 || suppliedProcessJ != 0)) {
             long sequence = nextSequence();
-            NeoForge.EVENT_BUS.post(new CombustionEvent(serverLevel, worldPosition, from, to, fuelProfile,
+            NeoForge.EVENT_BUS.post(new CombustionEvent(serverLevel,reference(),from,to,fuelProfile,
                     step.burnedKg(), step.chemicalJoules(), step.storedJoules() + suppliedProcessJ, sourceId, sequence));
         }
     }
@@ -472,9 +594,16 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
     public void onLoad() {
         super.onLoad();
         if (level != null && !level.isClientSide) {
-            claimSource();
             setLit(lit);
-            if (hearth()) level.scheduleTick(worldPosition, getBlockState().getBlock(), interval());
+            if(restored) { claimSource();retainEnvironment((ServerLevel)level); }
+            level.scheduleTick(worldPosition,getBlockState().getBlock(),interval());
+        }
+    }
+
+    void placed() {
+        if(level instanceof ServerLevel server) {
+            claimSource();retainEnvironment(server);
+            setLit(lit);level.scheduleTick(worldPosition,getBlockState().getBlock(),interval());
         }
     }
 
@@ -494,7 +623,12 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
         if (fuelProfile != null) tag.putString("fuel_profile", fuelProfile.toString());
         tag.putBoolean("lit", lit);
         tag.putDouble("friction_seconds", frictionSeconds);
-        tag.putLong("last_tick", lastTick);
+        tag.putLong("last_tick",lastTick);
+        tag.putLong("cooling_target",coolingTarget);
+        tag.putLong("lease_generation",leaseGeneration);tag.putLong("lease_from",leaseFrom);
+        tag.putBoolean("discard_closed",discardClosed);
+        tag.putBoolean("hearth",hearth());tag.putLong("station_position",worldPosition.asLong());
+        tag.putLong("heat_reference",reference().asLong());tag.putLong("handoff_tick",handoffTick);
         tag.putLong("evaporated_mg", evaporatedMg);
         if (Double.isFinite(boilingHeat.temperatureK())) tag.putDouble("water_temperature_k", boilingHeat.temperatureK());
         tag.putDouble("water_reserved_j", boilingHeat.reservedJoules());
@@ -507,6 +641,7 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
         super.loadAdditional(tag, registries);
         var ops = RegistryOps.create(NbtOps.INSTANCE, registries);
         if (tag.contains("processing")) {
+            restored=true;
             if (!tag.hasUUID("source_id") || !tag.contains("notification_sequence") || tag.getLong("notification_sequence") < 0)
                 throw new IllegalArgumentException("熱設備の通知識別情報が不正です");
             sourceId = tag.getUUID("source_id");
@@ -521,7 +656,11 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
         fuelProfile = tag.contains("fuel_profile") ? ResourceLocation.parse(tag.getString("fuel_profile")) : null;
         lit = tag.getBoolean("lit");
         frictionSeconds = tag.getDouble("friction_seconds");
-        lastTick = tag.getLong("last_tick");
+        lastTick=tag.getLong("last_tick");discardClosed=tag.getBoolean("discard_closed");
+        coolingTarget=tag.contains("cooling_target")?tag.getLong("cooling_target"):-1;
+        leaseGeneration=tag.getLong("lease_generation");leaseFrom=tag.getLong("lease_from");
+        heatReference=tag.contains("heat_reference")?BlockPos.of(tag.getLong("heat_reference")):worldPosition.immutable();
+        handoffTick=tag.contains("handoff_tick")?tag.getLong("handoff_tick"):-1;workTarget=-1;
         evaporatedMg = tag.getLong("evaporated_mg");
         boilingHeat.restore(tag.contains("water_temperature_k") ? tag.getDouble("water_temperature_k") : Double.NaN,
                 tag.getDouble("water_reserved_j"), tag.getDouble("water_sensible_j"));
