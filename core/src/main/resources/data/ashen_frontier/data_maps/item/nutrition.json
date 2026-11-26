@@ -1,0 +1,23 @@
+{
+  "values": {
+    "ashen_frontier:canned_food": {
+      "energy_joules": 1450000,
+      "protein_kg": 0.042,
+      "fat_kg": 0.021,
+      "water_kg": 0.132,
+      "vitamin_groups": [
+        "fat_soluble"
+      ]
+    },
+    "ashen_frontier:preserved_rations": {
+      "energy_joules": 4500000,
+      "protein_kg": 0.025,
+      "fat_kg": 0.04,
+      "water_kg": 0.01,
+      "vitamin_groups": [
+        "c",
+        "fat_soluble"
+      ]
+    }
+  }
+}

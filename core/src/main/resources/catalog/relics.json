@@ -1625,7 +1625,7 @@
       "recovery": "canned_food",
       "behavior": "food",
       "domain": "core",
-      "mass_kg": 1.0,
+      "mass_kg": 0.2,
       "sprite": 42
     },
     {
@@ -1638,7 +1638,7 @@
       "recovery": "preserved_rations",
       "behavior": "food",
       "domain": "core",
-      "mass_kg": 1.0,
+      "mass_kg": 0.25,
       "sprite": 43
     },
     {

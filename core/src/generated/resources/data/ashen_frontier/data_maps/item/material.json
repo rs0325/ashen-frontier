@@ -34,7 +34,7 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:canned_food": {
-      "mass_kg": 1.0
+      "mass_kg": 0.2
     },
     "ashen_frontier:catalyst": {
       "mass_kg": 1.0
@@ -464,7 +464,7 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:preserved_rations": {
-      "mass_kg": 1.0
+      "mass_kg": 0.25
     },
     "ashen_frontier:preserved_seed": {
       "mass_kg": 1.0

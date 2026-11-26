@@ -141,6 +141,18 @@ final class SurvivalRuntime {
     void intake(double water,double energy,double protein,double fat,boolean vc,boolean vf) {
         capture();enqueue(Kind.INTAKE,water,energy,protein,fat,vc,vf,0);
     }
+    void reserveIntake(long operation) { capture();enqueue(Kind.INTAKE,0,0,0,0,false,false,operation); }
+    void completeIntake(long operation,double water,double energy,double protein,double fat,boolean vc,boolean vf) {
+        var ordered=new java.util.ArrayList<>(data.frames);boolean found=false;
+        for(int n=0;n<ordered.size();n++) {
+            var frame=ordered.get(n);
+            if(frame.kind!=Kind.INTAKE||frame.generation!=operation)continue;
+            var committed=new Frame(Kind.INTAKE,frame.lease,frame.from,frame.to,frame.activity,frame.submerged,water,energy,protein,fat,vc,vf,operation);
+            committed.effects=frame.effects;ordered.set(n,committed);found=true;break;
+        }
+        if(!found)throw new IllegalStateException("摂取の完了時点の予約がありません");
+        data.frames.clear();data.frames.addAll(ordered);schedule(1);
+    }
     private void enqueue(Kind kind,double a,double b,double c,double d,boolean vc,boolean vf,long generation) {
         data.addFrame(new Frame(kind,data.currentLease,data.observed,data.observed,data.activity,
                 data.submerged,a,b,c,d,vc,vf,generation));schedule(1);
@@ -172,6 +184,7 @@ final class SurvivalRuntime {
         int steps=0;
         while(steps<maximumSteps&&System.nanoTime()<deadline&&!data.frames.isEmpty()) {
             var frame=data.frames.getFirst();
+            if(frame.kind==Kind.INTAKE&&frame.generation>0&&IntakeService.pending(player,frame.generation))break;
             if(frame.kind==Kind.OFFLINE) { data.cursor=frame.to;data.frames.removeFirst();steps++;continue; }
             var lease=data.leases.get(frame.lease);var level=level(lease);
             if(level==null)break;

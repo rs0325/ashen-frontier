@@ -42,6 +42,17 @@ import java.util.UUID;
 @GameTestHolder(AshenFrontierPrimitive.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class PrimitiveGameTests {
+    @GameTest(template = "empty", templateNamespace = AshenFrontierPrimitive.MOD_ID)
+    public static void stoneRecipesWithSharedAttributeSourcesRemainLoaded(GameTestHelper helper) {
+        for(var name:new String[]{"chopper","chopper_flint","biface"}) {
+            var holder=helper.getLevel().getRecipeManager().byKey(id("primitive/"+name));
+            check(holder.isPresent(),"既存石器レシピを読み込む: "+name);
+            var recipe=(io.github.rs0325.ashenfrontier.core.recipe.CommonRecipe)holder.orElseThrow().value();
+            check(recipe.outputs().size()==2&&recipe.processing().inheritance().size()==2
+                    &&recipe.processing().inheritance().stream().allMatch(v->v.ingredient()==0),"石器と剥片への同一原料の継承定義を保持");
+        }
+        helper.succeed();
+    }
     private static final BlockPos TABLE = new BlockPos(1, 1, 1);
     private static final BlockPos RAW = new BlockPos(4, 1, 4);
 
