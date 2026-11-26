@@ -378,7 +378,7 @@ def generate_assets(input_dir, output):
         for name in ['generate_basis.py','generate_hydrology.py','generate.py','layout_contract.py']}}
     sampler='modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/TerrainBasis.java'
     base['tool']['files'][sampler]=sha(ROOT/sampler)
-    for name in ['HydrologyTerrain.java','FixedTerrain.java']:
+    for name in ['HydrologyTerrain.java','HydrologyNoise.java','FixedTerrain.java']:
         path='modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/'+name
         base['tool']['files'][path]=sha(ROOT/path)
     write_json(output/'manifest.json',base)

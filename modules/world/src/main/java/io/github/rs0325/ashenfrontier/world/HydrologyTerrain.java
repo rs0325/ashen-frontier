@@ -20,6 +20,9 @@ final class HydrologyTerrain {
     private record Shore(HydrologyLayout.Point a,HydrologyLayout.Point b,double station) {}
     private static final class Samples {
         int chunkX=Integer.MIN_VALUE,chunkZ=Integer.MIN_VALUE,x0,z0;
+        final HydrologyNoise noise;
+        Samples(long seed) {noise=new HydrologyNoise(seed);}
+
         long tileKey=Long.MIN_VALUE;
         Tile tile;
         final double[] neighbors=new double[9];
@@ -70,10 +73,15 @@ final class HydrologyTerrain {
             return carved[at];
         }
     }
-    private final ThreadLocal<Samples> samples=ThreadLocal.withInitial(Samples::new);
+    private final ThreadLocal<Samples> samples;
 
     private record Segment(double ax,double az,double ay,double aw,double ad,
-                           double bx,double bz,double by,double bw,double bd,double station,boolean source,boolean reshape,boolean oblique,int reach,double dx,double dz,double length2,double length,double span) {}
+                           double bx,double bz,double by,double bw,double bd,double station,boolean source,boolean reshape,boolean oblique,int reach,double dx,double dz,double length2,double length,double span) {
+        double distance(double x,double z) {
+            double t=length2==0?0:Math.clamp(((x-ax)*dx+(z-az)*dz)/length2,0,1);
+            return Math.hypot(x-ax-t*dx,z-az-t*dz);
+        }
+    }
     record Bank(double distance,double grade,double width,double station,boolean source,double side) {}
     private final Map<Long,Tile> tiles=new HashMap<>();
     private final Map<Long,List<Segment>> cells=new HashMap<>();
@@ -86,7 +94,7 @@ final class HydrologyTerrain {
     private final int sourceZ;
 
     HydrologyTerrain(MapVersion version,FixedMapData background) {
-        seed=background.seed();
+        seed=background.seed();samples=ThreadLocal.withInitial(()->new Samples(seed));
         for(int side=0;side<2;side++) {
             double station=-24;
             for(int i=0;i<18;i++) {
@@ -163,12 +171,14 @@ final class HydrologyTerrain {
                 // 源頭の小さな曲がりで、下流全域の侵食位相をずらさない。
                 double span=reach.id().equals("R05U") && end<=60?Math.abs(dz):Math.hypot(dx,dz);
                 var s=new Segment(a.x(),a.z(),a.waterY(),a.halfWidth(),a.depth(),b.x(),b.z(),b.waterY(),b.halfWidth(),b.depth(),station,reach.id().equals("R05U"),!reach.id().equals("R06"),!reach.id().equals("R16"),id,dx,dz,length2,Math.sqrt(length2),span);
-                for(int x=(int)Math.floor((Math.min(s.ax,s.bx)-320)/64);x<=(int)Math.floor((Math.max(s.ax,s.bx)+320)/64);x++)
-                    for(int z=(int)Math.floor((Math.min(s.az,s.bz)-320)/64);z<=(int)Math.floor((Math.max(s.az,s.bz)+320)/64);z++)
+                for(int x=(int)Math.floor((Math.min(s.ax,s.bx)-320)/32);x<=(int)Math.floor((Math.max(s.ax,s.bx)+320)/32);x++)
+                    for(int z=(int)Math.floor((Math.min(s.az,s.bz)-320)/32);z<=(int)Math.floor((Math.max(s.az,s.bz)+320)/32);z++)
                         cells.computeIfAbsent(key(x,z),ignored->new ArrayList<>()).add(s);
                 station+=s.span;i=end;
             }
         }
+        cells.replaceAll(HydrologyTerrain::localCandidates);
+        cells.entrySet().removeIf(entry->entry.getValue().isEmpty());
         for(var lake:layout.lakes().values()) {
             double station=0;
             for(int i=0;i<lake.outline().size();i+=12) {
@@ -179,6 +189,27 @@ final class HydrologyTerrain {
                     shores.computeIfAbsent(key(x,z),ignored->new ArrayList<>()).add(pair);
             }
         }
+    }
+
+    private static List<Segment> localCandidates(long cell,List<Segment> segments) {
+        double x=(int)(cell>>32)*32+15.5,z=(int)cell*32+15.5;
+        var local=new ArrayList<Segment>();
+        for(int i=0;i<segments.size();) {
+            int start=i,reach=segments.get(i).reach;double nearest=Double.POSITIVE_INFINITY,width=0;
+            while(i<segments.size() && segments.get(i).reach==reach) {
+                var segment=segments.get(i++);
+                nearest=Math.min(nearest,segment.distance(x,z));
+                width=Math.max(width,Math.max(segment.aw,segment.bw));
+            }
+            if(nearest>width+294)continue;
+            // セル半径は23B未満。往復の余裕と支流評価の32Bを確保する。
+            double limit=nearest+78;
+            for(int n=start;n<i;n++) {
+                var segment=segments.get(n);
+                if(segment.distance(x,z)<=limit)local.add(segment);
+            }
+        }
+        return local;
     }
 
     private static long key(int x,int z) {return ((long)x<<32)^(z&0xffffffffL);}
@@ -199,7 +230,7 @@ final class HydrologyTerrain {
     double height(int x,int z,double natural) {
         if(water(x,z)!=Integer.MIN_VALUE)return bed(x,z);
         double result=natural,bankEdge=Double.POSITIVE_INFINITY;
-        var nearby=cells.getOrDefault(key(x>>6,z>>6),List.of());
+        var nearby=cells.getOrDefault(key(x>>5,z>>5),List.of());
         for(int i=0;i<nearby.size();) {
             int start=i,reach=nearby.get(i).reach;double best=Double.POSITIVE_INFINITY,maxWidth=0;Segment closest=null;double fraction=0;
             while(i<nearby.size() && nearby.get(i).reach==reach) {
@@ -302,6 +333,7 @@ final class HydrologyTerrain {
     private double obliqueHead(int z,double natural,Bank bank,double perpendicular) {
         double d=Math.max(0,bank.distance-bank.width);
         if(d>=170)return natural;
+        var noise=samples.get().noise;
         double path=.21+1.54*TerrainMath.smooth((perpendicular+2)/4);
         double side=Math.max(0,d-path);
         double g;
@@ -314,8 +346,8 @@ final class HydrologyTerrain {
         double rise=1.3+.3*TerrainMath.smooth((z-sourceZ-48)/16)+side*.025+.8*(1-g)*TerrainMath.smooth((side-5)/8)+side*side*.0002;
         double depth=Math.max(0,natural-grade-1-rise);
         depth*=TerrainMath.smooth(depth);
-        double reach=100+70*TerrainMath.noise(seed,"source_oblique_extent",bank.station,side*.3,73);
-        double start=24+12*TerrainMath.noise(seed,"source_oblique_transition",bank.station,side*.25,47);
+        double reach=100+70*noise.noise(HydrologyNoise.Salt.SOURCE_OBLIQUE_EXTENT,bank.station,side*.3,73);
+        double start=24+12*noise.noise(HydrologyNoise.Salt.SOURCE_OBLIQUE_TRANSITION,bank.station,side*.25,47);
         double tributary=4*g*TerrainMath.smooth((d-4)/6)*(1-TerrainMath.smooth((d-48)/48));
         tributary*=TerrainMath.smooth((natural-bank.grade+6)/12);
         return natural-(depth+tributary)*(1-TerrainMath.smooth((d-start)/(reach-start)));
@@ -324,6 +356,7 @@ final class HydrologyTerrain {
     private double rillHeight(double natural,double profile,Bank bank,boolean oblique,double perpendicular) {
         double d=Math.max(0,bank.distance-bank.width);
         if(d>=144)return profile;
+        var noise=samples.get().noise;
         double head=bank.source?1-TerrainMath.smooth((bank.station-256)/256):0;
         double path=1.75*head*(bank.side>0?1:.12);
         double edge=2-1.5*head;
@@ -334,14 +367,14 @@ final class HydrologyTerrain {
         gate*=cut+(1-cut)*(1-TerrainMath.smooth((d-16)/16));
         double crossing=head*Math.max(0,bank.side)*TerrainMath.smooth((d-6)/6)*(1-TerrainMath.smooth((d-64)/80));
         if(gate==0 && crossing==0)return profile;
-        double shift=(TerrainMath.noise(seed,"valley_rill_shift",bank.station,bank.side*37,32)-.5)*12;
+        double shift=(noise.noise(HydrologyNoise.Salt.VALLEY_RILL_SHIFT,bank.station,bank.side*37,32)-.5)*12;
         double result=profile;
         if(gate>0) {
             double blend=head*(1-TerrainMath.smooth((bank.station-80)/80));
             if(oblique && !bank.source) {
-                double rill=TerrainMath.noise(seed,"valley_cross_rill",
+                double rill=noise.noise(HydrologyNoise.Salt.VALLEY_CROSS_RILL,
                         bank.station+d*(.02+shift*.015)+shift+bank.side*73,d*.02-bank.station*.1,8);
-                double branch=TerrainMath.noise(seed,"valley_rill_branch",
+                double branch=noise.noise(HydrologyNoise.Salt.VALLEY_RILL_BRANCH,
                         bank.station*.6+d*.02+shift+(rill-.5)*14,d*.02+bank.station*.1,21);
                 double side=Math.max(0,d-2);
                 double target=bank.grade+1.4+side*(.02+.24*rill+.04*branch)+side*side*.0002;
@@ -352,12 +385,12 @@ final class HydrologyTerrain {
                     double v=oblique?.6*bank.station-.8*d:d*.35;
                     u+=(bank.station+d*(.9+shift*.05)-u)*blend;
                     v+=(d*.15-bank.station*.1-v)*blend;
-                    double rill=1-Math.abs(2*TerrainMath.noise(seed,"valley_cross_rill",u+shift+bank.side*73,v,oblique?8:6)-1);
+                    double rill=1-Math.abs(2*noise.noise(HydrologyNoise.Salt.VALLEY_CROSS_RILL,u+shift+bank.side*73,v,oblique?8:6)-1);
                     double bu=bank.station*(oblique?.5:.6)+d*(oblique?.8:.7)+shift;
                     double bv=d*(oblique?.6:.8)-bank.station*(oblique?.5:.25);
                     bu+=(bank.station*.6-d+shift+(rill-.5)*14-bu)*blend;
                     bv+=(d*.24+bank.station*.12-bv)*blend;
-                    double branch=1-Math.abs(2*TerrainMath.noise(seed,"valley_rill_branch",bu,bv,oblique?19:13)-1);
+                    double branch=1-Math.abs(2*noise.noise(HydrologyNoise.Salt.VALLEY_RILL_BRANCH,bu,bv,oblique?19:13)-1);
                     double erosion=.65*Math.pow(TerrainMath.smooth(rill),2)+.35*Math.pow(TerrainMath.smooth(branch),2);
                     erosion+=head*(.25+.75*(.65*TerrainMath.smooth(rill)+.35*TerrainMath.smooth(branch))-erosion);
                     erosion+=(.75*Math.pow(TerrainMath.smooth(rill),2)+.25*Math.pow(TerrainMath.smooth(branch),2)-erosion)*blend;
@@ -371,7 +404,7 @@ final class HydrologyTerrain {
                 if(blend>0) {
                     double side=Math.max(0,d-head*(.21+1.54*TerrainMath.smooth((perpendicular+2)/4)));
                     double influence=gullyInfluence(bank.station,side,perpendicular);
-                    double variation=TerrainMath.noise(seed,"source_cross_surface",bank.station+side*.9,side*.35,7);
+                    double variation=noise.noise(HydrologyNoise.Salt.SOURCE_CROSS_SURFACE,bank.station+side*.9,side*.35,7);
                     double target=bank.grade+2+(side*.3+side*side*.004)*(1-.85*influence)
                             +2*(variation-.5)*TerrainMath.smooth(side/3);
                     result+=(profile+(target-profile)*gate-result)*blend;
@@ -379,7 +412,7 @@ final class HydrologyTerrain {
             }
         }
         if(crossing>0) {
-            double cross=1-Math.abs(2*TerrainMath.noise(seed,"source_cross_branch",
+            double cross=1-Math.abs(2*noise.noise(HydrologyNoise.Salt.SOURCE_CROSS_BRANCH,
                     bank.station*.8+d*.6+shift,d*.15-bank.station*.1,6)-1);
             double detail=.5*(1-TerrainMath.smooth((bank.station-80)/80));
             result-=crossing*Math.min(3-1.5*detail,Math.max(0,result-bank.grade-1.6)*(.4-.15*detail))*Math.pow(TerrainMath.smooth(cross),2);
@@ -417,64 +450,66 @@ final class HydrologyTerrain {
     private double bankHeight(double natural,double distance,double grade,double halfWidth,double station,boolean source,double bankSide) {
         double d=Math.max(0,distance-halfWidth);
         if(d>=270)return natural;
-        double reach=170+100*TerrainMath.noise(seed,"canyon_extent",station,bankSide*37,112);
+        var noise=samples.get().noise;
+        double reach=170+100*noise.noise(HydrologyNoise.Salt.CANYON_EXTENT,station,bankSide*37,112);
         if(d>=reach)return natural;
         double head=source?1-TerrainMath.smooth((station-256)/256):0;
         double level=Math.floor(grade+1e-7);
         level+=(grade-level)*TerrainMath.smooth((d-2)/10);
         double correction=head*(1-TerrainMath.smooth((station-80)/80));
-        double shift=correction>0?.75*TerrainMath.noise(seed,"source_bank_offset",station,d*.4,3):0;
+        double shift=correction>0?.75*noise.noise(HydrologyNoise.Salt.SOURCE_BANK_OFFSET,station,d*.4,3):0;
         double path=bankSide>0?1.75*head:.21*head+correction*shift;
         double side=Math.max(0,d-path);
-        double bend=TerrainMath.fbm(seed,"canyon_bend",station,d*.6,96)*28;
-        double joint=TerrainMath.fbm(seed,"canyon_joint",station+bend,d*.65,40);
-        double gully=1-Math.abs(2*TerrainMath.noise(seed,"canyon_gully",station+bend,d*.4,32)-1);
-        double slope=.28+.4*head+.13*TerrainMath.noise(seed,"canyon_slope",station,bankSide*51,72);
+        double bend=noise.fbm(HydrologyNoise.Salt.CANYON_BEND,station,d*.6,96)*28;
+        double joint=noise.fbm(HydrologyNoise.Salt.CANYON_JOINT,station+bend,d*.65,40);
+        double gully=1-Math.abs(2*noise.noise(HydrologyNoise.Salt.CANYON_GULLY,station+bend,d*.4,32)-1);
+        double slope=.28+.4*head+.13*noise.noise(HydrologyNoise.Salt.CANYON_SLOPE,station,bankSide*51,72);
         double rise=side*slope+Math.pow(side,1.45)*.022+head*2*TerrainMath.smooth(side/1.25);
         if(correction>0 && bankSide<0) {
-            double width=5+3*TerrainMath.noise(seed,"source_toe_width",station,d*.5,23);
-            double lift=.8+.6*TerrainMath.noise(seed,"source_toe_lift",station,d*.4,9);
+            double width=5+3*noise.noise(HydrologyNoise.Salt.SOURCE_TOE_WIDTH,station,d*.5,23);
+            double lift=.8+.6*noise.noise(HydrologyNoise.Salt.SOURCE_TOE_LIFT,station,d*.4,9);
             rise+=correction*lift*TerrainMath.smooth(d/1.5)*(1-TerrainMath.smooth(d/width));
         }
         if(head>0 && bankSide<0) {
-            double toe=TerrainMath.noise(seed,"source_bank_toe",station,d*.25,4);
+            double toe=noise.noise(HydrologyNoise.Salt.SOURCE_BANK_TOE,station,d*.25,4);
             rise+=(head-correction)*1.8*TerrainMath.smooth((toe-.25)/.5)*(1-TerrainMath.smooth(side/2));
         }
         if(head>0) {
-            double warp=(TerrainMath.noise(seed,"source_spur_bend",station,bankSide*43,37)-.5)*19;
-            double spur=TerrainMath.noise(seed,"source_spur",station+warp+side*.6,side*.45+bankSide*71,8);
+            double warp=(noise.noise(HydrologyNoise.Salt.SOURCE_SPUR_BEND,station,bankSide*43,37)-.5)*19;
+            double spur=noise.noise(HydrologyNoise.Salt.SOURCE_SPUR,station+warp+side*.6,side*.45+bankSide*71,8);
             rise+=Math.min(rise,8)*head*(spur*.7-.35)*TerrainMath.smooth(bankSide<0?side/1.25:(side-.75)/2.5);
         }
         double cut=level+1+rise+Math.min(11,rise*.28)*(joint-Math.pow(gully,3)*.8);
-        double small=1-Math.abs(2*TerrainMath.noise(seed,"canyon_small_gully",station+bend+joint*7,d*.55,12)-1);
+        double small=1-Math.abs(2*noise.noise(HydrologyNoise.Salt.CANYON_SMALL_GULLY,station+bend+joint*7,d*.55,12)-1);
         double detail=(1-head+head*TerrainMath.smooth((side-12)/20))*TerrainMath.smooth(side/4);
         cut-=detail*Math.min(7,rise*.35)*Math.pow(TerrainMath.smooth(small),3);
         if(head>0) {
-            double cross=station+bankSide*83+TerrainMath.noise(seed,"source_branch_bend",station,d,24)*12;
-            double tributary=1-Math.abs(2*TerrainMath.noise(seed,"source_branch",cross,d*.25,9)-1);
+            double cross=station+bankSide*83+noise.noise(HydrologyNoise.Salt.SOURCE_BRANCH_BEND,station,d,24)*12;
+            double tributary=1-Math.abs(2*noise.noise(HydrologyNoise.Salt.SOURCE_BRANCH,cross,d*.25,9)-1);
             double relief=TerrainMath.smooth((side-3)/6)*head;
-            cut-=relief*(2+3*TerrainMath.noise(seed,"source_branch_depth",station,bankSide*41,22))
+            cut-=relief*(2+3*noise.noise(HydrologyNoise.Salt.SOURCE_BRANCH_DEPTH,station,bankSide*41,22))
                     *Math.pow(TerrainMath.smooth(tributary),2);
         }
         double depth=Math.max(0,natural-cut);
         depth*=1-TerrainMath.smooth(side/8)*(1-TerrainMath.smooth(depth/12));
-        double start=24+30*TerrainMath.noise(seed,"canyon_transition",station,bankSide*71,88);
+        double start=24+30*noise.noise(HydrologyNoise.Salt.CANYON_TRANSITION,station,bankSide*71,88);
         return natural-depth*(1-TerrainMath.smooth((d-start)/(reach-start)));
     }
 
     private double lakeBankHeight(double natural,double distance,double station) {
-        double along=station+TerrainMath.fbm(seed,"lake_gully_bend",station,distance*.7,80)*32;
-        double extent=125+170*TerrainMath.noise(seed,"lake_bank_extent",along,distance*.2,112);
-        double width=.35+1.3*TerrainMath.noise(seed,"lake_bank_width",along,distance*.2,48);
+        var noise=samples.get().noise;
+        double along=station+noise.fbm(HydrologyNoise.Salt.LAKE_GULLY_BEND,station,distance*.7,80)*32;
+        double extent=125+170*noise.noise(HydrologyNoise.Salt.LAKE_BANK_EXTENT,along,distance*.2,112);
+        double width=.35+1.3*noise.noise(HydrologyNoise.Salt.LAKE_BANK_WIDTH,along,distance*.2,48);
         double rise=(distance*.22+Math.pow(distance,1.45)*.025)*width;
-        double branch=1-Math.abs(2*TerrainMath.noise(seed,"lake_bank_branch",along,distance*.45,28)-1);
-        double joint=TerrainMath.fbm(seed,"lake_bank_joint",along,distance*.75,40);
+        double branch=1-Math.abs(2*noise.noise(HydrologyNoise.Salt.LAKE_BANK_BRANCH,along,distance*.45,28)-1);
+        double joint=noise.fbm(HydrologyNoise.Salt.LAKE_BANK_JOINT,along,distance*.75,40);
         double cut=lakeY+1+rise+Math.min(14,rise*.35)*joint-Math.min(22,rise*.7)*Math.pow(TerrainMath.smooth(branch),3);
-        double small=1-Math.abs(2*TerrainMath.noise(seed,"lake_small_gully",along,distance*.35,12)-1);
+        double small=1-Math.abs(2*noise.noise(HydrologyNoise.Salt.LAKE_SMALL_GULLY,along,distance*.35,12)-1);
         cut-=Math.min(12,rise*.8)*Math.pow(TerrainMath.smooth(small),3)*(1-TerrainMath.smooth((distance-72)/64));
         double depth=Math.max(0,natural-cut);
         depth*=TerrainMath.smooth(depth/16);
-        double start=20+34*TerrainMath.noise(seed,"lake_bank_transition",along,distance*.15,96);
+        double start=20+34*noise.noise(HydrologyNoise.Salt.LAKE_BANK_TRANSITION,along,distance*.15,96);
         return natural-depth*(1-TerrainMath.smooth((distance-start)/(extent-start)));
     }
 
@@ -488,7 +523,7 @@ final class HydrologyTerrain {
         double natural=cache.natural(basis,x,z),center=cache.height(this,basis,x,z);
         if(natural-center<.5 || water(x,z)!=Integer.MIN_VALUE)return center;
         double head=0;
-        for(var segment:cells.getOrDefault(key(x>>6,z>>6),List.of())) {
+        for(var segment:cells.getOrDefault(key(x>>5,z>>5),List.of())) {
             if(!segment.source || segment.station>=160)continue;
             double dx=segment.dx,dz=segment.dz,length=segment.length2;
             double t=Math.clamp(((x-segment.ax)*dx+(z-segment.az)*dz)/length,0,1);
