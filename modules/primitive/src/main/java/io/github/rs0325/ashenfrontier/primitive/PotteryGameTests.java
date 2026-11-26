@@ -755,6 +755,13 @@ public class PotteryGameTests {
             var site = new Site(helper.getLevel(), hearth.getBlockPos());
             splitEnvironment(site, new long[]{start + 500}, new long[]{24000, 12000},
                     new double[]{293.15, 283.15}, new boolean[]{true, true});
+            var series = SERIES.get(site);
+            SERIES.put(site, request -> {
+                // 1回の予算を使い切る応答でも、次の呼出しで同じ冷却を継続する。
+                long until = System.nanoTime() + 1_000_000;
+                while (System.nanoTime() < until) Thread.onSpinWait();
+                series.accept(request);
+            });
             var events = new ArrayList<CombustionEvent>();
             EMISSIONS.put(site, events);
             var saved = hearth.saveWithFullMetadata(helper.getLevel().registryAccess());
@@ -767,9 +774,18 @@ public class PotteryGameTests {
             helper.getLevel().setBlockEntity(loaded);
             loaded.onLoad();
             loaded.work();
+            long firstThrough = loaded.saveWithoutMetadata(helper.getLevel().registryAccess()).getLong("last_tick");
+            check(firstThrough == start + 500 && events.size() == 1,
+                    "遅い応答では予算で止まり、先頭区間だけを確定");
+            LogUtils.getLogger().info("M3-135 slow cooling first_through={} target={} temperature_K={}",
+                    firstThrough, helper.getLevel().getGameTime(), loaded.heat().temperatureK());
+            finishCooling(loaded, helper.getLevel());
             double middle = 293.15 + (1000 - 293.15) * Math.exp(-0.25);
             double expected = 283.15 + (middle - 283.15) * Math.exp(-0.5);
             check(Math.abs(loaded.heat().temperatureK() - expected) < 1e-8, "日長/気温を変更前後で分割して未ロード冷却");
+            LogUtils.getLogger().info("M3-135 slow cooling complete_through={} temperature_K={} expected_K={} notices={}",
+                    loaded.saveWithoutMetadata(helper.getLevel().registryAccess()).getLong("last_tick"),
+                    loaded.heat().temperatureK(), expected, events.size());
             check(!events.isEmpty() && events.getFirst().sourceId().equals(saved.getUUID("source_id"))
                     && events.getFirst().sequence() == saved.getLong("notification_sequence") + 1,
                     "BlockEntity復元後も同じIDの次番号から通知する");
@@ -783,7 +799,7 @@ public class PotteryGameTests {
             check(loaded.heat().temperatureK() == expected, "未接続では冷却時刻も温度も進めない");
             splitEnvironment(site, new long[]{start + 500}, new long[]{24000, 12000},
                     new double[]{293.15, 283.15}, new boolean[]{true, true});
-            loaded.work();
+            finishCooling(loaded, helper.getLevel());
             check(Math.abs(loaded.heat().temperatureK() - (283.15 + (expected - 283.15) * Math.exp(-0.5))) < 1e-8,
                     "再接続で未評価区間から再開");
             helper.succeed();
