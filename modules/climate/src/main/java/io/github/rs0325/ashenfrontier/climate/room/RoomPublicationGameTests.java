@@ -38,7 +38,7 @@ public final class RoomPublicationGameTests {
         } catch (ReflectiveOperationException error) { throw new ExceptionInInitializerError(error); }
     }
     private static RoomAir fixture(GameTestHelper h) {
-        var tag = new CompoundTag(); tag.putInt("format", 8);
+        var tag = new CompoundTag(); tag.putInt("format", 9);
         var service = RoomAir.load(h.getLevel(), tag);
         service.outside((l, p, from, to) -> Optional.of(List.of(new RoomAir.Boundary(from, to, AIR))));
         return service;
@@ -71,9 +71,15 @@ public final class RoomPublicationGameTests {
         return registration;
     }
     static void finish(RoomAir service, Object registration, BlockPos pos) throws ReflectiveOperationException {
-        for (int n = 0; n < 2048; n++) if ((boolean) STEP.invoke(registration, 256)) {
-            map(service, "registrations").remove(pos.asLong()); map(service, "jobs").remove(pos.asLong());
-            service.setDirty(); return;
+        finish(service,registration,pos,256,()->{});
+    }
+    static int finish(RoomAir service, Object registration, BlockPos pos, int budget, Runnable interrupt) throws ReflectiveOperationException {
+        for (int n = 0; n < 2048; n++) {
+            interrupt.run();
+            if ((boolean) STEP.invoke(registration, budget)) {
+                map(service, "registrations").remove(pos.asLong()); map(service, "jobs").remove(pos.asLong());
+                service.setDirty(); return n+1;
+            }
         }
         throw new AssertionError("登録が完了しない");
     }
@@ -95,7 +101,7 @@ public final class RoomPublicationGameTests {
         var models = new ListTag(); var locations = new ListTag(); int[] ids = new int[64];
         for (int n = 0; n < 64; n++) {
             ids[n] = n; var row = new CompoundTag();
-            row.putInt("id", n+1000); row.putLong("from", start+n*2); row.putLong("until", start+n*2+1);
+            row.putBoolean("approximate",false); row.putInt("id", n+1000); row.putLong("from", start+n*2); row.putLong("until", start+n*2+1);
             row.putLongArray("cells", cells); row.putInt("walls", 1536); row.putInt("openings", 0);
             row.putDouble("height", 0); row.putDouble("temperature", 293.15); models.add(row);
         }
@@ -120,6 +126,12 @@ public final class RoomPublicationGameTests {
         h.assertTrue(expected.equals(restored.response(points[0], 40, 41, 200, input, boundary)), "途中保存の復元も同じ応答");
         past.discard(candidate); var cancelled = new CompoundTag(); past.save(cancelled);
         h.assertTrue(before.equals(cancelled), "取消で元の履歴を変更しない");
+        var overlapping = new RoomPast.Model(2001,201,points,24,1,1);
+        past.bind(points[0],overlapping);
+        past.observeOutdoor(2002,201,points[0],new long[]{points[0]},true);
+        h.assertTrue(!past.publish(overlapping),"同じ位置の屋外公開は未公開候補を無効化する");
+        past.discard(overlapping);
+        h.assertTrue(past.outdoor(points[0],201)!=null,"候補の取消で先行した屋外の公開を消さない");
         h.succeed();
     }
 

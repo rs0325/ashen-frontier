@@ -36,7 +36,7 @@ public final class RoomGameTests {
     private static final RoomPhysics.Air AIR = new RoomPhysics.Air(293.15, 101325, 0, .00042, .2095, 2);
 
     private static RoomAir fixture(GameTestHelper h) {
-        var tag = new CompoundTag(); tag.putInt("format", 8);
+        var tag = new CompoundTag(); tag.putInt("format", 9);
         var service = RoomAir.load(h.getLevel(), tag);
         service.outside((level, pos, from, to) -> Optional.of(List.of(new RoomAir.Boundary(from, to, AIR))));
         return service;
@@ -315,6 +315,7 @@ public final class RoomGameTests {
                     heat += row.amount().heatJ(); oxygen += row.amount().oxygenMol();
                 }
             h.assertTrue(Math.abs(heat - 3456) < 1e-5 && Math.abs(oxygen + .010368) < 1e-9, "集約後も熱と消費酸素の総量が一致");
+            RoomOutdoorGameTests.measureGrowth(h,service,saved);
             long loadStart = System.nanoTime();
             var restored = RoomAir.load(h.getLevel(), saved);
             restored.outside((l, p, a, b) -> Optional.of(List.of(new RoomAir.Boundary(a, b, AIR))));
@@ -365,7 +366,10 @@ public final class RoomGameTests {
             h.assertTrue(saved.getList("regions", 10).size() <= 65, "現在室と旧64世代以内");
             var restored = RoomAir.load(h.getLevel(), saved);
             restored.outside((l, p, a, b) -> Optional.of(List.of(new RoomAir.Boundary(a, b, AIR))));
-            h.assertTrue(restored.sample(pos, start).confirmed(), "破棄世代の照会を代表checkpoint構成で再構成");
+            var old = restored.sample(pos,start);
+            h.assertTrue(old.confirmed() && old.status()==RoomAir.Status.INDOOR && old.accuracy()==RoomAir.Accuracy.APPROXIMATE,
+                    "室内の代表checkpointも近似として再構成");
+            h.assertTrue(restored.sample(pos,start+100).accuracy()==RoomAir.Accuracy.OBSERVED,"直近の観測を近似と混同しない");
             h.succeed();
         } finally { clock.setGameTime(start); }
     }
