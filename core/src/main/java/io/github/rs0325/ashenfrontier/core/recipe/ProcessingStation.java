@@ -1,6 +1,9 @@
 package io.github.rs0325.ashenfrontier.core.recipe;
 
 import io.github.rs0325.ashenfrontier.core.ItemProperties;
+import io.github.rs0325.ashenfrontier.core.ItemPropertyMath;
+import io.github.rs0325.ashenfrontier.core.MaterialData;
+import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
 import io.github.rs0325.ashenfrontier.core.environment.EnvironmentSample;
 import io.github.rs0325.ashenfrontier.core.food.FoodProperties;
 import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
@@ -13,6 +16,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -22,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.stream.Collectors;
 
 /**
@@ -52,6 +57,7 @@ public final class ProcessingStation {
     }
 
     public WaterTank water() { return water; }
+    public int inputSlots() { return inputs.size(); }
     public ItemStack input(int slot) { return inputs.get(slot).copy(); }
     public ItemStack output(int slot) { return outputs.get(slot).copy(); }
     public ItemStack tool() { return tool.copy(); }
@@ -79,12 +85,18 @@ public final class ProcessingStation {
     /** 現在のRecipeManagerから開始する。条件不足ではfalseで入力/水を変更しない。 */
     public boolean start(ServerPlayer player, ResourceLocation id, ResourceLocation facility,
                          Optional<EnvironmentSample> environment) {
+        return start(player, id, facility, environment, OptionalDouble.empty());
+    }
+
+    /** 炉内温度を気候の気温と分けて照合する。未指定時は従来どおり気温を用いる。 */
+    public boolean start(ServerPlayer player, ResourceLocation id, ResourceLocation facility,
+                         Optional<EnvironmentSample> environment, OptionalDouble processTemperatureK) {
         WaterTank.requireServer(player);
         if (active()) return false;
         var holder = current(player, id);
         if (holder.isEmpty()) return false;
         CommonRecipe recipe = holder.get().value();
-        if (!available(recipe) || !conditions(player, recipe, facility, environment, Double.MAX_VALUE, Double.MAX_VALUE)) return false;
+        if (!available(recipe) || !conditions(player, recipe, facility, environment, Double.MAX_VALUE, Double.MAX_VALUE, processTemperatureK)) return false;
         recipeId = Optional.of(id);
         definition = Optional.of(signature(recipe, player.registryAccess()));
         expectedInputs = inputs.stream().map(ItemStack::copy).toList();
@@ -102,21 +114,59 @@ public final class ProcessingStation {
      */
     public boolean advance(ServerPlayer player, ResourceLocation facility,
                            Optional<EnvironmentSample> environment, double energyJoules) {
+        return advance(player, facility, environment, energyJoules, OptionalDouble.empty(), Double.MAX_VALUE);
+    }
+
+    /**
+     * 設備が確認した適合区間だけを進める。availableSecondsはレシピの時計（REAL/GAME）での上限秒。
+     * 実際の経過秒を超えて加算せず、燃料切れ等で短い区間の熱だけが供給された場合に用いる。
+     * 気候サンプルの気温は書き換えず、processTemperatureKで炉内温度を別に渡す。
+     */
+    public boolean advance(ServerPlayer player, ResourceLocation facility,
+                           Optional<EnvironmentSample> environment, double energyJoules,
+                           OptionalDouble processTemperatureK, double availableSeconds) {
+        return advanceUntil(player, facility, environment, energyJoules, processTemperatureK,
+                availableSeconds, player.serverLevel().getGameTime());
+    }
+
+    /**
+     * 区間列の1区間を評価する。startTickが設備の評価済み時刻に一致する場合だけ進める。
+     * 重複/欠落/未来の区間はfalseで時計も進捗も変えない。復元直後は現在時刻に合わせ、未ロードの作業を加算しない。
+     * 不適合時間を飛ばす場合も同じ区間を渡し、availableSecondsを0にする。
+     */
+    public boolean advanceInterval(ServerPlayer player, ResourceLocation facility, EnvironmentSample environment,
+                                   double energyJoules, OptionalDouble processTemperatureK, double availableSeconds) {
         WaterTank.requireServer(player);
+        if (clockPending) {
+            lastTick = player.serverLevel().getGameTime();
+            clockPending = false;
+        }
+        if (environment.startTick() == environment.endTick() && energyJoules != 0) {
+            throw new IllegalArgumentException("ゼロ長区間へ熱量は供給できません");
+        }
+        if (environment.startTick() != lastTick || environment.endTick() > player.serverLevel().getGameTime()) return false;
+        return advanceUntil(player, facility, Optional.of(environment), energyJoules, processTemperatureK,
+                availableSeconds, environment.endTick());
+    }
+
+    private boolean advanceUntil(ServerPlayer player, ResourceLocation facility, Optional<EnvironmentSample> environment,
+                                 double energyJoules, OptionalDouble processTemperatureK, double availableSeconds, long now) {
+        WaterTank.requireServer(player);
+        if (!Double.isFinite(availableSeconds) || availableSeconds < 0) throw new IllegalArgumentException("適合区間秒数が不正です");
         if (!Double.isFinite(energyJoules) || energyJoules < 0) throw new IllegalArgumentException("供給熱量が不正です");
         var recipe = unchanged(player);
         if (recipe.isEmpty()) return false;
-        long now = player.serverLevel().getGameTime();
         if (clockPending) {
             lastTick = now;
             clockPending = false;
         }
         long from = lastTick;
+        if (now < from) return false;
         lastTick = now;
-        if (now < from || !conditions(player, recipe.get(), facility, environment, Double.MAX_VALUE, Double.MAX_VALUE)
+        if (!conditions(player, recipe.get(), facility, environment, Double.MAX_VALUE, Double.MAX_VALUE, processTemperatureK)
                 || environment.filter(e -> e.startTick() > from || e.endTick() < now).isPresent()) return false;
         TimeBasis basis = RecipeTypeRegistry.timeBasis(recipe.get().typeId());
-        seconds += basis.seconds(now - from, environment.map(EnvironmentSample::ticksPerDay).orElse(GameTime.TICKS_PER_DAY));
+        seconds += Math.min(availableSeconds, basis.seconds(now - from, environment.map(EnvironmentSample::ticksPerDay).orElse(GameTime.TICKS_PER_DAY)));
         energy += energyJoules;
         return true;
     }
@@ -126,16 +176,33 @@ public final class ProcessingStation {
      * reloadで定義が変わった場合は加工だけ取り消し、未消費の入力/水をそのまま残す。
      */
     public boolean finish(ServerPlayer player, ResourceLocation facility, Optional<EnvironmentSample> environment) {
+        return finish(player, facility, environment, OptionalDouble.empty());
+    }
+
+    /** 製品温度は環境区間の末尾の温度として記録する。環境なしの即時加工では現在時刻を使う。 */
+    public boolean finish(ServerPlayer player, ResourceLocation facility, Optional<EnvironmentSample> environment,
+                          OptionalDouble processTemperatureK) {
         WaterTank.requireServer(player);
         var current = unchanged(player);
         if (current.isEmpty()) return false;
         CommonRecipe recipe = current.get();
         if (!sameInputs(inputs, expectedInputs) || !same(tool, expectedTool) || !available(recipe)
-                || !conditions(player, recipe, facility, environment, seconds, energy)) return false;
+                || !conditions(player, recipe, facility, environment, seconds, energy, processTemperatureK)) return false;
         var slots = recipe.ingredientSlots(recipeInput()).orElseThrow();
         var products = recipe.outputs().stream().map(ItemStack::copy).toList();
         for (var inheritance : recipe.processing().inheritance()) {
-            inherit(inputs.get(slots[inheritance.ingredient()]), products.get(inheritance.output()));
+            inheritProperties(inputs.get(slots[inheritance.ingredient()]), products.get(inheritance.output()));
+        }
+        double moistureKg = 0;
+        for (int ingredient = 0; ingredient < slots.length; ingredient++) {
+            var use = recipe.processing().input(ingredient);
+            if (!use.retained()) moistureKg += inputs.get(slots[ingredient]).getOrDefault(NatureProperties.MOISTURE.get(), 0.0) * use.count();
+        }
+        inheritMoisture(moistureKg, products);
+        if (processTemperatureK.isPresent()) {
+            long completedAt = environment.map(EnvironmentSample::endTick).orElse(player.serverLevel().getGameTime());
+            double kelvin = ItemPropertyMath.roundDown(processTemperatureK.getAsDouble(), ItemProperties.TEMPERATURE_STEP_K);
+            for (var product : products) product.set(ItemProperties.TEMPERATURE, new ItemProperties.Temperature(kelvin, completedAt));
         }
         var plannedOutputs = outputs.stream().map(ItemStack::copy).collect(Collectors.toCollection(ArrayList::new));
         for (ItemStack product : products) if (!insert(plannedOutputs, product.copy())) return false;
@@ -153,6 +220,16 @@ public final class ProcessingStation {
         tool = wornTool;
         cancel(player);
         return true;
+    }
+
+    /**
+     * 連続した条件を失った加工の時間・熱量だけを0へ戻す。レシピ・材料・槽・評価済み時刻は維持する。
+     * 所有設備のServerLevelを渡す。サーバースレッド外の呼出しはIllegalStateException。
+     */
+    public void resetProgress(ServerLevel level) {
+        if (!level.getServer().isSameThread()) throw new IllegalStateException("加工進捗の変更はサーバースレッド専用です");
+        seconds = 0;
+        energy = 0;
     }
 
     /** 加工だけ停止する。未消費の水とアイテムは槽/入力へ残り、世界へは戻さない。 */
@@ -200,11 +277,15 @@ public final class ProcessingStation {
     }
 
     private boolean conditions(ServerPlayer player, CommonRecipe recipe, ResourceLocation facility,
-                               Optional<EnvironmentSample> environment, double elapsed, double joules) {
+                               Optional<EnvironmentSample> environment, double elapsed, double joules,
+                               OptionalDouble processTemperatureK) {
+        if (processTemperatureK.isPresent() && (!Double.isFinite(processTemperatureK.getAsDouble()) || processTemperatureK.getAsDouble() <= 0)) {
+            throw new IllegalArgumentException("加工温度は有限の正のKが必要です");
+        }
         var conditions = recipe.conditions();
         if (environment.isEmpty() && (recipe.processing().requiresEnvironment() || conditions.temperatureK().isPresent()
                 || conditions.pressurePa().isPresent() || RecipeTypeRegistry.timeBasis(recipe.typeId()) == TimeBasis.GAME)) return false;
-        return conditions.matches(environment.map(EnvironmentSample::temperatureK).orElse(Double.NaN),
+        return conditions.matches(processTemperatureK.orElse(environment.map(EnvironmentSample::temperatureK).orElse(Double.NaN)),
                 environment.map(EnvironmentSample::pressurePa).orElse(Double.NaN), elapsed, joules,
                 conditions.catalyst().isEmpty() || !tool.isEmpty(),
                 conditions.facility().filter(facility::equals).isPresent(),
@@ -248,7 +329,27 @@ public final class ProcessingStation {
         return product.isEmpty();
     }
 
-    private static void inherit(ItemStack source, ItemStack target) {
+    /**
+     * 単純組立で原料1個分の属性・追加自由水を出力へ保持する。数量・摩耗は変えない。
+     * targetは空でない完成品。湿った原料の出力はMaterialDataの正の単位質量を必要とする。
+     * 加工バッチではfinishが全消費原料の自由水を全製品の質量へ配分する。
+     */
+    public static void inherit(ItemStack source, ItemStack target) {
+        inheritProperties(source, target);
+        inheritMoisture(source.getOrDefault(NatureProperties.MOISTURE.get(), 0.0), List.of(target));
+    }
+
+    private static void inheritMoisture(double moistureKg, List<ItemStack> products) {
+        if (moistureKg == 0) return;
+        double totalMass = products.stream()
+                .mapToDouble(p -> MaterialData.get(p.getItem()).orElseThrow().massKg() * p.getCount()).sum();
+        for (var product : products) {
+            double mass = MaterialData.get(product.getItem()).orElseThrow().massKg();
+            product.set(NatureProperties.MOISTURE, moistureKg * (mass / totalMass));
+        }
+    }
+
+    private static void inheritProperties(ItemStack source, ItemStack target) {
         copy(source, target, ItemProperties.ROT.get());
         copy(source, target, ItemProperties.CONTAMINATION.get());
         copy(source, target, ItemProperties.RADIOACTIVITY.get());

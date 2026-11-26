@@ -1,0 +1,41 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "type": "neoforge:components",
+      "items": "ashen_frontier:tool_handle",
+      "components": {
+        "ashen_frontier:moisture_kg": 0.0
+      },
+      "strict": false
+    },
+    {
+      "type": "neoforge:components",
+      "items": "ashen_frontier:dry_branch",
+      "components": {
+        "ashen_frontier:moisture_kg": 0.0
+      },
+      "strict": false
+    },
+    {
+      "type": "neoforge:components",
+      "items": "ashen_frontier:cordage",
+      "components": {
+        "ashen_frontier:moisture_kg": 0.0
+      },
+      "strict": false
+    },
+    {
+      "type": "neoforge:components",
+      "items": "ashen_frontier:pebble",
+      "components": {
+        "ashen_frontier:moisture_kg": 0.0
+      },
+      "strict": false
+    }
+  ],
+  "result": {
+    "id": "ashen_frontier:fire_drill"
+  }
+}

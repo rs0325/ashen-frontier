@@ -1,0 +1,78 @@
+{
+  "values": {
+    "ashen_frontier:chopper": {
+      "mass_kg": 0.7
+    },
+    "ashen_frontier:biface": {
+      "mass_kg": 0.5
+    },
+    "ashen_frontier:stone_flake": {
+      "mass_kg": 0.1
+    },
+    "ashen_frontier:cordage": {
+      "mass_kg": 0.1
+    },
+    "ashen_frontier:fiber_cloth": {
+      "mass_kg": 0.9
+    },
+    "ashen_frontier:tool_handle": {
+      "mass_kg": 0.8
+    },
+    "ashen_frontier:hafted_axe": {
+      "mass_kg": 1.4
+    },
+    "ashen_frontier:stone_adze": {
+      "mass_kg": 1.4
+    },
+    "ashen_frontier:digging_stick": {
+      "mass_kg": 0.8
+    },
+    "ashen_frontier:knapping_surface": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:fire_drill": {
+      "mass_kg": 2.9
+    },
+    "ashen_frontier:tinder": {
+      "mass_kg": 0.1
+    },
+    "ashen_frontier:green_pot": {
+      "mass_kg": 3,
+      "specific_heat_j_kg_k": 1000.0
+    },
+    "ashen_frontier:dried_pot": {
+      "mass_kg": 2.5,
+      "specific_heat_j_kg_k": 1000.0
+    },
+    "ashen_frontier:ceramic_pot": {
+      "mass_kg": 2.5,
+      "specific_heat_j_kg_k": 1000.0
+    },
+    "ashen_frontier:ceramic_lid": {
+      "mass_kg": 0.5,
+      "specific_heat_j_kg_k": 1000.0
+    },
+    "ashen_frontier:ceramic_tube": {
+      "mass_kg": 0.5,
+      "specific_heat_j_kg_k": 1000.0
+    },
+    "ashen_frontier:hearth": {
+      "mass_kg": 3
+    },
+    "ashen_frontier:drying_rack": {
+      "mass_kg": 2.2
+    },
+    "minecraft:clay_ball": {
+      "mass_kg": 1
+    },
+    "minecraft:sand": {
+      "mass_kg": 0.5
+    },
+    "minecraft:gravel": {
+      "mass_kg": 1
+    },
+    "ashen_frontier:water_filter": {
+      "mass_kg": 4
+    }
+  }
+}

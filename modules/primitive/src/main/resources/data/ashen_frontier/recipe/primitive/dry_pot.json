@@ -1,0 +1,42 @@
+{
+  "type": "ashen_frontier:drying",
+  "inputs": [
+    {
+      "type": "neoforge:components",
+      "items": "ashen_frontier:green_pot",
+      "components": {
+        "ashen_frontier:pottery_form": "pot"
+      },
+      "strict": false
+    }
+  ],
+  "outputs": [
+    {
+      "id": "ashen_frontier:dried_pot",
+      "count": 1,
+      "components": {
+        "ashen_frontier:pottery_form": "pot"
+      }
+    }
+  ],
+  "conditions": {
+    "facility": "ashen_frontier:drying_rack",
+    "duration_seconds": 86400
+  },
+  "processing": {
+    "inputs": [
+      {
+        "ingredient": 0,
+        "count": 1
+      }
+    ],
+    "loss_kg": 0.5,
+    "requires_environment": true,
+    "inheritance": [
+      {
+        "ingredient": 0,
+        "output": 0
+      }
+    ]
+  }
+}

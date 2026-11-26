@@ -1,0 +1,49 @@
+{
+  "type": "ashen_frontier:knapping",
+  "inputs": [
+    {
+      "item": "ashen_frontier:flint"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "ashen_frontier:chopper",
+      "count": 1
+    },
+    {
+      "id": "ashen_frontier:stone_flake",
+      "count": 3
+    }
+  ],
+  "conditions": {
+    "facility": "ashen_frontier:knapping_surface",
+    "duration_seconds": 10,
+    "catalyst": {
+      "id": "ashen_frontier:stone_hammer",
+      "components": {
+        "!ashen_frontier_core:wear": {},
+        "!ashen_frontier:quality_profile": {}
+      }
+    }
+  },
+  "processing": {
+    "inputs": [
+      {
+        "ingredient": 0,
+        "count": 1
+      }
+    ],
+    "loss_kg": 0,
+    "tool_wear": 1,
+    "inheritance": [
+      {
+        "ingredient": 0,
+        "output": 0
+      },
+      {
+        "ingredient": 0,
+        "output": 1
+      }
+    ]
+  }
+}

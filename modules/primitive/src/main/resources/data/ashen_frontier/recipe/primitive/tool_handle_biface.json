@@ -1,0 +1,41 @@
+{
+  "type": "ashen_frontier:fiberworking",
+  "inputs": [
+    {
+      "item": "ashen_frontier:dry_branch"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "ashen_frontier:tool_handle",
+      "count": 1
+    }
+  ],
+  "conditions": {
+    "facility": "ashen_frontier:knapping_surface",
+    "duration_seconds": 20,
+    "catalyst": {
+      "id": "ashen_frontier:biface",
+      "components": {
+        "!ashen_frontier_core:wear": {}
+      }
+    },
+    "research": "ashen_frontier:t0/stoneworking"
+  },
+  "processing": {
+    "inputs": [
+      {
+        "ingredient": 0,
+        "count": 1
+      }
+    ],
+    "loss_kg": 0.2,
+    "tool_wear": 1,
+    "inheritance": [
+      {
+        "ingredient": 0,
+        "output": 0
+      }
+    ]
+  }
+}

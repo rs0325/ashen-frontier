@@ -1,6 +1,8 @@
 package io.github.rs0325.ashenfrontier.core;
 
 import com.mojang.logging.LogUtils;
+import io.github.rs0325.ashenfrontier.core.water.WaterContainerData;
+import io.github.rs0325.ashenfrontier.core.water.WaterInteraction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.repository.Pack;
@@ -49,6 +51,8 @@ public final class AshenFrontierCore {
         RemovedLootModifiers.register(modEventBus);
         LifeSupportLootModifiers.register(modEventBus);
         MaterialData.register(modEventBus);
+        WaterContainerData.register(modEventBus);
+        WaterInteraction.register();
         FoodProperties.register(modEventBus);
         ItemProperties.register(modEventBus);
         ContaminationTools.register(modEventBus);

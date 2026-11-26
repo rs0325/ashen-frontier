@@ -1,18 +1,24 @@
 package io.github.rs0325.ashenfrontier.core.catalog;
 
+import com.mojang.serialization.Codec;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import net.minecraft.core.component.DataComponentType;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-/** 容器にも引き継ぐ品質プロファイルID。混合・浄化・精製による変更は担当ドメインが決める。 */
+/** 素材の品質と追加自由水。混合・浄化・精製による変更は担当ドメインが決める。 */
 public final class NatureProperties {
     private static final DeferredRegister.DataComponents COMPONENTS = DeferredRegister.createDataComponents(AshenFrontierCore.NAMESPACE);
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ResourceLocation>> QUALITY = COMPONENTS.registerComponentType(
             "quality_profile", builder -> builder.persistent(ResourceLocation.CODEC).networkSynchronized(ResourceLocation.STREAM_CODEC));
+
+    /** アイテム1個へ付着した追加自由水kg。加工時に消費個数と製品質量で配分する。 */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Double>> MOISTURE = COMPONENTS.registerComponentType(
+            "moisture_kg", builder -> builder.persistent(Codec.doubleRange(0, Double.MAX_VALUE)).networkSynchronized(ByteBufCodecs.DOUBLE));
 
     private NatureProperties() {}
 

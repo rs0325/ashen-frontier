@@ -1,0 +1,23 @@
+{
+  "name": "research.ashen_frontier.t0.pottery",
+  "description": "research.ashen_frontier.t0.pottery.description",
+  "prerequisites": [
+    "ashen_frontier:t0/fire"
+  ],
+  "conditions": [
+    {
+      "type": "ashen_frontier:primitive_event",
+      "id": "ceramic_pot"
+    }
+  ],
+  "unlocks": [
+    "ashen_frontier:primitive/form_lid_raw",
+    "ashen_frontier:primitive/form_tube_raw",
+    "ashen_frontier:primitive/fire_lid",
+    "ashen_frontier:primitive/fire_tube",
+    "ashen_frontier:primitive/water_filter",
+    "ashen_frontier:primitive/filter_water",
+    "ashen_frontier:primitive/boil_water",
+    "ashen_frontier:primitive/boil_water_high"
+  ]
+}

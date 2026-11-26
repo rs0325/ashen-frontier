@@ -1,0 +1,22 @@
+{
+  "type": "ashen_frontier:hafting",
+  "category": "equipment",
+  "pattern": [
+    " B",
+    "HC"
+  ],
+  "key": {
+    "B": {
+      "item": "ashen_frontier:biface"
+    },
+    "H": {
+      "item": "ashen_frontier:tool_handle"
+    },
+    "C": {
+      "item": "ashen_frontier:cordage"
+    }
+  },
+  "result": {
+    "id": "ashen_frontier:stone_adze"
+  }
+}

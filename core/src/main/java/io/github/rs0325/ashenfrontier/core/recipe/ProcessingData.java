@@ -54,7 +54,7 @@ public record ProcessingData(List<Input> inputs, Optional<Water> water, double l
         }
     }
 
-    /** 指定原料の腐敗・汚染・放射能・個別栄養を指定出力へ保持する。複数原料の混合モデルは導入しない。 */
+    /** 指定原料の属性を指定出力へ保持する。追加自由水はこの指定とは独立に全消費原料から全製品へ質量配分する。 */
     public record Inheritance(int ingredient, int output) {
         static final Codec<Inheritance> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.intRange(0, Integer.MAX_VALUE).fieldOf("ingredient").forGetter(Inheritance::ingredient),

@@ -12,6 +12,11 @@ public final class AshenFrontierPrimitive {
     public static final String MOD_ID = "ashen_frontier_primitive";
 
     public AshenFrontierPrimitive(IEventBus bus) {
+        PotteryProperties.register(bus);
+        PrimitiveContent.register(bus);
+        PotteryActions.register();
+        AssemblyRecipe.register(bus);
+        PrimitiveActions.register();
         for (String type : new String[]{"knapping", "fiberworking", "firing", "water_treatment", "cooking"}) {
             RecipeTypeRegistry.register(bus, AshenFrontierCore.id(type), TimeBasis.REAL);
         }

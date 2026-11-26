@@ -1,0 +1,44 @@
+{
+  "type": "ashen_frontier:water_treatment",
+  "inputs": [
+    {
+      "type": "neoforge:components",
+      "items": "ashen_frontier:ceramic_pot",
+      "components": {
+        "ashen_frontier:content_mass_kg": 0.0
+      },
+      "strict": false
+    }
+  ],
+  "outputs": [
+    {
+      "id": "ashen_frontier:ceramic_pot",
+      "count": 1,
+      "components": {
+        "ashen_frontier:content_mass_kg": 3.8,
+        "ashen_frontier:quality_profile": "ashen_frontier:clean_water"
+      }
+    }
+  ],
+  "conditions": {
+    "facility": "ashen_frontier:hearth",
+    "duration_seconds": 180,
+    "research": "ashen_frontier:t0/pottery",
+    "energy_joules": 451400
+  },
+  "processing": {
+    "water": {
+      "quality": "ashen_frontier:raw_water",
+      "mass_kg": 4
+    },
+    "loss_kg": 0.2,
+    "requires_environment": true,
+    "inheritance": [
+      {
+        "ingredient": 0,
+        "output": 0
+      }
+    ]
+  },
+  "instructions": "primitive.ashen_frontier.boil_recipe"
+}

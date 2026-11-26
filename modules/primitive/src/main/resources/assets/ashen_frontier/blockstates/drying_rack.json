@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "lit=false": {
+      "model": "ashen_frontier:block/drying_rack"
+    },
+    "lit=true": {
+      "model": "ashen_frontier:block/drying_rack_lit"
+    }
+  }
+}
