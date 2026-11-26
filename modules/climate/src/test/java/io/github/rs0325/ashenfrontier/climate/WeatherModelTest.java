@@ -134,6 +134,9 @@ class WeatherModelTest {
         assertTrue(whole>0);
         assertEquals(whole,SolarEnergy.between(40,43200,0,12345)+SolarEnergy.between(40,43200,12345,86400),1e-5);
     }
+    @Test void nightAcrossDayBoundaryNeverProducesNegativeEnergy() {
+        assertEquals(0,SolarEnergy.between(40,1639443.6,1637283.6,1641603.6));
+    }
     @Test void historyOneAndTenYearsBenchmark() {
         var history=new DayLengthHistory(0,24000);var settings=List.of(new WeatherSettings(0,600,511,true));
         for(int years:new int[]{1,10}) {

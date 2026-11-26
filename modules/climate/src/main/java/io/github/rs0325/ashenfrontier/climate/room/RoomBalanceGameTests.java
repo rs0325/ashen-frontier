@@ -340,7 +340,7 @@ public final class RoomBalanceGameTests {
             probe = h.absolutePos(new BlockPos(6,1,1)).atY(h.getLevel().getMaxBuildHeight()-4);
             originalTime = h.getLevel().getGameTime(); original = RoomAir.get(h.getLevel());
             player = FakePlayerFactory.get(h.getLevel(), new GameProfile(UUID.randomUUID(),"room-balance"));
-            var tag = new CompoundTag(); tag.putInt("format", 9);
+            var tag = new CompoundTag(); tag.putInt("format", 10); tag.put("retention",RoomRetentionCodec.save(new RoomRetention()));
             service = RoomAir.load(h.getLevel(), tag); h.getLevel().getDataStorage().set(RoomAir.ID, service); bind();
             StructureUtils.removeBarriers(h.getBounds(), h.getLevel());
             for (int x = 0;x <= 4;x++) for (int y = 0;y <= 4;y++) for (int z = 0;z <= 2;z++) h.setBlock(new BlockPos(x, y, z), Blocks.STONE);
@@ -457,7 +457,6 @@ public final class RoomBalanceGameTests {
                     var stack = new ItemStack(BuiltInRegistries.ITEM.get(HEARTH));
                     entity.saveToItem(stack, h.getLevel().registryAccess());
                     remove(1-source); place(1-source, stack, true);
-                    sequence(entity); sequence(actor(1-source));
                     var id = entity.saveWithoutMetadata(h.getLevel().registryAccess()).getUUID("source_id");
                     var copied = actor(1-source).saveWithoutMetadata(h.getLevel().registryAccess()).getUUID("source_id");
                     if (id.equals(copied)) throw new Violation("IDENTITY","有効な複製のIDが衝突");

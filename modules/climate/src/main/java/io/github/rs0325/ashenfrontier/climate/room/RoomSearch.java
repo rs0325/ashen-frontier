@@ -43,12 +43,14 @@ final class RoomSearch {
     }
 
     void work(ServerLevel level, int budget, int limit) {
-        int used = 0;
-        int polled = 0;
-        long started = System.nanoTime();
+        work(level,budget,limit,System.nanoTime()+WORK_NANOS);
+    }
+    void work(ServerLevel level,int budget,int limit,long deadline) {
+        int used=0;
+        int polled=0;
         while (status == Status.SCANNING && !queue.isEmpty() && used < budget) {
             // 重複セルの排出も時間予算に含め、少なくとも1件は進める。
-            if (polled > 0 && System.nanoTime() - started >= WORK_NANOS) break;
+            if (polled > 0 && System.nanoTime() >= deadline) break;
             polled++;
             var pos = queue.removeFirst();
             if (!visited.add(pos.asLong())) continue;

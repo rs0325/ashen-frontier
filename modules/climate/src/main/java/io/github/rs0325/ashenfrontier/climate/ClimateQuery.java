@@ -20,6 +20,13 @@ public final class ClimateQuery {
     public record Interval(long startTick, long endTick, long ticksPerDay,
                            FixedClimate.Baseline endState) {}
     private ClimateQuery() {}
+    /** 登録期限等へ既存の保存時計を渡す。未対応ワールドは空。 */
+    public static java.util.OptionalDouble elapsedGameSeconds(ServerLevel level,long tick) {
+        if(mapVersion(level).isEmpty())return java.util.OptionalDouble.empty();
+        if(tick<0||tick>level.getGameTime())throw new IllegalArgumentException("気候時計の要求時刻が不正です");
+        return java.util.OptionalDouble.of(ClimateClock.get(level).gameSecondsAt(tick));
+    }
+
 
     /** 固定マップoverworldだけに対応する。別次元・別生成器は空を返す。 */
     public static Optional<MapVersion> mapVersion(ServerLevel level) {

@@ -1,5 +1,9 @@
 package io.github.rs0325.ashenfrontier.climate.room;
 
+import io.github.rs0325.ashenfrontier.core.NbtLists;
+import io.github.rs0325.ashenfrontier.climate.ClimateQuery;
+import io.github.rs0325.ashenfrontier.core.environment.EnvironmentBudget;
+import io.github.rs0325.ashenfrontier.core.environment.EnvironmentRetention;
 import com.google.gson.Gson;
 import io.github.rs0325.ashenfrontier.core.environment.CombustionEvent;
 import io.github.rs0325.ashenfrontier.core.environment.CombustionSourceQuery;
@@ -68,12 +72,24 @@ public final class RoomAir extends SavedData {
         var b = new ModConfigSpec.Builder();
         ENABLED = b.comment("室内モデルを無効にしても換気済み/安全とは判定しない。").define("enabled", true);
         VISITS = b.defineInRange("visitsPerWork", 256, 1, 4096);
+        GENERAL_POSITIONS=b.defineInRange("generalPositions",4096,0,65536);
+        GENERAL_REFERENCES=b.defineInRange("generalReferences",16384,0,1048576);
+        GENERAL_BYTES=b.defineInRange("generalEncodedBytes",8388608L,0L,1073741824L);
+        GENERAL_DAYS=b.defineInRange("generalRetentionGameDays",1.0,0.0,3650.0);
         SPEC = b.build();
     }
     private record Fuel(double carbon, double hydrogen, double oxygen, double coKgPerKg, String source) {}
     private static final Map<String, Fuel> FUELS = loadFuels();
     private final ServerLevel level;
     private Outside outside;
+    private RoomRetention retention=new RoomRetention();
+    private Long forgetting;
+    private Outdoor forgettingOutdoor;
+    private java.util.Iterator<ChunkPos> forgettingChunks;
+    private static final ModConfigSpec.IntValue GENERAL_POSITIONS,GENERAL_REFERENCES;
+    private static final ModConfigSpec.LongValue GENERAL_BYTES;
+    private static final ModConfigSpec.DoubleValue GENERAL_DAYS;
+
     private final SourceReceipts receipts = new SourceReceipts();
     private final List<Region> regions = new ArrayList<>();
     private final Map<Long, List<Region>> byChunk = new HashMap<>();
@@ -87,6 +103,8 @@ public final class RoomAir extends SavedData {
     private final Map<Long, Set<Outdoor>> outdoorChunks = new HashMap<>();
     private final Map<Long, Registration> registrations = new HashMap<>();
     private final Map<Long, RoomSearch> jobs = new LinkedHashMap<>();
+    private record FailedSearch(long origin,Status status) {}
+    private FailedSearch lastFailedSearch;
     private final RoomHistory history = new RoomHistory();
     private RoomPast past = new RoomPast();
     private final RoomHistory inputs = new RoomHistory();
@@ -98,6 +116,12 @@ public final class RoomAir extends SavedData {
     private record Stored(RoomPhysics.Amount amount, RoomPhysics.Amount exchange, Origin origin) {}
     private final Map<Long, Stored> displaced = new HashMap<>();
     private RoomHistory pending = new RoomHistory();
+    private boolean flattening;
+    private long compactingAt=-1,compactingBoundary=-1;
+    private final Map<Long,Long> generalSearches=new HashMap<>();
+    private long preparingBytes;
+    private final java.util.ArrayDeque<RoomRetention.Key> releases=new java.util.ArrayDeque<>();
+    private RoomRetention.Key forgettingRelease;
     private final Map<Long, Long> changedChunks = new HashMap<>();
 
     private static final class Region {
@@ -118,6 +142,7 @@ public final class RoomAir extends SavedData {
         RoomPhysics.Amount adjustment = ZERO;
         RoomPhysics.Amount adjustmentExchange = ZERO;
         long observedFrom;
+        final Set<Long> retainedPositions = new HashSet<>();
         final Set<ChunkPos> chunks;
         final NavigableMap<Long, Snapshot> checkpoints = new TreeMap<>();
         final long[] portals;
@@ -144,6 +169,9 @@ public final class RoomAir extends SavedData {
     }
     public static void install(ModContainer container) {
         container.registerConfig(ModConfig.Type.SERVER, SPEC, "ashen_frontier_rooms-server.toml");
+        NeoForge.EVENT_BUS.addListener((EnvironmentRetention event)->{
+            get(event.level()).retention(event);
+        });
         NeoForge.EVENT_BUS.addListener((CombustionSourceQuery query) -> {
             query.provide(get(query.level()).receipts.lastSequence(query.sourceId()));
             for (var serverLevel : query.level().getServer().getAllLevels())
@@ -160,7 +188,11 @@ public final class RoomAir extends SavedData {
             if (e.getLevel() instanceof ServerLevel server) {
                 var storage = server.getDataStorage().get(new Factory<>(() -> new RoomAir(server),
                         (tag, registries) -> load(server, tag), null), ID);
-                if (storage != null && server.getGameTime() % 5 == 0) storage.work();
+                if (storage != null && server.getGameTime() % 5 == 0) {
+                    long start=System.nanoTime(),remaining=EnvironmentBudget.remaining(server);
+                    if(remaining>0)storage.work(start+Math.min(1_000_000,remaining));
+                    EnvironmentBudget.charge(server,System.nanoTime()-start);
+                }
             }
         });
     }
@@ -170,6 +202,132 @@ public final class RoomAir extends SavedData {
         if (outside != null) regions.forEach(r -> r.checkpoints.clear());
         outside = provider;
         if (provider != null) { refreshPast(); flushPending(); }
+    }
+
+    private double retentionTime() {
+        return ClimateQuery.elapsedGameSeconds(level,level.getGameTime()).orElse(0);
+    }
+
+    private void retention(EnvironmentRetention event) {
+        var key=new RoomRetention.Key(event.owner(),event.generation());
+        if(event.generation()<=0||event.from()<0||event.tick()<0||event.tick()>level.getGameTime()||event.sequence()<0)
+            throw new IllegalArgumentException("保持通知の時刻/番号が不正です");
+        if(retention.released(key)) {
+            event.provide(event.action()!=EnvironmentRetention.Action.RETAIN);return;
+        }
+        switch(event.action()) {
+            case RETAIN -> {
+                var prior=retention.leases.get(key);
+                if(prior!=null&&prior.releasing) { event.provide(false);return; }
+                if(!retention.leases.containsKey(key)&&event.from()<level.getGameTime()&&!past.known(event.position().asLong(),event.from()))
+                    throw new IllegalArgumentException("未観測の過去へ保持登録できません");
+                boolean created=!retention.leases.containsKey(key);
+                retention.retain(event.owner(),event.generation(),event.position().asLong(),event.from());
+                removeGeneralSearch(event.position().asLong());
+                if(created&&retention.leases.size()==16385)com.mojang.logging.LogUtils.getLogger().warn("C06の保持登録が注意目安16384件を超えました。受付は継続します");
+                if(created) {
+                    sample(event.position(),level.getGameTime());
+                    var region=latest(event.position().asLong());
+                    if(region!=null&&region.to==Long.MAX_VALUE)region.retainedPositions.add(event.position().asLong());
+                }
+                event.provide(true);
+            }
+            case COMMIT -> {
+                if(event.sequence()>receipts.lastSequence(event.owner()))
+                    throw new IllegalArgumentException("未受領の熱通知を保持確定できません");
+                retention.commit(key,event.tick(),event.sequence());event.provide(true);
+            }
+            case END -> { retention.end(key,event.tick(),event.sequence());event.provide(true); }
+            case RELEASE -> {
+                var lease=retention.require(key);
+                if(lease.until==Long.MAX_VALUE||lease.committed<lease.until)event.provide(false);
+                else if(retention.owners.get(lease.position)>1||retention.physical.contains(lease.position)
+                        ||past.physicalHistory(lease.position)||past.references(lease.position)==0)
+                    event.provide(releaseLease(key));
+                else {
+                    if(!lease.releasing) { lease.releasing=true;releases.addLast(key); }
+                    event.provide(false);
+                }
+            }
+        }
+        setDirty();
+    }
+
+    private boolean releaseLease(RoomRetention.Key key) {
+        long cell=retention.require(key).position;
+        boolean released=retention.release(key);
+        if(released&&!retention.protectedPosition(cell)&&past.references(cell)==0) {
+            jobs.remove(cell);
+            var registration=registrations.remove(cell);if(registration!=null)registration.discard();
+            removeGeneralSearch(cell);
+        }
+        return released;
+    }
+
+    public record RetentionUsage(int owners,int registeredPositions,int physicalPositions,
+                                 int generalPositions,long references,long encodedBytes) {}
+    /** 計数済みの保持量を返す。物理参照と消費側位置は重複しうる。 */
+    public RetentionUsage retentionUsage() {
+        return new RetentionUsage(retention.leases.size(),retention.owners.size(),retention.physical.size(),
+                retention.general.size()+generalSearches.size(),retention.references+generalSearches.size(),
+                retention.general.isEmpty()&&generalSearches.isEmpty()?0:retention.bytes+preparingBytes+56);
+    }
+
+    private void reserveGeneralSearch(long cell,long bytes) {
+        Long old=generalSearches.put(cell,bytes);preparingBytes+=bytes-(old==null?0:old);
+    }
+    private void removeGeneralSearch(long cell) {
+        Long old=generalSearches.remove(cell);if(old!=null)preparingBytes-=old;
+        if(jobs.isEmpty())changedChunks.clear();
+    }
+    private void generalLimits(int reserved,long bytes) {
+        retention.positions=Math.max(0,GENERAL_POSITIONS.get()-reserved);
+        retention.referenceLimit=Math.max(0,GENERAL_REFERENCES.get()-reserved);
+        retention.byteLimit=Math.max(0,GENERAL_BYTES.get()-bytes);
+        retention.lifetime=GENERAL_DAYS.get()*86400;
+    }
+
+    private void collectGeneral(long deadline) {
+        generalLimits(generalSearches.size(),preparingBytes);
+        var skipped=new HashSet<Long>();
+        for(int operations=0;operations<64&&System.nanoTime()<deadline;operations++) {
+            if(forgetting==null) {
+                Long cell=null;
+                if(!releases.isEmpty()) {
+                    var key=releases.removeFirst();var lease=retention.leases.get(key);
+                    if(lease==null)continue;
+                    if(retention.owners.getOrDefault(lease.position,0)>1||retention.physical.contains(lease.position)
+                            ||past.physicalHistory(lease.position)||past.references(lease.position)==0) {
+                        releaseLease(key);setDirty();continue;
+                    }
+                    if(!past.forgettable(lease.position)) { releases.addLast(key);skipped.add(lease.position); }
+                    else { cell=lease.position;forgettingRelease=key; }
+                }
+                if(cell==null) {
+                    cell=retention.candidate(retentionTime(),skipped);
+                    if(cell==null)return;
+                    if(retention.protectedPosition(cell)||past.physicalHistory(cell)) { retention.physical(cell);continue; }
+                    if(!past.forgettable(cell)) { skipped.add(cell);continue; }
+                }
+                forgetting=cell;forgettingOutdoor=outdoors.remove(cell);
+                if(forgettingOutdoor!=null)past.end(forgettingOutdoor.model,level.getGameTime());
+                forgettingChunks=forgettingOutdoor==null?java.util.Collections.emptyIterator():forgettingOutdoor.chunks.iterator();
+            }
+            if(forgettingChunks.hasNext()) {
+                var chunk=forgettingChunks.next();var records=outdoorChunks.get(chunk.toLong());
+                if(records!=null) { records.remove(forgettingOutdoor);if(records.isEmpty())outdoorChunks.remove(chunk.toLong()); }
+            } else {
+                boolean releasedOnly=forgettingRelease!=null&&retention.leases.containsKey(forgettingRelease)
+                        &&retention.owners.getOrDefault(forgetting,0)==1&&!retention.physical.contains(forgetting)
+                        &&!past.physicalHistory(forgetting);
+                if((!retention.protectedPosition(forgetting)||releasedOnly)&&past.forgettable(forgetting)) {
+                    past.forgetOutdoor(forgetting);
+                    if(retention.general.containsKey(forgetting))retention.forget(forgetting);
+                } else if(past.physicalHistory(forgetting))retention.physical(forgetting);
+                if(forgettingRelease!=null&&retention.leases.containsKey(forgettingRelease))releaseLease(forgettingRelease);
+                forgetting=null;forgettingOutdoor=null;forgettingChunks=null;forgettingRelease=null;setDirty();
+            }
+        }
     }
 
     private Accuracy accuracy(BlockPos pos,long tick) {
@@ -188,6 +346,7 @@ public final class RoomAir extends SavedData {
         for (var chunk : chunks) outdoorChunks.computeIfAbsent(chunk.toLong(),p -> new HashSet<>()).add(record);
     }
     private void closeOutdoor(Outdoor record,long tick) {
+        if(record.model.until!=Long.MAX_VALUE)return;
         past.end(record.model,tick);
         outdoors.remove(record.model.cells[0]);
         for (var chunk : record.chunks) {
@@ -196,9 +355,18 @@ public final class RoomAir extends SavedData {
         }
         setDirty();
     }
-    private void observeOutdoor(RoomSearch search,long tick) {
+    private boolean observeOutdoor(RoomSearch search,long tick) {
         long cell = search.origin.asLong();
         var model = past.outdoor(cell,tick);
+        if(past.physicalHistory(cell))retention.physical(cell);
+        if(!retention.protectedPosition(cell)&&forgetting!=null&&forgetting==cell)return false;
+        double seen=retentionTime();
+        int count=past.references(cell);
+        long size=past.outdoorBytes(cell);
+        if(model==null) { if(count<64) { count++;size+=142; } if(!RoomSearch.exposed(level,search.origin))size+=12+8L*search.visited.size(); }
+        long reserved=generalSearches.getOrDefault(cell,0L);
+        generalLimits(generalSearches.size()-(reserved>0?1:0),preparingBytes-reserved);
+        if(!retention.observe(cell,seen,Math.max(1,count),size))return false;
         if (model == null) {
             past.observeOutdoor(nextRegionId++,tick,cell,search.visited.toLongArray(),RoomSearch.exposed(level,search.origin));
             model = past.outdoor(cell,tick); setDirty();
@@ -206,7 +374,7 @@ public final class RoomAir extends SavedData {
         if (!outdoors.containsKey(cell)) watchOutdoor(model);
         var registration = registrations.remove(cell);
         if (registration != null) registration.discard();
-        jobs.remove(cell);
+        jobs.remove(cell);removeGeneralSearch(cell);return true;
     }
     private void changedOutdoor(BlockPos pos,long tick) {
         var records = outdoorChunks.get(chunk(pos.asLong()));
@@ -217,6 +385,7 @@ public final class RoomAir extends SavedData {
             if (above || Arrays.binarySearch(record.model.watch,pos.asLong())>=0) {
                 if (record.model.sky && level.hasChunkAt(origin) && RoomSearch.passable(level,origin) && RoomSearch.exposed(level,origin)) continue;
                 closeOutdoor(record,tick);
+                if(retention.owners.containsKey(origin.asLong()))sample(origin,tick);
             }
         }
     }
@@ -226,6 +395,10 @@ public final class RoomAir extends SavedData {
         flushPending();
         if (tick < 0 || tick > level.getGameTime()) throw new IllegalArgumentException("室内照会時刻が不正です");
         if (!ENABLED.get()) return unknown(Status.DISABLED);
+        Status previousFailure=null;
+        if(tick==level.getGameTime()&&lastFailedSearch!=null&&lastFailedSearch.origin==airPosition.asLong()) {
+            previousFailure=lastFailedSearch.status;lastFailedSearch=null;
+        }
         if (tick == level.getGameTime() && !level.hasChunkAt(airPosition)) return unknown(Status.UNLOADED);
         Region region = regions.stream().filter(r -> r.ready && r.from <= tick && tick < r.to && r.contains(airPosition.asLong()))
                 .max(Comparator.comparingInt(r -> r.id)).orElse(null);
@@ -247,13 +420,17 @@ public final class RoomAir extends SavedData {
             if (observed.chunks.stream().anyMatch(c -> !level.hasChunk(c.x,c.z))) return unknown(Status.UNLOADED);
             if (!RoomSearch.passable(level,airPosition) || observed.model.sky && !RoomSearch.exposed(level,airPosition))
                 closeOutdoor(observed,tick);
-            else return outdoorSample(airPosition,tick);
+            else {
+                retention.observe(airPosition.asLong(),retentionTime(),past.references(airPosition.asLong()),past.outdoorBytes(airPosition.asLong()));
+                setDirty();
+                return outdoorSample(airPosition,tick);
+            }
         }
         if (region == null && tick == level.getGameTime() && level.hasChunkAt(airPosition)
                 && RoomSearch.passable(level, airPosition) && RoomSearch.exposed(level, airPosition)) {
             var observation = new RoomSearch(airPosition,tick);
             observation.status = RoomSearch.Status.OUTDOOR; observation.visited.add(airPosition.asLong());
-            observeOutdoor(observation,tick);
+            if(!observeOutdoor(observation,tick))return unknown(Status.SCANNING);
             return outdoorSample(airPosition,tick);
         }
         if (region == null) {
@@ -261,11 +438,19 @@ public final class RoomAir extends SavedData {
             var priorJob = jobs.get(airPosition.asLong());
             if (priorJob != null && priorJob.status == RoomSearch.Status.OUTDOOR && tick == level.getGameTime()) {
                 if (!level.hasChunkAt(airPosition)) return unknown(Status.UNLOADED);
-                if (!RoomSearch.exposed(level, airPosition)) jobs.remove(airPosition.asLong());
+                if (!RoomSearch.exposed(level, airPosition)) { jobs.remove(airPosition.asLong());removeGeneralSearch(airPosition.asLong()); }
             }
-            if (priorJob != null && priorJob.status == RoomSearch.Status.UNLOADED
-                    && priorJob.visited.stream().allMatch(cell -> level.hasChunkAt(BlockPos.of(cell)))) jobs.remove(airPosition.asLong());
-            var search = jobs.computeIfAbsent(airPosition.asLong(), p -> new RoomSearch(airPosition, tick));
+            if(!jobs.containsKey(airPosition.asLong())&&!retention.protectedPosition(airPosition.asLong())
+                    &&(generalSearches.size()>=GENERAL_POSITIONS.get()-retention.general.size()
+                    ||retention.references+generalSearches.size()+1>GENERAL_REFERENCES.get()
+                    ||retention.bytes+preparingBytes+220+56>GENERAL_BYTES.get())) {
+                retention.requestCollection();return unknown(Status.SCANNING);
+            }
+            var search = jobs.computeIfAbsent(airPosition.asLong(), p -> {
+                if(!retention.protectedPosition(p))reserveGeneralSearch(p,220);
+                return new RoomSearch(airPosition,tick);
+            });
+            if(previousFailure!=null)return unknown(previousFailure);
             if (search.status == RoomSearch.Status.OUTDOOR) {
                 observeOutdoor(search,tick); return outdoorSample(airPosition,tick);
             }
@@ -289,12 +474,14 @@ public final class RoomAir extends SavedData {
     public List<Long> boundaries(BlockPos airPosition, long from, long to) {
         var points = new TreeSet<Long>(List.of(from, to));
         past.cuts(airPosition.asLong(),from,to,points);
-        for (var r : regions) if (r.contains(airPosition.asLong())) {
+        var localRooms=byChunk.getOrDefault(chunk(airPosition.asLong()),List.of()).stream()
+                .filter(r->r.contains(airPosition.asLong())).toList();
+        for (var r : localRooms) {
             if (r.from > from && r.from < to) points.add(r.from);
             if (r.to > from && r.to < to) points.add(r.to);
         }
         for (var p : history.entries()) if (p.from() < to && p.to() >= from
-                && regions.stream().anyMatch(r -> r.contains(airPosition.asLong()) && r.receives(p.position()) && r.replayFrom <= p.to() && p.from() < r.to)) {
+                && localRooms.stream().anyMatch(r -> r.receives(p.position()) && r.replayFrom <= p.to() && p.from() < r.to)) {
             if (p.from() > from) points.add(p.from()); if (p.to() < to) points.add(p.to());
         }
         var representative = latest(airPosition.asLong());
@@ -331,6 +518,8 @@ public final class RoomAir extends SavedData {
             throw new IllegalArgumentException("室内通知の区間/発生量が不正です");
         var result = receipts.accept(source, sequence, payload);
         if (result == SourceReceipts.Result.ACCEPTED) {
+            if(amount.heatJ()!=0||amount.coMol()!=0||amount.co2Mol()!=0||amount.oxygenMol()!=0)
+                retention.physical(pos.asLong());
             var owner = latest(pos.asLong());
             int context = from == to && to == level.getGameTime() && owner != null && owner.to == Long.MAX_VALUE ? owner.id : -1;
             inputs.add(new RoomHistory.Entry(pos.asLong(), from, to, amount, context));
@@ -383,22 +572,36 @@ public final class RoomAir extends SavedData {
             } else {
                 history.append(new RoomHistory.Entry(owner.anchor, a, b, part));
                 if (part.heatJ() != 0 || part.coMol() != 0 || part.co2Mol() != 0 || part.oxygenMol() != 0) for (var r : regions)
-                    if (r.receives(owner.anchor)) r.checkpoints.tailMap(a, true).clear();
+                    if (r.receives(owner.anchor)) r.checkpoints.tailMap(a, a==b).clear();
                 if (history.retainedCount() > RoomHistory.LIMIT) {
+                    if(compactingAt<0)compactingAt=level.getGameTime();
+                    compactingBoundary=history.compactionBoundary();
+                    var positions=new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+                    for(var entry:history.entries())positions.add(entry.position());
+                    var affectedRooms=regions.stream().filter(r->r.from<=retentionFrontier(r)
+                            &&positions.longStream().anyMatch(r::receives)).toList();
                     var observed = new HashMap<Integer, Snapshot>();
                     var memo = new HashMap<String, Snapshot>();
-                    for (var r : regions) if (r.from <= Math.min(level.getGameTime(), r.to))
-                        simulate(r, Math.min(level.getGameTime(), r.to), memo)
-                            .ifPresent(value -> observed.put(r.id, value));
+                    for (var r : affectedRooms)
+                        simulate(r,retentionFrontier(r),memo).ifPresent(value->observed.put(r.id,value));
+                    if(observed.size()!=affectedRooms.size())continue;
                     history.compactIfNeeded();
                     for (var r : regions) {
                         r.checkpoints.clear();
                         var value = observed.get(r.id);
-                        if (value != null) commit(r, Math.min(level.getGameTime(), r.to), value);
+                        if (value != null) commit(r,retentionFrontier(r),value);
                     }
+                    compactingAt=-1;compactingBoundary=-1;
                 }
             }
         }
+    }
+
+    private long retentionFrontier(Region room) {
+        long through=Math.min(compactingAt>=0?compactingAt:level.getGameTime(),room.to);
+        for(long cell:room.retainedPositions)through=Math.min(through,retention.minimum(cell));
+        long compacted=Math.min(compactingBoundary,Math.min(level.getGameTime(),room.to));
+        return Math.max(room.from,Math.max(through,compacted));
     }
 
     private boolean projectPast(BlockPos pos, long from, long to, RoomPhysics.Amount input) {
@@ -580,6 +783,8 @@ public final class RoomAir extends SavedData {
             if (i + 1 == times.size()) break;
             r.checkpoints.put(a, new Snapshot(state, exchanged));
             while (r.checkpoints.size() > 2) r.checkpoints.pollFirstEntry();
+            if(!flattening&&i>=128&&rows.get().size()>128
+                    &&EnvironmentBudget.remaining(level)!=Long.MAX_VALUE)return Optional.empty();
             source = source.plus(deltas.getOrDefault(a, RoomPhysics.Rate.ZERO));
             long b = times.get(i + 1);
             double seconds = (b - a) / 20.0;
@@ -653,12 +858,12 @@ public final class RoomAir extends SavedData {
             openings = job.portals.iterator();
             cells = new long[job.cells.size()]; portals = new long[job.portals.size()];
         }
-        boolean step(int budget) {
+        boolean step(int budget) { return step(budget,System.nanoTime()+1_000_000); }
+        boolean step(int budget,long deadline) {
             var active = latest(job.origin.asLong());
             if (active != null && active.to == Long.MAX_VALUE) { discard(); return true; }
-            long started = System.nanoTime();
             for (int used = 0; used < budget; used++) {
-                if (used > 0 && System.nanoTime()-started >= 1_000_000) return false;
+                if (used > 0 && System.nanoTime()>=deadline) return false;
                 if (validation.hasNext()) {
                     long cell = validation.nextLong();
                     if (changedChunks.getOrDefault(chunk(cell), 0L) > job.epoch) {
@@ -695,7 +900,9 @@ public final class RoomAir extends SavedData {
                         pastVersion = past.version(); pastCursor = 0; past.prepare(room.pastModel);
                     }
                     if (pastCursor < cells.length) {
-                        past.bind(cells[pastCursor++], room.pastModel);
+                        long cell=cells[pastCursor++];
+                        past.bind(cell, room.pastModel);
+                        if(retention.owners.containsKey(cell))room.retainedPositions.add(cell);
                     } else if (indexing.hasNext()) {
                         var c = indexing.next();
                         byChunk.computeIfAbsent(c.toLong(), key -> new ArrayList<>()).add(room);
@@ -771,32 +978,52 @@ public final class RoomAir extends SavedData {
     }
 
     /** 探索だけでなく、検証・親照合・配列化・索引登録も同じ作業予算で分割する。 */
-    public void work() {
-        if (!ENABLED.get() || jobs.isEmpty()) return;
-        var job = jobs.values().stream().filter(j -> j.status == RoomSearch.Status.SCANNING
+    public void work() { work(System.nanoTime()+1_000_000); }
+    private void work(long deadline) {
+        if (!ENABLED.get()) return;
+        collectGeneral(deadline);
+        if(jobs.isEmpty()||System.nanoTime()>=deadline)return;
+        var job = jobs.values().stream().filter(j -> j.status == RoomSearch.Status.SCANNING || j.status==RoomSearch.Status.OUTDOOR
                 || registrations.containsKey(j.origin.asLong())).findFirst().orElse(null);
         if (job == null) return;
+        if(job.status==RoomSearch.Status.OUTDOOR) { observeOutdoor(job,level.getGameTime());return; }
         if (job.status == RoomSearch.Status.SCANNING) {
-            job.work(level, VISITS.get(), 4096);
+            int visits=VISITS.get();
+            if(generalSearches.containsKey(job.origin.asLong())) {
+                long available=GENERAL_BYTES.get()-retention.bytes-preparingBytes-56;
+                if(available<8) { retention.requestCollection();return; }
+                visits=(int)Math.min(visits,available/8);
+            }
+            job.work(level,visits,4096,deadline);
+            if(generalSearches.containsKey(job.origin.asLong()))
+                reserveGeneralSearch(job.origin.asLong(),220+8L*job.visited.size());
             if (job.status == RoomSearch.Status.OUTDOOR) { observeOutdoor(job,level.getGameTime()); return; }
-            if (job.status != RoomSearch.Status.INDOOR) return;
+            if (job.status != RoomSearch.Status.INDOOR) {
+                if(job.status!=RoomSearch.Status.SCANNING) {
+                    lastFailedSearch=new FailedSearch(job.origin.asLong(),Status.valueOf(job.status.name()));
+                    jobs.remove(job.origin.asLong());
+                    removeGeneralSearch(job.origin.asLong());
+                }
+                return;
+            }
             var existing = latest(job.origin.asLong());
-            if (existing != null && existing.to == Long.MAX_VALUE) { jobs.remove(job.origin.asLong()); return; }
+            if (existing != null && existing.to == Long.MAX_VALUE) { jobs.remove(job.origin.asLong());removeGeneralSearch(job.origin.asLong()); return; }
             registrations.put(job.origin.asLong(), new Registration(job));
             return;
         }
         var registration = registrations.get(job.origin.asLong());
-        if (registration.step(VISITS.get())) {
-            registrations.remove(job.origin.asLong()); jobs.remove(job.origin.asLong());
+        if (registration.step(VISITS.get(),deadline)) {
+            registrations.remove(job.origin.asLong()); jobs.remove(job.origin.asLong());removeGeneralSearch(job.origin.asLong());
             if (jobs.isEmpty()) changedChunks.clear();
             setDirty();
         } else if (job.status == RoomSearch.Status.HISTORY_MISSING) {
-            registration.discard(); registrations.remove(job.origin.asLong()); jobs.remove(job.origin.asLong());
+            registration.discard(); registrations.remove(job.origin.asLong()); jobs.remove(job.origin.asLong());removeGeneralSearch(job.origin.asLong());
         }
     }
 
     /** 構成の変更時刻まで旧幾何を維持し、その時刻を新しい探索の境界にする。 */
     public void changed(BlockPos pos) {
+        lastFailedSearch=null;
         long tick = level.getGameTime();
         changedOutdoor(pos,tick);
         if (!jobs.isEmpty()) changedChunks.put(chunk(pos.asLong()), tick);
@@ -808,9 +1035,10 @@ public final class RoomAir extends SavedData {
             if (entry.getValue().visited.contains(pos.asLong()) || aboveOrigin) {
                 var registration = registrations.remove(entry.getKey());
                 if (registration != null) registration.discard();
-                iterator.remove();
+                removeGeneralSearch(entry.getKey());iterator.remove();
             }
         }
+        if(jobs.isEmpty())changedChunks.clear();
         var affected = new HashSet<Region>();
         var center = latest(pos.asLong()); if (center != null) affected.add(center);
         for (Direction d : Direction.values()) { var r = latest(pos.relative(d).asLong()); if (r != null) affected.add(r); }
@@ -826,7 +1054,12 @@ public final class RoomAir extends SavedData {
         }
         boolean wasAir = center != null && center.to == Long.MAX_VALUE;
         if (!changesSky && level.hasChunkAt(pos) && wasAir == RoomSearch.passable(level, pos)) return;
-        for (var r : affected) if (r.to == Long.MAX_VALUE) retire(r, tick);
+        var observe=new HashSet<Long>();
+        for (var r : affected) if (r.to == Long.MAX_VALUE) {
+            for(long cell:r.retainedPositions)if(retention.owners.containsKey(cell))observe.add(cell);
+            retire(r, tick);
+        }
+        for(long cell:observe)sample(BlockPos.of(cell),tick);
     }
 
     private void retire(Region r, long tick) {
@@ -839,10 +1072,19 @@ public final class RoomAir extends SavedData {
         setDirty();
     }
 
+    private boolean prepareFlattening(Region child) {
+        long beginning=child.replayFrom;
+        for(int parent:child.parents.keySet())beginning=Math.min(beginning,regionIds.get(parent).replayFrom);
+        return boundary(BlockPos.of(child.cells[0]),beginning,child.from).isPresent();
+    }
+
     private boolean canTrim(Region candidate) {
         if (regions.stream().filter(r -> r.to != Long.MAX_VALUE).count() <= 64) return true;
         var old = regions.stream().filter(r -> r.to != Long.MAX_VALUE).findFirst().orElseThrow();
         var memo = new HashMap<String, Snapshot>();
+        for(var child:regions)if(child!=old&&child.groups.containsKey(old.anchor))
+            if(!prepareFlattening(child))return false;
+        if(candidate.groups.containsKey(old.anchor)&&!prepareFlattening(candidate))return false;
         if (evaluate(old, old.to, memo).isEmpty()) return false;
         for (var child : regions) if (child != old && child.groups.containsKey(old.anchor)
                 && evaluate(child, child.from, memo).isEmpty()) return false;
@@ -850,6 +1092,8 @@ public final class RoomAir extends SavedData {
     }
 
     private void trimGenerations() {
+        flattening=true;
+        try {
         while (regions.stream().filter(r -> r.to != Long.MAX_VALUE).count() > 64) {
             var old = regions.stream().filter(r -> r.to != Long.MAX_VALUE).findFirst().orElseThrow();
             var memo = new HashMap<String, Snapshot>();
@@ -891,7 +1135,7 @@ public final class RoomAir extends SavedData {
             regions.remove(old); regionIds.remove(old.id);
             for (var r : regions) {
                 var value = observed.get(r.id);
-                if (value != null) commit(r, Math.min(level.getGameTime(), r.to), value);
+                if (value != null) commit(r,Math.min(level.getGameTime(),r.to),value);
                 while (r.checkpoints.size() > 2) r.checkpoints.pollFirstEntry();
             }
             for (var c : old.chunks) {
@@ -904,6 +1148,7 @@ public final class RoomAir extends SavedData {
                 if (entries != null) { entries.remove(old); if (entries.isEmpty()) skyColumns.remove(key); }
             }
         }
+        } finally { flattening=false; }
     }
 
     /** 収支検証用の現在の残留量。未配分セルを含め、同じ空間を一度だけ数える。 */
@@ -955,7 +1200,7 @@ public final class RoomAir extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
-        tag.putInt("format", 9);
+        tag.putInt("format", 10);tag.put("retention",RoomRetentionCodec.save(retention));
         past.save(tag);
         tag.putInt("next_region", nextRegionId);
         tag.putLong("checkpoint_tick", history.checkpoint());
@@ -1074,24 +1319,49 @@ public final class RoomAir extends SavedData {
         return entries;
     }
 
+    /** SavedDataが読取失敗を新規データへ置換する前に呼ぶ。試験保存の移行はしない。 */
+    private static void verifyLists(CompoundTag tag) {
+        for(String key:new String[]{"receipts","geometries","regions","displaced"})
+            NbtLists.read(tag,key,Tag.TAG_COMPOUND);
+        for(String key:new String[]{"cumulative","emissions","input_cumulative","input_recent","pending_cumulative","pending_recent"})
+            NbtLists.read(tag,key,Tag.TAG_LONG_ARRAY);
+        for(var item:NbtLists.read(tag,"regions",Tag.TAG_COMPOUND)) {
+            var row=(CompoundTag)item;
+            for(String key:new String[]{"parents","groups","checkpoints"})NbtLists.read(row,key,Tag.TAG_COMPOUND);
+        }
+    }
+
+    public static void verify(CompoundTag tag) {
+        if(tag.getInt("format")!=10||!tag.contains("retention",Tag.TAG_COMPOUND))
+            throw new IllegalStateException("C06 format=10以外の試験保存は保全し、再生成してください");
+        verifyLists(tag);
+        var past=RoomPast.load(tag);
+        RoomRetentionCodec.load(tag.getCompound("retention"),past::references,past::outdoorBytes);
+    }
+
     static RoomAir load(ServerLevel level, CompoundTag tag) {
-        if (tag.getInt("format") != 9) throw new IllegalStateException("室内の保存形式が不正です");
+        if (tag.getInt("format") != 10) throw new IllegalStateException("室内の保存形式が不正です");
+        verifyLists(tag);
         var data = new RoomAir(level);
+        if(!tag.contains("retention",net.minecraft.nbt.Tag.TAG_COMPOUND))throw new IllegalStateException("室内の保持登録がありません");
+
         data.past = RoomPast.load(tag);
+        data.retention=RoomRetentionCodec.load(tag.getCompound("retention"),data.past::references,data.past::outdoorBytes);
+        for(var lease:data.retention.leases.values())if(lease.releasing)data.releases.addLast(lease.key);
         data.nextRegionId = tag.getInt("next_region");
-        for (var item : tag.getList("receipts", Tag.TAG_COMPOUND)) {
+        for (var item : NbtLists.read(tag,"receipts",Tag.TAG_COMPOUND)) {
             var row = (CompoundTag) item;
             data.receipts.restore(row.getUUID("source"), new SourceReceipts.Last(row.getLong("sequence"), row.getString("payload")));
         }
-        var shapes = tag.getList("geometries", Tag.TAG_COMPOUND);
-        for (var item : tag.getList("regions", Tag.TAG_COMPOUND)) {
+        var shapes = NbtLists.read(tag,"geometries",Tag.TAG_COMPOUND);
+        for (var item : NbtLists.read(tag,"regions",Tag.TAG_COMPOUND)) {
             var row = (CompoundTag) item;
             int shape = row.getInt("geometry");
             if (shape < 0 || shape >= shapes.size()) throw new IllegalArgumentException("室幾何の参照が不正です");
             var g = shapes.getCompound(shape); var cells = g.getLongArray("cells");
             if (cells.length == 0 || cells.length > 4096) throw new IllegalArgumentException("室の容積が不正です");
             var parents = new HashMap<Integer, Integer>();
-            for (var parent : row.getList("parents", Tag.TAG_COMPOUND)) {
+            for (var parent : NbtLists.read(row,"parents",Tag.TAG_COMPOUND)) {
                 var entry = (CompoundTag) parent;
                 if (entry.getInt("id") < 0 || !data.regionIds.containsKey(entry.getInt("id")) || entry.getInt("count") <= 0)
                     throw new IllegalArgumentException("室履歴の親が不正です");
@@ -1104,7 +1374,7 @@ public final class RoomAir extends SavedData {
             if (model != null) r.pastModel = model;
             r.ready = true;
             r.replayFrom = row.getLong("replay_from");
-            for (var itemGroup : row.getList("groups", Tag.TAG_COMPOUND)) {
+            for (var itemGroup : NbtLists.read(row,"groups",Tag.TAG_COMPOUND)) {
                 var group = (CompoundTag) itemGroup;
                 r.groups.put(group.getLong("key"), group.getDouble("share"));
             }
@@ -1115,7 +1385,7 @@ public final class RoomAir extends SavedData {
             r.adjustmentExchange = loadAmount(row.getCompound("adjustment_exchange"));
             r.recovered = loadAmount(row.getCompound("recovered"));
             r.adjustment = loadAmount(row.getCompound("adjustment"));
-            for (var itemState : row.getList("checkpoints", Tag.TAG_COMPOUND)) {
+            for (var itemState : NbtLists.read(row,"checkpoints",Tag.TAG_COMPOUND)) {
                 var state = (CompoundTag) itemState;
                 r.checkpoints.put(state.getLong("tick"), new Snapshot(new RoomPhysics.State(state.getDouble("temperature"), state.getDouble("co"),
                         state.getDouble("co2"), state.getDouble("oxygen")), loadAmount(state.getCompound("exchange"))));
@@ -1130,18 +1400,22 @@ public final class RoomAir extends SavedData {
             for (var c : chunks) data.byChunk.computeIfAbsent(c.toLong(), key -> new ArrayList<>()).add(r);
             for (long cell : r.portals) data.skyColumns.computeIfAbsent(column(BlockPos.of(cell)), key -> new HashSet<>()).add(r);
         }
-        for (var item : tag.getList("displaced", Tag.TAG_COMPOUND)) {
+        for (var item : NbtLists.read(tag,"displaced",Tag.TAG_COMPOUND)) {
             var row = (CompoundTag) item; data.displaced.put(row.getLong("position"), new Stored(loadAmount(row), loadAmount(row.getCompound("exchange")),
                     loadOrigin(row.getCompound("origin"))));
         }
-        data.history.restore(tag.getLong("checkpoint_tick"), loadEntries(tag.getList("cumulative", Tag.TAG_LONG_ARRAY)),
-                loadEntries(tag.getList("emissions", Tag.TAG_LONG_ARRAY)));
-        data.inputs.restore(tag.getLong("input_checkpoint"), loadEntries(tag.getList("input_cumulative", Tag.TAG_LONG_ARRAY)),
-                loadEntries(tag.getList("input_recent", Tag.TAG_LONG_ARRAY)));
-        data.pending.restore(tag.getLong("pending_checkpoint"), loadEntries(tag.getList("pending_cumulative", Tag.TAG_LONG_ARRAY)),
-                loadEntries(tag.getList("pending_recent", Tag.TAG_LONG_ARRAY)));
+        data.history.restore(tag.getLong("checkpoint_tick"), loadEntries(NbtLists.read(tag,"cumulative",Tag.TAG_LONG_ARRAY)),
+                loadEntries(NbtLists.read(tag,"emissions",Tag.TAG_LONG_ARRAY)));
+        data.inputs.restore(tag.getLong("input_checkpoint"), loadEntries(NbtLists.read(tag,"input_cumulative",Tag.TAG_LONG_ARRAY)),
+                loadEntries(NbtLists.read(tag,"input_recent",Tag.TAG_LONG_ARRAY)));
+        data.pending.restore(tag.getLong("pending_checkpoint"), loadEntries(NbtLists.read(tag,"pending_cumulative",Tag.TAG_LONG_ARRAY)),
+                loadEntries(NbtLists.read(tag,"pending_recent",Tag.TAG_LONG_ARRAY)));
         data.history.restoreArchivedInput(new RoomPhysics.Amount(tag.getDouble("archived_heat"), tag.getDouble("archived_co"),
                 tag.getDouble("archived_co2"), tag.getDouble("archived_oxygen")));
+        for(long cell:data.retention.owners.keySet()) {
+            var region=data.latest(cell);
+            if(region!=null&&region.to==Long.MAX_VALUE)region.retainedPositions.add(cell);
+        }
         for (var model : data.past.outdoors(level.getGameTime())) data.watchOutdoor(model);
         return data;
     }

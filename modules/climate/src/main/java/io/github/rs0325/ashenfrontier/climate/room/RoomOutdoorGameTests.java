@@ -18,7 +18,7 @@ import java.util.Optional;
 public final class RoomOutdoorGameTests {
     private static final RoomPhysics.Air AIR = new RoomPhysics.Air(293.15, 101325, 0, .00042, .2095, 1.5);
     private static RoomAir fixture(GameTestHelper h) {
-        var tag = new CompoundTag(); tag.putInt("format",9);
+        var tag = new CompoundTag(); tag.putInt("format",10); tag.put("retention",RoomRetentionCodec.save(new RoomRetention()));
         return restore(h,tag);
     }
     private static RoomAir restore(GameTestHelper h, CompoundTag tag) {

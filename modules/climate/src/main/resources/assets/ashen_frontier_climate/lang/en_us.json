@@ -7,5 +7,6 @@
   "room_status.ashen_frontier_climate.blocked": "Not an air position: query above equipment or at eye level",
   "room_status.ashen_frontier_climate.missing_boundary": "Outside environment unavailable or missing history",
   "room_status.ashen_frontier_climate.history_missing": "Historical geometry unavailable: query the current time",
-  "room_status.ashen_frontier_climate.disabled": "Indoor model disabled by configuration"
+  "room_status.ashen_frontier_climate.disabled": "Indoor model disabled by configuration",
+  "environment.ashen_frontier_climate.replaying": "Reconstructing weather history. Waiting for the required interval."
 }

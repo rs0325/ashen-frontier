@@ -1,5 +1,6 @@
 package io.github.rs0325.ashenfrontier.climate;
 
+import io.github.rs0325.ashenfrontier.core.environment.EnvironmentBudget;
 import io.github.rs0325.ashenfrontier.climate.room.RoomAir;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.NbtAccounter;
@@ -48,6 +49,9 @@ public final class AshenFrontierClimate {
     public AshenFrontierClimate(IEventBus bus, ModContainer container) {
         container.registerConfig(ModConfig.Type.SERVER, SPEC);
         RoomAir.install(container);
+        EnvironmentProvider.install();
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,(ServerTickEvent.Pre event)->
+                EnvironmentBudget.beginTick(event.getServer()));
         bus.addListener(WeatherCellsPayload::register);
         bus.addListener(AshenFrontierClimate::reload);
         NeoForge.EVENT_BUS.addListener(AshenFrontierClimate::beforeStart);
@@ -64,6 +68,21 @@ public final class AshenFrontierClimate {
     private static void beforeStart(ServerAboutToStartEvent event) {
         PENDING_DAY_LENGTH.set(0);
         WeatherService.reset();
+        var root=event.getServer().getWorldPath(LevelResource.ROOT);
+        var roomPaths=new java.util.ArrayList<java.nio.file.Path>();
+        roomPaths.add(root.resolve("data/ashen_frontier_room_air.dat"));
+        roomPaths.add(root.resolve("DIM-1/data/ashen_frontier_room_air.dat"));
+        roomPaths.add(root.resolve("DIM1/data/ashen_frontier_room_air.dat"));
+        var dimensions=root.resolve("dimensions");
+        try {
+            if(Files.isDirectory(dimensions))try(var namespaces=Files.list(dimensions)) {
+                for(var namespace:namespaces.filter(Files::isDirectory).toList())try(var names=Files.list(namespace)) {
+                    names.filter(Files::isDirectory).forEach(p->roomPaths.add(p.resolve("data/ashen_frontier_room_air.dat")));
+                }
+            }
+            for(var roomPath:roomPaths)if(Files.exists(roomPath))
+                RoomAir.verify(NbtIo.readCompressed(roomPath,NbtAccounter.unlimitedHeap()).getCompound("data"));
+        } catch(IOException|RuntimeException e) { throw new IllegalStateException("保存済み室内履歴を読めません",e); }
         var stem = event.getServer().registryAccess().registryOrThrow(Registries.LEVEL_STEM).get(LevelStem.OVERWORLD);
         if (!(stem.generator() instanceof FixedMapChunkGenerator)) return;
         var path = event.getServer().getWorldPath(LevelResource.ROOT).resolve("data/" + ClimateClock.ID + ".dat");
