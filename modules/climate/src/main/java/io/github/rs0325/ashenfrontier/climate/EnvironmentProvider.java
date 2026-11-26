@@ -28,7 +28,7 @@ public final class EnvironmentProvider {
     private static final Map<ServerLevel,EnvironmentProvider> LEVELS=new IdentityHashMap<>();
     private final ServerLevel level;
     private RoomAir rooms;
-    private final Map<Range,Job> jobs=new LinkedHashMap<>(16,.75f,true);
+    private final LinkedHashMap<Range,Job> jobs=new LinkedHashMap<>(16,.75f,true);
     private final java.util.ArrayDeque<Job> activeJobs=new java.util.ArrayDeque<>();
     private final java.util.TreeMap<Long,WeatherFrame> checkpoints=new java.util.TreeMap<>();
     private long clockRevision=-1,settingsTick=-1;
@@ -169,14 +169,14 @@ public final class EnvironmentProvider {
         if(exact!=null&&exact.done&&exact.rows.containsKey(pos)) {
             exact.touched=level.getGameTime();return Optional.of(exact.rows.get(pos));
         }
-        for(var job:jobs.values()) {
+        for(var job:jobs.reversed().values()) {
             var values=job.rows.get(pos);
             if(values!=null&&!values.isEmpty()&&job.range.from<=from
                     &&(job.done&&job.range.to>=to||values.getLast().to>to)) {
                 job.touched=level.getGameTime();jobs.get(job.range);return Optional.of(values);
             }
         }
-        for(var pending:jobs.values())if(!pending.done&&pending.range.from<=from&&pending.range.to>=to) {
+        for(var pending:jobs.reversed().values())if(!pending.done&&pending.range.from<=from&&pending.range.to>=to) {
             if(!pending.rows.containsKey(pos))pending.add(pos);
             pending.touched=level.getGameTime();jobs.get(pending.range);return Optional.empty();
         }
@@ -211,6 +211,20 @@ public final class EnvironmentProvider {
             }
             return List.copyOf(result);
         });
+    }
+    /** C01の同じ確定区間に対する生理入力。酸素は分圧Pa。風は屋内0.1 m/sの承認済み近似。 */
+    public record Exposure(EnvironmentSample sample,double windMps,double oxygenPa,RoomAir.Accuracy accuracy) {}
+    /** 未計算/未観測なら空。最初の区間を確定した後、次の末尾から再照会する。 */
+    public Optional<Exposure> exposure(BlockPos station,long from,long to) {
+        var values=environment(station,from,to);
+        if(values.isEmpty())return Optional.empty();
+        var sample=values.get().getFirst();var pos=station.above();
+        var local=rooms.sample(pos,sample.startTick());
+        var rows=data(pos,from,to);
+        if(!local.confirmed()||local.state().isEmpty()||rows.isEmpty())return Optional.empty();
+        var row=rows.get().get(index(rows.get(),sample.startTick()));
+        return Optional.of(new Exposure(sample,local.status()==RoomAir.Status.INDOOR?.1:row.air.windMS(),
+                local.state().get().oxygen()*sample.pressurePa(),local.accuracy()));
     }
     private Optional<List<EnvironmentSample>> environment(BlockPos station,long from,long to) {
         var pos=station.above();

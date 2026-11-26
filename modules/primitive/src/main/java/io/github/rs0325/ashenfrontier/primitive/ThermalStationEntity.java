@@ -401,7 +401,7 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
                 if (frictionSeconds >= 30) {
                     tinder.shrink(1);
                     var wear = held.get(ItemProperties.WEAR);
-                    held.set(ItemProperties.WEAR, ItemProperties.Wear.of(wear.value() + 1, wear.maximum()));
+                    held.set(ItemProperties.WEAR, ItemProperties.Wear.of(wear.value() + io.github.rs0325.ashenfrontier.core.ToolWearEvent.committed(serverPlayer,1), wear.maximum()));
                     frictionSeconds = 0;
                     igniting = false;
                     setLit(true);

@@ -26,6 +26,11 @@ import java.util.Arrays;
 public final class EnvironmentPerformanceGameTests {
     @GameTest(template="empty",templateNamespace=AshenFrontierClimate.MOD_ID,batch="performance_135",timeoutTicks=400)
     public static void combinedWeatherRoomsAndFortyStations(GameTestHelper h) throws Exception {
+        runWorkload(h,(level,players)->{});h.succeed();
+    }
+    /** #124も同じ実加工/着火の仕事を実行する。計測/判定は既存のまま。 */
+    public static void runWorkload(GameTestHelper h,java.util.function.BiConsumer<net.minecraft.server.level.ServerLevel,
+            java.util.List<net.minecraft.server.level.ServerPlayer>> hook) throws Exception {
         try(var f=new EnvironmentConnectionGameTests.Fixture(h)) {
             var rooms=RoomAir.get(f.level);
             var actors=new ArrayList<net.minecraft.world.level.block.entity.BlockEntity>();
@@ -110,6 +115,7 @@ public final class EnvironmentPerformanceGameTests {
                     f.clock.setGameTime(tick);
                     EnvironmentBudget.beginTick(f.level.getServer());
                     long start=System.nanoTime();
+                    hook.accept(f.level,players);
                     NeoForge.EVENT_BUS.post(new ServerTickEvent.Pre(()->true,f.level.getServer()));
                     long afterPre=System.nanoTime();
                     WeatherService.work(f.level);
@@ -190,7 +196,6 @@ public final class EnvironmentPerformanceGameTests {
                 NeoForge.EVENT_BUS.unregister(emissions);players.forEach(net.minecraft.server.level.ServerPlayer::discard);
             }
         }
-        h.succeed();
     }
     private static long usedHeap() {
         var runtime=Runtime.getRuntime();return runtime.totalMemory()-runtime.freeMemory();

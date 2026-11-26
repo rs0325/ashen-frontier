@@ -30,7 +30,7 @@ public final class PrimitiveToolItem extends Item {
     public boolean mineBlock(ItemStack stack, Level level, BlockState state, BlockPos pos, LivingEntity miner) {
         if (!level.isClientSide && state.getDestroySpeed(level, pos) > 0) {
             var wear = stack.get(ItemProperties.WEAR);
-            stack.set(ItemProperties.WEAR, ItemProperties.Wear.of(wear.value() + 1, wear.maximum()));
+            stack.set(ItemProperties.WEAR, ItemProperties.Wear.of(wear.value() + io.github.rs0325.ashenfrontier.core.ToolWearEvent.committed(miner,1), wear.maximum()));
         }
         return true;
     }

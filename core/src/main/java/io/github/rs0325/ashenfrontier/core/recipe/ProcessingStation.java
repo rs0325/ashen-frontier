@@ -209,7 +209,7 @@ public final class ProcessingStation {
         ItemStack wornTool = tool.copy();
         if (recipe.processing().toolWear() > 0) {
             var wear = wornTool.get(ItemProperties.WEAR);
-            wornTool.set(ItemProperties.WEAR, ItemProperties.Wear.of(wear.value() + recipe.processing().toolWear(), wear.maximum()));
+            wornTool.set(ItemProperties.WEAR, ItemProperties.Wear.of(wear.value() + io.github.rs0325.ashenfrontier.core.ToolWearEvent.committed(player,recipe.processing().toolWear()), wear.maximum()));
         }
         for (int ingredient = 0; ingredient < slots.length; ingredient++) {
             var rule = recipe.processing().input(ingredient);
