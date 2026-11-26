@@ -142,7 +142,7 @@ def render(output, request, job, font_path, pale):
     draw.text((left, 30), request["map"] + "　" + job["title"] + ("　描き込み用" if pale else ""),
               font=font(46), fill=(32, 44, 48))
     revision = request["head"][:7] + ("（未コミット差分あり）" if request["dirty"] else "")
-    draw.text((left, 100), f"基準commit {revision} ｜ 北が上・Xは東、Zは南", font=font(25), fill=(64, 79, 87))
+    draw.text((left, 100), f"基準commit {revision} ｜ 署名 {request['manifest_sha256'][:12]} ｜ 北が上・Xは東、Zは南", font=font(25), fill=(64, 79, 87))
     image = background(samples, palette, step, pale).resize((mapw, maph), Image.Resampling.LANCZOS)
     canvas.paste(image, (left, top))
     grid = Image.new("RGBA", canvas.size)
@@ -195,6 +195,11 @@ def render(output, request, job, font_path, pale):
         for point, text in labels:
             if inside(*point):
                 label(xy(*point), text, 26, (100, 58, 39))
+        if request.get("stage")=="D2" and "hydrology" in request:
+            for node in request["hydrology"]["nodes"]:
+                if inside(*node["xz"]) and (x1-x0<5000 or node["kind"] in ("source","ocean_outlet")):
+                    label(xy(*node["xz"]), node["id"]+" Y"+str(node["water_y"]), 22, (20,83,128))
+            if inside(-7000,-10400):label(xy(-7000,-10400),"L10 Y145",24,(20,83,128))
         anchors = {row["id"]: row for row in csv.DictReader((output / "anchors.csv").open(encoding="utf-8"))}
         for i, facility in enumerate(facilities, 1):
             px, pz = xy(*facility["xz"])
@@ -232,6 +237,8 @@ def render(output, request, job, font_path, pale):
         sy = top + 380
         notes = ["川・湖：淡い青", "海岸線・陰影のみを薄く表示", "施設名・山脈軸は省略",
                  "範囲・格子は詳細版と同一", "河川は実際の水面の標本", "細い流れは標本間で省略され得る"]
+    if request.get("stage")=="D2":
+        notes = ["D2：固定の河道・湖・河床を実生成", "水面・落水は実際のColumnの標本", "雪・氷河・鉱床・施設は後続Issue", "峡谷は不規則な斜面と岩棚", "旧earth_001は既定のまま維持"]
     for text in notes:
         draw.text((side, sy), text, font=font(22), fill=(59, 77, 83))
         sy += 48
