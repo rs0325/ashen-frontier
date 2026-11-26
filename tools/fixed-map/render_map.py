@@ -125,6 +125,8 @@ def main(argv=None):
                "map": args.map, "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
                "layout": json.loads((TOOLS / "input/layout.json").read_text(encoding="utf-8")), "jobs": jobs}
     if args.map == "earth_002":
+        request["stage"] = json.loads(manifest.read_text(encoding="utf-8")).get("stage")
+        request["hydrology"] = json.loads((manifest.parent / "hydrology.json").read_text(encoding="utf-8"))
         request["layout"] = {"facilities": [], "mountains": []}
         request["landform"] = json.loads((manifest.parent / "landform.json").read_text(encoding="utf-8"))
     path = output / "request.json"

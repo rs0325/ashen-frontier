@@ -1,5 +1,6 @@
 package io.github.rs0325.ashenfrontier.climate.room;
 
+import io.github.rs0325.ashenfrontier.core.testing.ThreadCpuClock;
 import jdk.jfr.Recording;
 import jdk.jfr.Event;
 import jdk.jfr.Name;
@@ -10,7 +11,6 @@ import com.sun.jna.Platform;
 import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.ptr.LongByReference;
-import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -28,11 +28,12 @@ final class RoomSearchProfile implements AutoCloseable {
         long cycles;
     }
 
+    private final ThreadCpuClock clock = new ThreadCpuClock();
     private final Recording recording = new Recording();
     private final Function cycleQuery;
     private final WinNT.HANDLE thread;
     private final LongByReference cycleValue = new LongByReference();
-    private final java.lang.management.ThreadMXBean threads = ManagementFactory.getThreadMXBean();
+    private long cpuNanos;
     private final ArrayList<String> rows = new ArrayList<>();
     private final String name;
 
@@ -42,8 +43,6 @@ final class RoomSearchProfile implements AutoCloseable {
             cycleQuery = NativeLibrary.getInstance("kernel32").getFunction("QueryThreadCycleTime", Function.ALT_CONVENTION);
             thread = Kernel32.INSTANCE.GetCurrentThread();
         } else { cycleQuery = null; thread = null; }
-        if (!threads.isCurrentThreadCpuTimeSupported()) throw new IllegalStateException("スレッドCPU時間を取得できません");
-        threads.setThreadCpuTimeEnabled(true);
         for (var event : new String[]{"jdk.GCPhasePause", "jdk.SafepointBegin", "jdk.SafepointEnd",
                 "jdk.ThreadPark", "jdk.JavaMonitorWait", "jdk.JavaMonitorEnter"})
             recording.enable(event).withThreshold(Duration.ZERO).withoutStackTrace();
@@ -53,23 +52,26 @@ final class RoomSearchProfile implements AutoCloseable {
     }
 
     long measure(Runnable work) {
-        long cpu = threads.getCurrentThreadCpuTime();
         long cycles = cycles();
         var start = Instant.now();
         var event = new WorkEvent();
         event.begin();
-        long now = System.nanoTime();
+        long cpu = clock.now(), now = System.nanoTime();
         work.run();
         long wall = System.nanoTime() - now;
+        cpuNanos = clock.now() - cpu;
         event.end();
         var end = Instant.now();
         cycles = cycleQuery == null ? -1 : cycles() - cycles;
-        cpu = threads.getCurrentThreadCpuTime() - cpu;
-        event.wallNanos = wall; event.cpuNanos = cpu; event.cycles = cycles; event.commit();
+        event.wallNanos = wall; event.cpuNanos = cpuNanos; event.cycles = cycles; event.commit();
         rows.add(Thread.currentThread().threadId() + "," + start.getEpochSecond() + "," + start.getNano()
-                + "," + end.getEpochSecond() + "," + end.getNano() + "," + wall + "," + cpu + "," + cycles);
+                + "," + end.getEpochSecond() + "," + end.getNano() + "," + wall + "," + cpuNanos + "," + cycles);
         return wall;
     }
+
+    long cpuNanos() { return cpuNanos; }
+
+    boolean useCpu(long limitNanos) { return clock.useCpu("room_"+name,limitNanos); }
 
     private long cycles() {
         if (cycleQuery == null) return -1;

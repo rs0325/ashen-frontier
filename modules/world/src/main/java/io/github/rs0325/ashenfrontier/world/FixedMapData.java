@@ -50,6 +50,7 @@ public final class FixedMapData {
     private final JsonObject geology;
     private final long seed;
     private final TerrainBasis basis;
+    private final HydrologyTerrain hydrology;
     private final FixedMapData background;
 
     /** ハッシュ照合後にロードする。不正な画像・索引は版名を含む例外で停止する。 */
@@ -65,6 +66,7 @@ public final class FixedMapData {
             basis = new TerrainBasis(version);
             var previous = require(basis.background);
             background = previous;
+            hydrology = new HydrologyTerrain(version,previous);
             heights = previous.heights;
             categories = previous.categories;
             waterSurface = previous.waterSurface;
@@ -98,6 +100,7 @@ public final class FixedMapData {
             return;
         }
         basis = null;
+        hydrology = null;
         background = null;
         heights = new short[SIZE * SIZE];
         categories = new byte[5][SIZE * SIZE];
@@ -691,7 +694,10 @@ public final class FixedMapData {
         if (!MapCoordinates.contains(x, z)) return 0;
         double coast = coastDistance(x, z);
         if (coast < 0) return 8;
-        if (basis != null && basis.contains(x,z)) return 0;
+        if (hydrology != null && (basis.contains(x,z) || hydrology.water(x,z)!=Integer.MIN_VALUE)) {
+            int owner=hydrology.owner(x,z);
+            return (coast<48?1:0) | (owner==0?0:owner==9?4:2);
+        }
         var sample = river.sample(x, z);
         return (coast < 48 ? 1 : 0) | (sample.distance() < sample.width() ? 2 : 0) | (category(4, x, z) & 4);
     }
@@ -700,20 +706,28 @@ public final class FixedMapData {
     public int waterQuality(int x, int z) {
         if (!MapCoordinates.contains(x, z)) return 0;
         if (coastDistance(x, z) < 0) return 8;
-        if (basis != null && basis.contains(x,z)) return 0;
+        if (hydrology != null && (basis.contains(x,z) || hydrology.water(x,z)!=Integer.MIN_VALUE)) return hydrology.inventory(x,z)==0?0:4;
         var sample = river.sample(x, z);
         if (sample.distance() < sample.width()) return riverQuality(sample);
         return (category(4, x, z) & 4) != 0 ? category(1, x, z) : 0;
     }
 
-    /** 初期水体の版内ID。乾燥・範囲外0、海1、旧版の本流/支沢2、独立湖3。現況の残水量ではない。 */
+    /** 初期水体の版内ID。乾燥・範囲外0、海1、earth_001の本流/支沢2・独立湖3、earth_002の流域2～4。現況の残水量ではない。 */
     public int waterInventoryId(int x, int z) {
         if (!MapCoordinates.contains(x, z)) return 0;
         if (coastDistance(x, z) < 0) return 1;
-        if (basis != null && basis.contains(x,z)) return 0;
+        if (hydrology != null && (basis.contains(x,z) || hydrology.water(x,z)!=Integer.MIN_VALUE)) return hydrology.inventory(x,z);
         var sample = river.sample(x, z);
         if (sample.distance() < sample.width()) return 2;
         return (category(4, x, z) & 4) != 0 ? 3 : 0;
+    }
+
+    HydrologyTerrain hydrology() { return hydrology; }
+
+    /** earth_002の有限水体2～4の初期幾何体積block³。一列一所有者で数え、残量やkgではない。旧版・海は対象外。 */
+    public long initialWaterVolume(int inventoryId) {
+        if(hydrology==null)throw new IllegalStateException("初期容量はearth_002専用です");
+        return hydrology.initialVolume(inventoryId);
     }
 
     int riverQuality(RiverCourse.Sample sample) {
@@ -730,7 +744,7 @@ public final class FixedMapData {
     public int waterSurface(int x, int z) {
         if (!MapCoordinates.contains(x, z)) return Integer.MIN_VALUE;
         if (coastDistance(x, z) < 0) return 63;
-        if (basis != null && basis.contains(x,z)) return Integer.MIN_VALUE;
+        if (hydrology != null && (basis.contains(x,z) || hydrology.water(x,z)!=Integer.MIN_VALUE)) return hydrology.inventory(x,z)==0?Integer.MIN_VALUE:hydrology.water(x,z);
         var sample = river.sample(x, z);
         if (sample.distance() < sample.width()) return (int) Math.floor(sample.surface());
         return (category(4, x, z) & 4) != 0 ? waterSurface[at(x, z)] : Integer.MIN_VALUE;

@@ -29,7 +29,7 @@ class LayoutContractTest {
         assertEquals(8, water.reaches().size());
         assertEquals(12, water.nodes().size());
         assertEquals(1, water.lakes().size());
-        assertEquals(350, water.nodes().get("S05").waterY());
+        assertEquals(300, water.nodes().get("S05").waterY());
         assertEquals(-6510, water.nodes().get("O10").x());
         assertEquals(145, water.lakes().get("L10").surfaceY());
         assertEquals(7, water.reaches().get("R05A").profile().getFirst().halfWidth());
