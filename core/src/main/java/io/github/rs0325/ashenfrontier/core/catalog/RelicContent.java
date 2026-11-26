@@ -2,7 +2,7 @@ package io.github.rs0325.ashenfrontier.core.catalog;
 
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.food.FoodProperties;
+import io.github.rs0325.ashenfrontier.core.food.IntakeItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -56,8 +56,9 @@ public final class RelicContent {
                         properties.component(RelicProperties.CONTENT_MASS.get(), 1.0);
                         if (entry.id().equals("sealed_reagent_container")) properties.component(RelicProperties.REAGENT.get(), AshenFrontierCore.id(quality));
                     }
-                    if (entry.behavior().equals("food")) properties.food(new FoodProperties.Builder().nutrition(6).saturationModifier(.6f).build());
                     if (entry.behavior().equals("simple_tool")) properties.stacksTo(1);
+                    if (entry.behavior().equals("food") || entry.id().equals("sealed_water_container"))
+                        return new IntakeItem(properties, entry.id().equals("sealed_water_container"));
                     return entry.behavior().equals("document") ? new ArchiveDocumentItem(properties) : new Item(properties);
                 }));
             }

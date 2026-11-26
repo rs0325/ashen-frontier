@@ -30,12 +30,78 @@ import java.util.List;
 @GameTestHolder(AshenFrontierClimate.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class EnvironmentConnectionGameTests {
-    static final class Fixture implements AutoCloseable {
-        final ServerLevel level;
+    @GameTest(template="empty",templateNamespace=AshenFrontierClimate.MOD_ID,timeoutTicks=400)
+    public static void addingPositionKeepsCompletedOutdoorRows(GameTestHelper h) throws Exception {
+        try(var f=new Fixture(h)) {
+            f.ready(h,0,0);f.clock.setGameTime(1200);var first=f.ready(h,0,1200);
+            var other=f.pos.offset(1,0,0);
+            EnvironmentQuery.query(f.level,other,0,1200);
+            var retained=EnvironmentQuery.samples(f.level,f.pos,0,1200);
+            h.assertTrue(retained.isPresent()&&retained.get().equals(first),"新しい位置の再生待ちでも完成した列を保持し、日射・降水を二重加算しない");
+            java.util.Optional<List<EnvironmentSample>> result=java.util.Optional.empty();
+            for(int n=0;n<20000&&result.isEmpty();n++) {
+                result=EnvironmentQuery.samples(f.level,other,0,1200);
+                EnvironmentProvider.get(f.level).work(Long.MAX_VALUE,8192);RoomAir.get(f.level).work();
+            }
+            h.assertTrue(result.isPresent(),"新しい位置も有限の仕事で完成");
+            h.assertTrue(EnvironmentQuery.samples(f.level,f.pos,0,1200).orElseThrow().equals(first),"全位置の完成後も既存列が完全一致");
+            h.assertTrue(EnvironmentQuery.samples(f.level,other,0,1200).orElseThrow().equals(result.orElseThrow()),"新しい列に重複・欠落がない");
+            var provider=EnvironmentProvider.get(f.level);
+            var jobs=EnvironmentProvider.class.getDeclaredField("jobs");jobs.setAccessible(true);
+            var job=((java.util.Map<?,?>)jobs.get(provider)).values().iterator().next();
+            var field=job.getClass().getDeclaredField("cursor");field.setAccessible(true);var cursor=(WeatherReplay)field.get(job);
+            var row=EnvironmentProvider.class.getDeclaredMethod("row",WeatherReplay.class,BlockPos.class,long.class,long.class);row.setAccessible(true);
+            var observations=EnvironmentProvider.class.getDeclaredField("observations");observations.setAccessible(true);
+            long frame=cursor.frame.tick();row.invoke(provider,cursor,f.pos,frame,frame+20);
+            var reused=row.invoke(provider,cursor,f.pos,frame+1,frame+19);
+            ((java.util.Map<?,?>)observations.get(provider)).clear();
+            h.assertTrue(reused.equals(row.invoke(provider,cursor,f.pos,frame+1,frame+19)),"確定フレームの屋外値だけを共有し、区間とGAME時刻は要求ごとに保持");
+        }
+        h.succeed();
+    }
+    @GameTest(template="empty",templateNamespace=AshenFrontierClimate.MOD_ID,timeoutTicks=400)
+    public static void reusedInputsMatchColdQueriesAndSeeSameTickHeat(GameTestHelper h) throws Exception {
+        try(var f=new Fixture(h)) {
+            var rooms=RoomAir.get(f.level);var source=java.util.UUID.randomUUID();
+            var regions=RoomAir.class.getDeclaredField("regions");regions.setAccessible(true);
+            var reset=RoomAir.class.getDeclaredMethod("clearSamples");reset.setAccessible(true);
+            var outdoor=EnvironmentProvider.class.getDeclaredField("boundaries");outdoor.setAccessible(true);
+            var observations=EnvironmentProvider.class.getDeclaredField("observations");observations.setAccessible(true);
+            int compared=0,changed=0;
+            for(int n=0;n<64;n++) {
+                long tick=n*20L;f.clock.setGameTime(tick);f.ready(h,tick,tick);
+                if(n==16) { h.assertTrue(ClimateClock.get(f.level).changeDayLength(tick,12000),"同tickの日長変更");f.ready(h,tick,tick); }
+                if(n==32) {
+                    var roof=f.pos.offset(1,3,1);f.level.setBlock(roof,Blocks.STONE.defaultBlockState(),3);rooms.changed(roof);f.ready(h,tick,tick);
+                }
+                var before=rooms.sample(f.pos.above(),tick).state().orElseThrow();
+                rooms.respiration(source,n+1,f.pos.above(),tick,tick,.001,.002,1000);
+                var warm=EnvironmentProvider.get(f.level).exposure(f.pos,tick,tick).orElseThrow();
+                if(warm.sample().temperatureK()>before.temperatureK())changed++;
+                for(var region:(java.util.List<?>)regions.get(rooms)) {
+                    var version=region.getClass().getDeclaredField("inputRevision");version.setAccessible(true);version.setLong(region,-1);
+                }
+                reset.invoke(rooms);
+                ((java.util.Map<?,?>)outdoor.get(EnvironmentProvider.get(f.level))).clear();
+                ((java.util.Map<?,?>)observations.get(EnvironmentProvider.get(f.level))).clear();
+                var cold=EnvironmentProvider.get(f.level).exposure(f.pos,tick,tick).orElseThrow();
+                h.assertTrue(warm.equals(cold),"再利用と再構築で温度・空気・日射・降水・精度が完全一致");compared++;
+                for(long past:new long[]{tick/2,Math.max(0,tick-20),tick}) {
+                    var first=rooms.sample(f.pos.above(),past);rooms.sample(f.pos.above(),tick);
+                    var reused=rooms.sample(f.pos.above(),past);reset.invoke(rooms);
+                    h.assertTrue(first.equals(reused)&&reused.equals(rooms.sample(f.pos.above(),past)),"過去と現在を交互に照会しても再利用の有無で一致");
+                }
+            }
+            h.assertTrue(compared==64&&changed==64,"同tickの新しい熱を全64回反映");
+        }
+        h.succeed();
+    }
+    public static final class Fixture implements AutoCloseable {
+        public final ServerLevel level;
         final PrimaryLevelData clock;
         final LevelStorageSource.LevelStorageAccess access;
-        final BlockPos pos=new BlockPos(-8500,70,-8192);
-        Fixture(GameTestHelper h) throws Exception {
+        public final BlockPos pos=new BlockPos(-8500,70,-8192);
+        public Fixture(GameTestHelper h) throws Exception {
             var server=h.getLevel().getServer();
             var preset=ResourceKey.create(Registries.WORLD_PRESET,AshenFrontierCore.id("fixed_map"));
             var generator=(FixedMapChunkGenerator)h.getLevel().registryAccess().registryOrThrow(Registries.WORLD_PRESET)
@@ -53,7 +119,7 @@ public final class EnvironmentConnectionGameTests {
             for(int y=pos.getY()+2;y<level.getMaxBuildHeight();y++)
                 level.setBlock(new BlockPos(pos.getX()+1,y,pos.getZ()+1),Blocks.AIR.defaultBlockState(),3);
         }
-        List<EnvironmentSample> ready(GameTestHelper h,long from,long to) {
+        public List<EnvironmentSample> ready(GameTestHelper h,long from,long to) {
             for(int n=0;n<20000;n++) {
                 var result=EnvironmentQuery.query(level,pos,from,to);
                 if(result.values().isPresent())return result.values().get();

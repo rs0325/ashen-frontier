@@ -1,6 +1,11 @@
 package io.github.rs0325.ashenfrontier.survival;
 
 import io.github.rs0325.ashenfrontier.core.environment.EnvironmentBudget;
+import io.github.rs0325.ashenfrontier.core.SoilContamination;
+import io.github.rs0325.ashenfrontier.core.food.CultivationQuery;
+import io.github.rs0325.ashenfrontier.core.food.CultivationRules;
+import io.github.rs0325.ashenfrontier.core.food.FoodOrigin;
+import io.github.rs0325.ashenfrontier.core.food.IntakeRules;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageTypes;
@@ -33,6 +38,8 @@ public final class AshenFrontierSurvival {
     private static final DeferredRegister<AttachmentType<?>> ATTACHMENTS=DeferredRegister.create(net.neoforged.neoforge.registries.NeoForgeRegistries.ATTACHMENT_TYPES,MOD_ID);
     public static final Supplier<AttachmentType<PhysiologyData>> DATA=ATTACHMENTS.register("physiology",
             ()->AttachmentType.builder(PhysiologyData::new).serialize(new PhysiologyAttachment()).copyOnDeath().build());
+    static final Supplier<AttachmentType<IntakeLedger>> INTAKE=ATTACHMENTS.register("intake_receipts",
+            ()->AttachmentType.builder(IntakeLedger::new).serialize(new IntakeLedger.Serializer()).copyOnDeath().build());
     static final ModConfigSpec SPEC;
     static final ModConfigSpec.BooleanValue EFFECTS;
     static {
@@ -47,6 +54,30 @@ public final class AshenFrontierSurvival {
     public AshenFrontierSurvival(IEventBus bus,ModContainer container) {
         ATTACHMENTS.register(bus);container.registerConfig(ModConfig.Type.SERVER,SPEC);
         bus.addListener(PhysiologyUpdate::register);
+        NeoForge.EVENT_BUS.addListener(IntakeService::use);
+        NeoForge.EVENT_BUS.addListener(FoodStorageService::observe);
+        NeoForge.EVENT_BUS.addListener(FoodStorageService::history);
+        NeoForge.EVENT_BUS.addListener(FoodStorageService::player);
+        NeoForge.EVENT_BUS.addListener(FoodStorageService::join);
+        NeoForge.EVENT_BUS.addListener(FoodStorageService::leave);
+        NeoForge.EVENT_BUS.addListener(FoodStorageService::pickup);
+        NeoForge.EVENT_BUS.addListener(FoodStorageService::tick);
+        NeoForge.EVENT_BUS.addListener((CultivationQuery event)->{
+            if(event.waterOrigin!=null&&event.waterOrigin.state()==FoodOrigin.State.INVALIDATED) {
+                event.provide(IntakeRules.denied("origin_invalidated"));return;
+            }
+            if(event.waterOrigin!=null&&event.waterOrigin.profile().equals("ashen_frontier:concentrated_residue")) {
+                event.provide(IntakeRules.denied("water_quality"));return;
+            }
+            if(event.origin==null||event.stages==null) return;
+            if(event.waterOrigin==null)return;
+            var waterCheck=CultivationRules.waterOrigin(event.origin.mapVersion(),event.origin.manifest(),event.water,
+                    event.waterOrigin.mapVersion(),event.waterOrigin.manifest(),event.waterOrigin.profile(),event.waterOrigin.state().name());
+            if(!waterCheck.accepted()){event.provide(waterCheck);return;}
+            event.provide(CultivationRules.check(event.origin.profile(),event.origin.state().name(),
+                    event.species,event.substrate,event.water,event.stages.equals(SoilContamination.Stages.CLEAN),
+                    event.waterOrigin!=null&&event.waterOrigin.state()==FoodOrigin.State.CONFIRMED));
+        });
         NeoForge.EVENT_BUS.addListener((io.github.rs0325.ashenfrontier.core.ToolWearEvent event)->{
             if(EFFECTS.get()&&event.user() instanceof ServerPlayer player) {
                 var runtime=ACTIVE.get(player);if(runtime==null)return;
@@ -71,7 +102,7 @@ public final class AshenFrontierSurvival {
         NeoForge.EVENT_BUS.addListener(AshenFrontierSurvival::sleep);
         NeoForge.EVENT_BUS.addListener(AshenFrontierSurvival::continueSleep);
         NeoForge.EVENT_BUS.addListener(AshenFrontierSurvival::breakSpeed);
-        NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event)->{ACTIVE.clear();DUE.clear();SurvivalRuntime.INPUTS.clear();});
+        NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event)->{ACTIVE.clear();DUE.clear();SurvivalRuntime.INPUTS.clear();IntakeService.clear();FoodStorageService.clear();});
     }
     public static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath(MOD_ID,path); }
 
@@ -86,6 +117,8 @@ public final class AshenFrontierSurvival {
     }
     static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
         if(event.getEntity() instanceof ServerPlayer player) {
+            IntakeService.clear(player);
+            FoodStorageService.detach(player);
             var runtime=ACTIVE.remove(player);if(runtime!=null)runtime.logout();
         }
     }

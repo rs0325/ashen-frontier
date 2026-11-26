@@ -68,7 +68,7 @@ public final class SurvivalGameTests {
             runtime=AshenFrontierSurvival.ACTIVE.get(player);
         }
         void logout() { NeoForge.EVENT_BUS.post(new PlayerEvent.PlayerLoggedOutEvent(player)); }
-        public void close() { logout();player.discard(); }
+        public void close() { logout();FoodStorageData.get(player.serverLevel()).reconcile(player.getUUID(),java.util.Map.of());player.discard(); }
     }
     static void drain(GameTestHelper h,SurvivalRuntime runtime) {
         for(int n=0;n<10000;n++) {

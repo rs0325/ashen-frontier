@@ -29,7 +29,11 @@ public final class EnvironmentProvider {
     private final ServerLevel level;
     private RoomAir rooms;
     private final LinkedHashMap<Range,Job> jobs=new LinkedHashMap<>(16,.75f,true);
+    private final Map<BlockPos,List<Job>> byPosition=new HashMap<>();
+    private long access;
+    private long boundaryRevision;
     private final java.util.ArrayDeque<Job> activeJobs=new java.util.ArrayDeque<>();
+    private final java.util.Set<Job> pendingJobs=new java.util.LinkedHashSet<>();
     private final java.util.TreeMap<Long,WeatherFrame> checkpoints=new java.util.TreeMap<>();
     private long clockRevision=-1,settingsTick=-1;
     private String reason="environment.ashen_frontier_climate.replaying";
@@ -37,6 +41,11 @@ public final class EnvironmentProvider {
     private record OutdoorRow(long from,long to,long day,double gameFrom,double reference,
                               RoomPhysics.Air air,double humidity,double rain,double snow,
                               double transmission,boolean contaminated) {}
+    private record WeatherPoint(BlockPos position,long tick) {}
+    private final LinkedHashMap<WeatherPoint,OutdoorRow> observations=new LinkedHashMap<>(16,.75f,true);
+    private record BoundaryKey(BlockPos position,long from,long to) {}
+    private final Map<BoundaryKey,List<RoomAir.Boundary>> boundaries=new HashMap<>();
+    private long boundaryTick=-1,boundaryCacheRevision=-1;
 
     private final class Job {
         final Range range;
@@ -44,12 +53,15 @@ public final class EnvironmentProvider {
         WeatherReplay cursor;
         boolean terminal,done,queued;
         long touched;
+        long accessed;
         Job(Range range,BlockPos pos) { this.range=range;add(pos);queue(); }
         void queue() { if(!queued) { queued=true;activeJobs.addLast(this); } }
         void add(BlockPos pos) {
             if(done)queue();
             rows.put(pos.immutable(),new ArrayList<>());
-            rows.values().forEach(List::clear);terminal=false;done=false;
+            byPosition.computeIfAbsent(pos.immutable(),p->new ArrayList<>()).add(this);
+            terminal=false;done=false;
+            pendingJobs.add(this);
             cursor=WeatherQuery.begin(level,pos,range.from,range.to).orElseThrow();
             var cached=checkpoints.floorEntry(range.from);
             if(cached!=null&&cached.getKey()>cursor.frame.tick())
@@ -66,8 +78,14 @@ public final class EnvironmentProvider {
             while(checkpoints.size()>64)checkpoints.pollFirstEntry();
             var page=cursor.page();
             if(page.isPresent()) {
-                for(var interval:page.get().intervals())for(var target:rows.entrySet())
-                    target.getValue().add(row(cursor,target.getKey(),interval.startTick(),interval.endTick()));
+                for(var interval:page.get().intervals())for(var target:rows.entrySet()) {
+                    var values=target.getValue();
+                    if(!values.isEmpty()) {
+                        var last=values.getLast();
+                        if(last.to>interval.startTick()||last.from==interval.startTick()&&last.to==interval.endTick())continue;
+                    }
+                    values.add(row(cursor,target.getKey(),interval.startTick(),interval.endTick()));
+                }
                 cursor.acknowledge(page.get().intervals().getLast().endTick());
             }
             if(cursor.complete()) {
@@ -80,12 +98,13 @@ public final class EnvironmentProvider {
                             cursor.x,cursor.z,range.to,range.to);
                 }
             }
+            if(done)pendingJobs.remove(this);
         }
     }
     private EnvironmentProvider(ServerLevel level) {
         this.level=level;this.rooms=RoomAir.get(level);
         EnvironmentBudget.activate(level);
-        rooms.outside(this::outside);
+        rooms.outside(this::outside,this::boundaryVersion);
     }
     public static void install() {
         NeoForge.EVENT_BUS.addListener((EnvironmentQuery query)->{
@@ -113,7 +132,7 @@ public final class EnvironmentProvider {
         var existing=LEVELS.get(level);
         if(existing!=null) {
             var current=RoomAir.get(level);
-            if(existing.rooms!=current) { existing.rooms=current;current.outside(existing::outside); }
+            if(existing.rooms!=current) { existing.rooms=current;current.outside(existing::outside,existing::boundaryVersion); }
             return existing;
         }
         var provider=new EnvironmentProvider(level);LEVELS.put(level,provider);return provider;
@@ -127,6 +146,10 @@ public final class EnvironmentProvider {
             if(!job.done)continue;
             if(level.getGameTime()-job.touched<=200)break;
             oldest.remove();
+            boundaryRevision++;
+            for(var pos:job.rows.keySet()) {
+                var local=byPosition.get(pos);local.remove(job);if(local.isEmpty())byPosition.remove(pos);
+            }
         }
         while(calls*32<maximumCells&&!activeJobs.isEmpty()&&System.nanoTime()<deadline) {
             var job=activeJobs.removeFirst();job.queued=false;
@@ -138,8 +161,12 @@ public final class EnvironmentProvider {
     }
 
     private OutdoorRow row(WeatherReplay cursor,BlockPos pos,long from,long to) {
-        var weather=cursor.observationAt(pos.getX(),pos.getZ(),from,to);
-        var state=weather.state();
+        var key=new WeatherPoint(pos.immutable(),cursor.frame.tick());
+        var cached=observations.get(key);
+        if(cached!=null)return new OutdoorRow(from,to,cursor.time.dayLength(from),cursor.time.seconds(from),cached.reference,
+                cached.air,cached.humidity,cached.rain,cached.snow,cached.transmission,cached.contaminated);
+        var state=WeatherReplay.spatial(cursor.frame,pos.getX(),pos.getZ());
+        var settings=cursor.timeline.at(cursor.frame.tick());
         var base=FixedClimate.require(ClimateQuery.mapVersion(level).orElseThrow())
                 .sample(pos.getX(),pos.getY(),pos.getZ(),cursor.time.seconds(cursor.frame.tick()));
         double temperature=base.temperatureK()+state.temperatureAnomalyK();
@@ -147,15 +174,17 @@ public final class EnvironmentProvider {
         // 地球の背景組成。代表汚染を未定義の化学種からCOへ換算しない。
         var air=new RoomPhysics.Air(temperature,pressure,0.1e-6,420e-6,0.2095,Math.hypot(state.windXMps(),state.windZMps()));
         double reference=cursor.time.seconds(cursor.frame.tick())
-                +weather.settings().intervalTicks()*43200.0/cursor.time.dayLength(cursor.frame.tick());
-        return new OutdoorRow(from,to,cursor.time.dayLength(from),cursor.time.seconds(from),reference,air,
+                +settings.intervalTicks()*43200.0/cursor.time.dayLength(cursor.frame.tick());
+        var result=new OutdoorRow(from,to,cursor.time.dayLength(from),cursor.time.seconds(from),reference,air,
                 Math.clamp(state.vaporKgM2()/WeatherModel.capacity(temperature),0,1),
                 state.rainKgM2GameSecond(),state.snowKgM2GameSecond(),
                 (1-0.75*state.cloudFraction())*Math.exp(-3e6*state.dustKgM3()),state.contaminatedRain());
+        observations.put(key,result);
+        if(observations.size()>512)observations.remove(observations.keySet().iterator().next());
+        return result;
     }
-    private Optional<List<OutdoorRow>> data(BlockPos pos,long from,long to) { return data(pos,from,to,false); }
-    private Optional<List<OutdoorRow>> data(BlockPos pos,long from,long to,boolean prepareHorizon) {
-        if(from<0||to<from||to>level.getGameTime())throw new IllegalArgumentException("環境要求の時刻が不正です");
+    private long boundaryVersion() { refreshVersions();return boundaryRevision; }
+    private void refreshVersions() {
         long revision=ClimateClock.get(level).revision();
         long setting=WeatherStore.get(level).timeline.at(level.getGameTime()).tick();
         if(revision!=clockRevision||setting!=settingsTick) {
@@ -163,27 +192,41 @@ public final class EnvironmentProvider {
             if(revision!=clockRevision)boundary=Math.min(boundary,ClimateClock.get(level).history().changes().getLast().tick());
             if(setting!=settingsTick)boundary=Math.min(boundary,setting);
             checkpoints.tailMap(boundary,true).clear();
-            jobs.clear();activeJobs.clear();clockRevision=revision;settingsTick=setting;
+            jobs.clear();byPosition.clear();observations.clear();activeJobs.clear();pendingJobs.clear();boundaryRevision++;clockRevision=revision;settingsTick=setting;
         }
-        var exact=jobs.get(new Range(from-Math.floorMod(from,600),prepareHorizon?level.getGameTime():to));
-        if(exact!=null&&exact.done&&exact.rows.containsKey(pos)) {
-            exact.touched=level.getGameTime();return Optional.of(exact.rows.get(pos));
+    }
+    private Optional<List<OutdoorRow>> data(BlockPos pos,long from,long to) { return data(pos,from,to,false); }
+    private Optional<List<OutdoorRow>> data(BlockPos pos,long from,long to,boolean prepareHorizon) {
+        if(from<0||to<from||to>level.getGameTime())throw new IllegalArgumentException("環境要求の時刻が不正です");
+        refreshVersions();
+        var exact=access(new Range(from-Math.floorMod(from,600),prepareHorizon?level.getGameTime():to));
+        if(exact!=null) {
+            var values=exact.rows.get(pos);
+            if(covers(exact,values,from,to)) { exact.touched=level.getGameTime();return Optional.of(values); }
         }
-        for(var job:jobs.reversed().values()) {
+        Job selected=null;
+        var local=byPosition.getOrDefault(pos,List.of());
+        for(var job:local) {
             var values=job.rows.get(pos);
-            if(values!=null&&!values.isEmpty()&&job.range.from<=from
-                    &&(job.done&&job.range.to>=to||values.getLast().to>to)) {
-                job.touched=level.getGameTime();jobs.get(job.range);return Optional.of(values);
-            }
+            if(covers(job,values,from,to)
+                    &&(selected==null||selected.accessed<job.accessed))selected=job;
         }
-        for(var pending:jobs.reversed().values())if(!pending.done&&pending.range.from<=from&&pending.range.to>=to) {
+        if(selected!=null) {
+            selected.touched=level.getGameTime();access(selected.range);return Optional.of(selected.rows.get(pos));
+        }
+        Job pending=null;boolean localPending=false;
+        for(var candidate:pendingJobs) {
+            if(candidate.rows.containsKey(pos))localPending=true;
+            if(candidate.range.from<=from&&candidate.range.to>=to&&(pending==null||pending.accessed<candidate.accessed))pending=candidate;
+        }
+        if(pending!=null) {
             if(!pending.rows.containsKey(pos))pending.add(pos);
-            pending.touched=level.getGameTime();jobs.get(pending.range);return Optional.empty();
+            pending.touched=level.getGameTime();access(pending.range);return Optional.empty();
         }
-        if(jobs.values().stream().anyMatch(j->!j.done&&j.rows.containsKey(pos)))return Optional.empty();
+        if(localPending)return Optional.empty();
         var range=new Range(from-Math.floorMod(from,600),prepareHorizon?level.getGameTime():to);
-        var job=jobs.get(range);
-        if(job==null) { job=new Job(range,pos);jobs.put(range,job); }
+        var job=access(range);
+        if(job==null) { job=new Job(range,pos);jobs.put(range,job);job.accessed=++access; }
         else if(!job.rows.containsKey(pos))job.add(pos);
         job.touched=level.getGameTime();
         // 現行フレームで直ちに答えられる要求は1セル予算でも完成する。
@@ -195,12 +238,27 @@ public final class EnvironmentProvider {
         }
         return Optional.empty();
     }
+    private static boolean covers(Job job,List<OutdoorRow> values,long from,long to) {
+        return values!=null&&!values.isEmpty()&&job.range.from<=from
+                &&(job.done&&job.range.to>=to||values.getLast().to>to
+                ||from<to&&values.getLast().to==to||from==to&&values.getLast().from==to&&values.getLast().to==to);
+    }
+    private Job access(Range range) {
+        var job=jobs.get(range);if(job!=null)job.accessed=++access;return job;
+    }
     private static int index(List<OutdoorRow> rows,long tick) {
         int lo=0,hi=rows.size()-1;
         while(lo<hi) { int mid=(lo+hi+1)>>>1;if(rows.get(mid).from<=tick)lo=mid;else hi=mid-1; }
         return lo;
     }
     private Optional<List<RoomAir.Boundary>> outside(ServerLevel requested,BlockPos pos,long from,long to) {
+        refreshVersions();
+        if(boundaryTick!=level.getGameTime()||boundaryCacheRevision!=boundaryRevision) {
+            boundaries.clear();boundaryTick=level.getGameTime();boundaryCacheRevision=boundaryRevision;
+        }
+        var key=new BoundaryKey(pos.immutable(),from,to);
+        var cached=boundaries.get(key);
+        if(cached!=null)return Optional.of(cached);
         return data(pos,from,to,true).map(values->{
             var result=new ArrayList<RoomAir.Boundary>();
             if(from==to)result.add(new RoomAir.Boundary(from,to,values.get(index(values,from)).air));
@@ -209,7 +267,10 @@ public final class EnvironmentProvider {
                 long a=Math.max(from,row.from),b=Math.min(to,row.to);
                 if(b>a)result.add(new RoomAir.Boundary(a,b,row.air));
             }
-            return List.copyOf(result);
+            var answer=List.copyOf(result);
+            if(boundaries.size()>=512)boundaries.clear();
+            boundaries.put(key,answer);
+            return answer;
         });
     }
     /** C01の同じ確定区間に対する生理入力。酸素は分圧Pa。風は屋内0.1 m/sの承認済み近似。 */

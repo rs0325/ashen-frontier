@@ -11,7 +11,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 public final class SurvivalPerformanceGameTests {
     @GameTest(template="empty",templateNamespace=AshenFrontierSurvival.MOD_ID,timeoutTicks=400,batch="performance_124")
     public static void combinedRealWeatherRoomsStationsAndPhysiology(GameTestHelper h) throws Exception {
-        var people=new ArrayList<SurvivalGameTests.Person>();long[] due=new long[4];
+        var people=new ArrayList<SurvivalGameTests.Person>();long[] due=new long[4];int[] intakes={0};
         try {
             for(int pass=0;pass<2;pass++) {
                 java.util.Arrays.fill(due,0);
@@ -30,6 +30,11 @@ public final class SurvivalPerformanceGameTests {
                 int start=(int)(level.getGameTime()%4);
                 for(int k=0;k<4;k++) {
                     int n=(start+k)%4;var person=people.get(n);
+                    if(level.getGameTime()%200==100&&person.runtime.data.body.energy<20e6) {
+                        person.player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,IntakeGameTests.food("canned_food",1,level.getGameTime()));
+                        if(IntakeGameTests.action(person,io.github.rs0325.ashenfrontier.core.food.FoodUse.Action.START)
+                                &&IntakeGameTests.action(person,io.github.rs0325.ashenfrontier.core.food.FoodUse.Action.FINISH))intakes[0]++;
+                    }
                     if(level.getGameTime()>=due[n]) {
                         person.runtime.work(deadline,8);due[n]=level.getGameTime()+(person.runtime.pending?1:20);
                     }
@@ -39,6 +44,8 @@ public final class SurvivalPerformanceGameTests {
                 for(var person:people)h.assertTrue(person.runtime.data.cursor>=1900,"実環境で生理も継続前進する cursor="+person.runtime.data.cursor);
                 people.forEach(SurvivalGameTests.Person::close);people.clear();
             }
+            h.assertTrue(intakes[0]>=4,"統合負荷に実際に確定した摂取が含まれる count="+intakes[0]);
+            com.mojang.logging.LogUtils.getLogger().info("M3-125 integrated actual_intakes={}",intakes[0]);
         } finally { people.forEach(SurvivalGameTests.Person::close); }
         h.succeed();
     }

@@ -5,6 +5,31 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RoomHistoryTest {
+    @Test @SuppressWarnings("unchecked") void cachedListsMatchCanonicalOrderAcrossAllMutations() throws Exception {
+        var tailField=RoomHistory.class.getDeclaredField("recent");tailField.setAccessible(true);
+        var totalsField=RoomHistory.class.getDeclaredField("cumulative");totalsField.setAccessible(true);
+        var random=new java.util.Random(12520261127L);var history=new RoomHistory();int restores=0,transfers=0,retro=0,compactions=0;
+        for(int n=0;n<6144;n++) {
+            long previous=history.checkpoint();
+            if(n>2048&&n%37==0) {
+                if(history.transfer(random.nextInt(16),Map.of(20L,.4,21L,.6)))transfers++;
+            } else if(n>2048&&n%53==0) {
+                var copy=new RoomHistory();copy.restore(history.checkpoint(),history.cumulative(),history.recent());history=copy;restores++;
+            } else {
+                long from=n>2048&&random.nextBoolean()?0:n*20L;
+                if(from<history.checkpoint())retro++;
+                history.add(new RoomHistory.Entry(random.nextInt(16),from,n*20L+20,new RoomPhysics.Amount(n,.01,.02,-.03)));
+            }
+            if(history.checkpoint()>previous)compactions++;
+            var expected=new java.util.ArrayList<>(((Map<?,RoomHistory.Entry>)totalsField.get(history)).values());
+            var totals=java.util.List.copyOf(expected);expected.addAll((java.util.List<RoomHistory.Entry>)tailField.get(history));
+            assertEquals(expected,history.entries());assertEquals(totals,history.cumulative());
+            int group=n%5;
+            assertEquals(expected.stream().filter(e->e.position()%5==group).toList(),history.matching(position->position%5==group));
+            assertSame(history.entries(),history.entries());assertSame(history.cumulative(),history.cumulative());
+        }
+        assertTrue(restores>=70&&transfers>=70&&retro>=1000&&compactions>=2);
+    }
     @Test void boundedTailAndCumulativePreserveAllFourSignedQuantities() {
         var history = new RoomHistory();
         var amount = new RoomPhysics.Amount(1234, .001, .002, -.003);

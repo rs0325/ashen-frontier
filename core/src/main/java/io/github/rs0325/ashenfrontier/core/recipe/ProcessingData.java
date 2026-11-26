@@ -76,7 +76,7 @@ public record ProcessingData(List<Input> inputs, Optional<Water> water, double l
         for (Inheritance entry : inheritance) {
             if (entry.ingredient() < 0 || entry.ingredient() >= inputCount || entry.output() < 0
                     || entry.output() >= outputCount || !indices.add(entry.output())) {
-                throw new IllegalArgumentException("属性継承の参照が不正または同一出力に重複しています");
+                throw new IllegalArgumentException("属性継承の参照が不正または出力に重複しています");
             }
         }
         water.ifPresent(v -> {

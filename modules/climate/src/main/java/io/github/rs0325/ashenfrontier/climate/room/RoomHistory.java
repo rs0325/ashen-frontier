@@ -17,9 +17,14 @@ final class RoomHistory {
     private final Map<Key, Entry> cumulative = new HashMap<>();
     private long checkpoint = -1;
     private int maximum;
+    private long revision;
+    private List<Entry> entries,totals;
+    private Map<Long,int[]> positions;
     private RoomPhysics.Amount archivedInput = new RoomPhysics.Amount(0, 0, 0, 0);
 
     long checkpoint() { return checkpoint; }
+    long revision() { return revision; }
+    private void changed() { revision++;entries=null;totals=null;positions=null; }
     int retainedCount() { return recent.size(); }
     int cumulativeCount() { return cumulative.size(); }
     int maximumRetainedCount() { return maximum; }
@@ -33,6 +38,8 @@ final class RoomHistory {
 
     /** 呼出側が観測済みcheckpointを確定してから履歴を圧縮できるよう、追加を分ける。 */
     boolean append(Entry entry) {
+        var index=positions;
+        changed();
         boolean reconstructed = false;
         if (checkpoint >= 0 && entry.from < checkpoint) {
             if (entry.to <= checkpoint) {
@@ -46,6 +53,15 @@ final class RoomHistory {
             reconstructed = true;
         }
         recent.add(entry);
+        if(!reconstructed&&index!=null) {
+            positions=index;
+            var indices=positions.computeIfAbsent(entry.position,p->new int[8]);
+            if(indices[0]+1==indices.length) {
+                indices=java.util.Arrays.copyOf(indices,indices.length*2);
+                positions.put(entry.position,indices);
+            }
+            indices[++indices[0]]=cumulative.size()+recent.size()-1;
+        }
         maximum = Math.max(maximum, Math.min(LIMIT, recent.size()));
         return reconstructed;
     }
@@ -65,6 +81,7 @@ final class RoomHistory {
     }
 
     private void compact(long cut) {
+        changed();
         var retained = new ArrayList<Entry>();
         for (var entry : recent) {
             if (entry.to <= cut) accumulate(entry.position, entry.from, entry.to, entry.amount, entry.context);
@@ -83,6 +100,7 @@ final class RoomHistory {
         accumulate(pos, from, to, amount, -1);
     }
     private void accumulate(long pos, long from, long to, RoomPhysics.Amount amount, int context) {
+        changed();
         var key = new Key(pos, context);
         var prior = cumulative.get(key);
         cumulative.put(key, prior == null ? new Entry(pos, from, to, amount, context)
@@ -98,15 +116,44 @@ final class RoomHistory {
     }
 
     List<Entry> entries() {
-        var result = new ArrayList<>(cumulative.values());
-        result.addAll(recent);
-        return result;
+        if(entries==null) {
+            var result = new ArrayList<>(cumulative.values());result.addAll(recent);
+            entries=List.copyOf(result);
+        }
+        return entries;
     }
 
-    List<Entry> cumulative() { return List.copyOf(cumulative.values()); }
+    List<Entry> cumulative() { if(totals==null)totals=List.copyOf(cumulative.values());return totals; }
+    /** 位置の照合回数を通知数から発生位置数へ減らし、加算は元のentries順を保持する。 */
+    List<Entry> matching(java.util.function.LongPredicate predicate) {
+        var all=entries();
+        if(positions==null) {
+            var counts=new HashMap<Long,Integer>();
+            for(var entry:all)counts.merge(entry.position,1,Integer::sum);
+            positions=new HashMap<>();counts.forEach((position,count)->positions.put(position,new int[count+1]));
+            for(int n=0;n<all.size();n++) {
+                var indices=positions.get(all.get(n).position);indices[++indices[0]]=n;
+            }
+        }
+        var selected=new ArrayList<int[]>();int count=0;
+        for(var group:positions.entrySet())if(predicate.test(group.getKey())) {
+            selected.add(group.getValue());count+=group.getValue()[0];
+        }
+        if(selected.size()==1) {
+            var group=selected.getFirst();var result=new ArrayList<Entry>(count);
+            for(int n=1;n<=group[0];n++)result.add(all.get(group[n]));
+            return List.copyOf(result);
+        }
+        var indices=new int[count];int offset=0;
+        for(var group:selected){System.arraycopy(group,1,indices,offset,group[0]);offset+=group[0];}
+        if(selected.size()>1)java.util.Arrays.sort(indices);
+        var result=new ArrayList<Entry>(count);for(int index:indices)result.add(all.get(index));
+        return List.copyOf(result);
+    }
     List<Entry> recent() { return List.copyOf(recent); }
 
     void restore(long checkpoint, List<Entry> totals, List<Entry> tail) {
+        changed();
         if (tail.size() > LIMIT) throw new IllegalArgumentException("室内通知の保持上限を超えています");
         this.checkpoint = checkpoint;
         for (var e : totals) {
@@ -128,6 +175,7 @@ final class RoomHistory {
         long from = Long.MAX_VALUE, to = 0;
         for (var e : selected) { amount = plus(amount, e.amount); from = Math.min(from, e.from); to = Math.max(to, e.to); }
         recent.removeIf(e -> e.position == source); cumulative.keySet().removeIf(k -> k.position == source);
+        changed();
         double assigned = 0;
         // 子がなければ残留量の正本はdisplacedに移っている。実座標の入力として再生しない。
         if (recipients.isEmpty()) archiveInput(amount);
