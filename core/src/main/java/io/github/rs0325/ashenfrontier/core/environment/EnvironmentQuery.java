@@ -19,6 +19,12 @@ public final class EnvironmentQuery extends Event {
     private final long startTick;
     private final long endTick;
     private Optional<List<EnvironmentSample>> samples = Optional.empty();
+    private Optional<String> reason=Optional.empty();
+    public Optional<List<EnvironmentSample>> values() { return samples; }
+    public Optional<String> reason() { return reason; }
+    /** 未計算等の停止理由を翻訳キーで通知する。成功区間は変更しない。 */
+    public void pending(String key) { reason=Optional.of(key); }
+
 
     private EnvironmentQuery(ServerLevel level, BlockPos position, long startTick, long endTick) {
         if (endTick < startTick) throw new IllegalArgumentException("環境要求の時刻が逆転しています");
@@ -62,8 +68,13 @@ public final class EnvironmentQuery extends Event {
 
     /** 要求範囲全体を一度に照会する。未提供の場合はemptyで、部分応答や既定環境は返さない。 */
     public static Optional<List<EnvironmentSample>> samples(ServerLevel level, BlockPos position, long from, long to) {
+        return query(level,position,from,to).samples;
+    }
+
+    /** 理由付きの同じ同期照会。未計算時は区間が空のままで、呼出し側が再試行する。 */
+    public static EnvironmentQuery query(ServerLevel level,BlockPos position,long from,long to) {
         if (!level.getServer().isSameThread()) throw new IllegalStateException("環境照会はサーバースレッドで行います");
-        return NeoForge.EVENT_BUS.post(new EnvironmentQuery(level, position, from, to)).samples;
+        return NeoForge.EVENT_BUS.post(new EnvironmentQuery(level,position,from,to));
     }
 
     /**

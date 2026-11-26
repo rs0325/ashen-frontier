@@ -17,6 +17,7 @@ public final class AshenFrontierPrimitive {
         PotteryActions.register();
         AssemblyRecipe.register(bus);
         PrimitiveActions.register();
+        PendingThermal.install();
         for (String type : new String[]{"knapping", "fiberworking", "firing", "water_treatment", "cooking"}) {
             RecipeTypeRegistry.register(bus, AshenFrontierCore.id(type), TimeBasis.REAL);
         }

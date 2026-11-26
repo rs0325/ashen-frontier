@@ -1,5 +1,6 @@
 package io.github.rs0325.ashenfrontier.climate;
 
+import io.github.rs0325.ashenfrontier.core.environment.EnvironmentBudget;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -23,9 +24,13 @@ final class WeatherService {
         WeatherStore.get(level);
         PENDING.compareAndSet(null,settings(0));
     }
-    static void tick(ServerTickEvent.Post event) {
-        var level=event.getServer().overworld();
+    static void tick(ServerTickEvent.Pre event) {
+        work(event.getServer().overworld());
+    }
+    static void work(net.minecraft.server.level.ServerLevel level) {
         if(ClimateQuery.mapVersion(level).isEmpty())return;
+        long budgetStart=System.nanoTime(),remaining=EnvironmentBudget.remaining(level);
+        if(remaining<=0)return;
         var data=WeatherStore.get(level);
         var clock=ClimateClock.get(level);
         if(clock.revision()!=data.clockRevision) {
@@ -37,12 +42,13 @@ final class WeatherService {
             PENDING.compareAndSet(request,null);
         long start=System.nanoTime();
         data.service(level.getGameTime(),AshenFrontierClimate.WEATHER_CELL_BUDGET.get(),
-                start+AshenFrontierClimate.WEATHER_MICROS.get()*1000L);
+                budgetStart+Math.min(remaining,AshenFrontierClimate.WEATHER_MICROS.get()*1000L));
         if(level.getGameTime()%20==0&&data.timeline.next(data.current.tick(),data.time)>level.getGameTime()) {
             for(var player:level.players()) {
                 var payload=WeatherCellsPayload.around(level,player.blockPosition());
                 if(payload!=null)PacketDistributor.sendToPlayer(player,payload);
             }
         }
+        EnvironmentBudget.charge(level,System.nanoTime()-budgetStart);
     }
 }

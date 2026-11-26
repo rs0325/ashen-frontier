@@ -7,5 +7,6 @@
   "room_status.ashen_frontier_climate.blocked": "空気の位置ではありません：設備の直上や目の位置で確認してください",
   "room_status.ashen_frontier_climate.missing_boundary": "屋外環境が未接続または履歴不足です",
   "room_status.ashen_frontier_climate.history_missing": "過去の構成が不明です：現在時刻で再確認してください",
-  "room_status.ashen_frontier_climate.disabled": "室内モデルが設定で無効です"
+  "room_status.ashen_frontier_climate.disabled": "室内モデルが設定で無効です",
+  "environment.ashen_frontier_climate.replaying": "過去の気象を再計算しています。準備ができるまで待ってください。"
 }

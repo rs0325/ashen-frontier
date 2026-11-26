@@ -36,7 +36,7 @@ public final class RoomGameTests {
     private static final RoomPhysics.Air AIR = new RoomPhysics.Air(293.15, 101325, 0, .00042, .2095, 2);
 
     private static RoomAir fixture(GameTestHelper h) {
-        var tag = new CompoundTag(); tag.putInt("format", 9);
+        var tag = new CompoundTag(); tag.putInt("format", 10); tag.put("retention",RoomRetentionCodec.save(new RoomRetention()));
         var service = RoomAir.load(h.getLevel(), tag);
         service.outside((level, pos, from, to) -> Optional.of(List.of(new RoomAir.Boundary(from, to, AIR))));
         return service;

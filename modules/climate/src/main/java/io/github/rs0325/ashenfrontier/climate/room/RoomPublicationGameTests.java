@@ -38,7 +38,7 @@ public final class RoomPublicationGameTests {
         } catch (ReflectiveOperationException error) { throw new ExceptionInInitializerError(error); }
     }
     private static RoomAir fixture(GameTestHelper h) {
-        var tag = new CompoundTag(); tag.putInt("format", 9);
+        var tag = new CompoundTag(); tag.putInt("format", 10); tag.put("retention",RoomRetentionCodec.save(new RoomRetention()));
         var service = RoomAir.load(h.getLevel(), tag);
         service.outside((l, p, from, to) -> Optional.of(List.of(new RoomAir.Boundary(from, to, AIR))));
         return service;

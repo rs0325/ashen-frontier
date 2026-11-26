@@ -550,7 +550,7 @@ public final class WaterTreatmentGameTests {
             advance(h, 24000);
             hearth = (ThermalStationEntity) BlockEntity.loadStatic(pos, hearth.getBlockState(), tag, player.registryAccess());
             h.getLevel().setBlockEntity(hearth);
-            hearth.work();
+            PotteryGameTests.finishCooling(hearth,h.getLevel());
             check(hearth.saveWithoutMetadata(player.registryAccess()).getDouble("water_temperature_k") < 300, "未ロードを含め十分に冷える");
             tag = hearth.saveWithFullMetadata(player.registryAccess());
             tag.putBoolean("lit", true); tag.putDouble("fuel_j", 64_000_000); tag.putDouble("temperature_k", 1000);

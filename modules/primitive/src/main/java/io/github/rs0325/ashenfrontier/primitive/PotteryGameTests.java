@@ -135,6 +135,7 @@ public class PotteryGameTests {
             advance(helper, 12000);
             hearth = (ThermalStationEntity) BlockEntity.loadStatic(hearthPos, hearthState, coldSave, helper.getLevel().registryAccess());
             helper.getLevel().setBlockEntity(hearth);
+            finishCooling(hearth,helper.getLevel());
             use(hearth, player, ItemStack.EMPTY);
             for (int i = 0; i < 200 && (!Double.isFinite(hearth.heat().temperatureK()) || hearth.heat().temperatureK() < 975); i++) {
                 advance(helper, 20); hearth.work();
@@ -348,7 +349,7 @@ public class PotteryGameTests {
             advance(helper, 12000);
             var loaded = (ThermalStationEntity) BlockEntity.loadStatic(pos, state, saved, helper.getLevel().registryAccess());
             helper.getLevel().setBlockEntity(loaded);
-            loaded.work();
+            finishCooling(loaded,helper.getLevel());
             check(loaded.station().input(0).getCount() == 1 && loaded.heat().fuelJoules() == 0, "プレイヤーなしの実BlockEntity復元で入力保持");
             use(loaded, player, ItemStack.EMPTY);
             advance(helper, 20); loaded.work();
@@ -558,20 +559,23 @@ public class PotteryGameTests {
             EMISSIONS.put(new Site(helper.getLevel(), hearth.getBlockPos()), events);
             helper.getLevel().setDayTime(900000);
             advance(helper, 2000);
+            finishCooling(hearth,helper.getLevel());
             use(hearth, player, ItemStack.EMPTY);
             double expected = 293.15 + (1000 - 293.15) * Math.exp(-1);
             check(Math.abs(hearth.heat().temperatureK() - expected) < 1e-8, "ロード中の放置も7200ゲーム秒で1時定数冷える");
             check(hearth.heat().fuelJoules() == fuel && hearth.station().output(0).isEmpty(), "放置中に燃料・加工を進めない");
-            check(events.size() == 1 && events.getFirst().burnedKg() == 0 && events.getFirst().energyJoules() == 0
-                    && Math.abs(events.getFirst().retainedHeatJoules() - 500 * (expected - 1000)) < 1e-6, "冷却分だけをM3へ1回通知");
+            check(!events.isEmpty()&&events.stream().allMatch(e->e.burnedKg()==0&&e.energyJoules()==0)
+                    &&Math.abs(events.stream().mapToDouble(CombustionEvent::retainedHeatJoules).sum()-500*(expected-1000))<1e-6,
+                    "各確定区間の冷却分だけをM3へ通知");
+            int notifications=events.size();
             hearth.work();
-            check(events.size() == 1, "同じ時刻の評価で放熱を複製しない");
+            check(events.size()==notifications,"同じ時刻の評価で放熱を複製しない");
             SAMPLES.remove(new Site(helper.getLevel(), hearth.getBlockPos()));
             advance(helper, 1000);
             hearth.work();
             check(hearth.heat().temperatureK() == expected, "M3未接続を仮の気温で補わない");
             environment(helper, HEARTH, 24000, 293.15, 0.5, true, true);
-            hearth.work();
+            finishCooling(hearth,helper.getLevel());
             check(Math.abs(hearth.heat().temperatureK() - (293.15 + (1000 - 293.15) * Math.exp(-1.5))) < 1e-8,
                     "入力を再接続したら未評価のゲーム時間も冷却");
             helper.succeed();
@@ -596,7 +600,7 @@ public class PotteryGameTests {
             var loaded = (ThermalStationEntity) BlockEntity.loadStatic(pos, state, saved, helper.getLevel().registryAccess());
             helper.getLevel().setBlockEntity(loaded);
             loaded.onLoad();
-            loaded.work();
+            finishCooling(loaded,helper.getLevel());
             double expected = 293.15 + (1000 - 293.15) * Math.exp(-1);
             check(Math.abs(loaded.heat().temperatureK() - expected) < 1e-8, "未評価のロード期間と未ロード期間を日長12000のGAME時計で冷却");
             check(loaded.heat().fuelJoules() == fuel && !loaded.lit(), "プレイヤーなしの読み込みで燃料を消費せず消火を保持");
@@ -630,6 +634,7 @@ public class PotteryGameTests {
             level.setBlockAndUpdate(far, PrimitiveContent.HEARTH.get().defaultBlockState());
             var original = (ThermalStationEntity) level.getBlockEntity(far);
             original.loadWithComponents(tag, level.registryAccess());
+            original.placed();
             double fuel = original.heat().fuelJoules();
             environment(helper, HEARTH.offset(512, 0, 0), 24000, 293.15, 0.5, true, true);
             player.discard();
@@ -643,7 +648,7 @@ public class PotteryGameTests {
                     level.getChunkAt(far);
                     var loaded = (ThermalStationEntity) level.getBlockEntity(far);
                     check(loaded != original, "ディスクから別のBlockEntityへ再読込み");
-                    loaded.work();
+                    finishCooling(loaded,level);
                     double gameSeconds = (level.getGameTime() - before) * 3.6;
                     double expected = 293.15 + (1000 - 293.15) * Math.exp(-gameSeconds / 7200);
                     check(Math.abs(loaded.heat().temperatureK() - expected) < 1e-7, "ディスク再読込みでも全経過ゲーム時間で冷える");
@@ -798,7 +803,7 @@ public class PotteryGameTests {
             long start = helper.getLevel().getGameTime();
             splitEnvironment(new Site(helper.getLevel(), rack.getBlockPos()), new long[]{start + 4000, start + 8000},
                     new long[]{24000, 12000, 12000}, new double[]{293.15, 293.15, 293.15}, new boolean[]{true, false, true});
-            advance(helper, 12000); rack.work();
+            advance(helper, 12000); for(int n=0;n<3;n++)rack.work();
             check(rack.station().output(0).isEmpty(), "不適合4000tickを乾燥時間へ加えない");
             check(Math.abs(rack.station().save(helper.getLevel().registryAccess()).getDouble("seconds") - 43200) < 1e-8,
                     "各適合区間の日長でGAME秒へ換算");
@@ -832,7 +837,7 @@ public class PotteryGameTests {
             reference.restore(fuel, 16000000, 1000);
             reference.advance(5, 360, 293.15, true, false);
             reference.advance(5, 720, 283.15, false, false);
-            advance(helper, 200); hearth.work();
+            advance(helper, 200); hearth.work();hearth.work();
             check(Math.abs(hearth.heat().fuelJoules() - (fuel - 600000)) < 1e-6,
                     "日長変更後も燃焼はREAL秒で、換気不適合の後半は燃やさない");
             check(Math.abs(hearth.heat().temperatureK() - reference.temperatureK()) < 1e-8, "発熱とGAME放熱を区間合成");
@@ -1126,15 +1131,17 @@ public class PotteryGameTests {
                 var loaded = (ThermalStationEntity) BlockEntity.loadStatic(pos, state, saved, helper.getLevel().registryAccess());
                 helper.getLevel().setBlockEntity(loaded);
                 long begun = System.nanoTime();
-                loaded.onLoad(); loaded.work();
+                loaded.onLoad(); finishCooling(loaded,helper.getLevel());
                 long elapsed = System.nanoTime() - begun;
                 check(loaded.heat().fuelJoules() == fuel && loaded.station().output(0).isEmpty(), "年単位の未ロード時間に再燃焼・加工を加算しない");
                 check(!events.isEmpty() && events.stream().allMatch(e -> e.burnedKg() == 0 && e.energyJoules() == 0),
                         "保存済みの炉から余熱だけを実通知する");
                 double released = events.stream().mapToDouble(e -> -e.retainedHeatJoules()).sum();
                 check(Math.abs(released - 500 * (1000 - 293.15)) < 1e-5, "1年・10年後にも蓄熱353425 Jを全量精算");
-                check(events.getFirst().startTick() == start && events.getLast().endTick() == helper.getLevel().getGameTime(),
-                        "通知は復帰時刻への付替えではなく元の冷却区間");
+                check(events.getFirst().startTick()==start&&events.getLast().endTick()<=helper.getLevel().getGameTime()
+                        &&loaded.saveWithoutMetadata(helper.getLevel().registryAccess()).getLong("last_tick")==helper.getLevel().getGameTime(),
+                        "放熱は元の区間、零収支の末尾も冷却時刻を確定");
+                for(int i=1;i<events.size();i++)check(events.get(i-1).endTick()<=events.get(i).startTick(),"放熱区間を重複させない");
                 LogUtils.getLogger().info("M3-137 actual saved hearth years={} restore_work_ms={} released_J={}", years, elapsed/1e6, released);
             }
             helper.succeed();
@@ -1182,4 +1189,12 @@ public class PotteryGameTests {
             helper.succeed();
         } finally { cleanup(helper, player, before); }
     }
+    static void finishCooling(ThermalStationEntity entity,ServerLevel level) {
+        for(int n=0;n<40000;n++) {
+            entity.work();
+            if(entity.saveWithoutMetadata(level.registryAccess()).getLong("last_tick")>=level.getGameTime())return;
+        }
+        throw new GameTestAssertException("有限再生の完了を待っても冷却が進まない");
+    }
+
 }

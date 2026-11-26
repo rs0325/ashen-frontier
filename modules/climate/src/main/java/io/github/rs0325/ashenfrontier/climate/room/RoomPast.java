@@ -1,5 +1,6 @@
 package io.github.rs0325.ashenfrontier.climate.room;
 
+import io.github.rs0325.ashenfrontier.core.NbtLists;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -399,6 +400,25 @@ final class RoomPast {
         return Optional.of(values);
     }
 
+    boolean forgettable(long cell) {
+        var line=cells.get(cell);
+        if(line!=null&&line.owner!=null&&!line.owner.published)return false;
+        return !physicalHistory(cell);
+    }
+    boolean physicalHistory(long cell) {
+        var rows=rows(cell);return rows!=null&&rows.values().stream().anyMatch(m->!m.outdoor);
+    }
+    int references(long cell) { var rows=rows(cell);return rows==null?0:rows.size(); }
+    long outdoorBytes(long cell) {
+        var rows=rows(cell);long size=78;
+        if(rows!=null)for(var model:rows.values())size+=142+(model.sky?0:12+8L*model.watch.length);
+        return size;
+    }
+    void forgetOutdoor(long cell) {
+        if(!forgettable(cell))throw new IllegalStateException("物理的な室の履歴は一般整理できません");
+        cells.remove(cell);
+    }
+
     void save(CompoundTag tag) {
         var models = new ArrayList<Model>();
         var indices = new HashMap<Model, Integer>();
@@ -425,7 +445,7 @@ final class RoomPast {
     }
     static RoomPast load(CompoundTag tag) {
         var result = new RoomPast(); var models = new ArrayList<Model>();
-        for (var element : tag.getList("past_models", 10)) {
+        for (var element : NbtLists.read(tag,"past_models",10)) {
             var row = (CompoundTag) element;
             if (!row.contains("approximate",Tag.TAG_BYTE)) throw new IllegalStateException("精度の印がない試験用の室内履歴は再生成が必要です");
             var model = new Model(row.getInt("id"), row.getLong("from"), row.getLongArray("cells"), row.getInt("walls"),
@@ -436,7 +456,7 @@ final class RoomPast {
             if (model.outdoor) { model.temperature = Double.NaN; if (model.sky) model.watch = model.cells; Arrays.sort(model.watch); }
             models.add(model);
         }
-        for (var element : tag.getList("past_cells", 10)) {
+        for (var element : NbtLists.read(tag,"past_cells",10)) {
             var row = (CompoundTag) element; var rows = new TreeMap<Stamp, Model>();
             for (int id : row.getIntArray("models")) { var model = models.get(id); rows.put(new Stamp(model.from, model.id), model); }
             if (rows.size() > LIMIT) throw new IllegalArgumentException("過去構成の保持上限を超えています");

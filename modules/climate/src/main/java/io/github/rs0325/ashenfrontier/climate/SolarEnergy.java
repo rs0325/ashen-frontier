@@ -4,7 +4,7 @@ package io.github.rs0325.ashenfrontier.climate;
 final class SolarEnergy {
     private SolarEnergy() {}
     static double between(double latitude, double declinationGameSecond, double fromGameSecond, double toGameSecond) {
-        return primitive(latitude,declinationGameSecond,toGameSecond)-primitive(latitude,declinationGameSecond,fromGameSecond);
+        return Math.max(0,primitive(latitude,declinationGameSecond,toGameSecond)-primitive(latitude,declinationGameSecond,fromGameSecond));
     }
     private static double primitive(double latitude, double reference, double seconds) {
         double phase=reference/(86400*24);
