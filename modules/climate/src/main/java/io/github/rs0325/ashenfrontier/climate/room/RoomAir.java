@@ -48,13 +48,16 @@ import java.io.IOException;
 public final class RoomAir extends SavedData {
     public static final String ID = "ashen_frontier_room_air";
     public enum Status { INDOOR, OUTDOOR, SCANNING, UNLOADED, LIMIT, BLOCKED, MISSING_BOUNDARY, HISTORY_MISSING, DISABLED }
+    /** 局所の幾何履歴の精度。物理モデル全体の数値誤差を表す値ではない。 */
+    public enum Accuracy { OBSERVED, APPROXIMATE, UNKNOWN }
     public record Boundary(long from, long to, RoomPhysics.Air air) {}
     /** 要求全域を過不足なく覆う、一定係数の半開区間列を提供する。空は未接続/履歴不足。 */
     @FunctionalInterface public interface Outside {
         Optional<List<Boundary>> intervals(ServerLevel level, BlockPos airPosition, long from, long to);
     }
+    /** APPROXIMATEも計算可能な分類であり、未確認とは区別する。精度は局所幾何履歴に対する値。 */
     public record Sample(Status status, Optional<RoomPhysics.State> state, boolean covered, boolean ventilated,
-                         double volumeM3, double flowM3S) {
+                         double volumeM3, double flowM3S, Accuracy accuracy) {
         public Component reason() { return Component.translatable("room_status.ashen_frontier_climate." + status.name().toLowerCase(Locale.ROOT)); }
         public boolean confirmed() { return status == Status.INDOOR || status == Status.OUTDOOR; }
     }
@@ -75,6 +78,13 @@ public final class RoomAir extends SavedData {
     private final List<Region> regions = new ArrayList<>();
     private final Map<Long, List<Region>> byChunk = new HashMap<>();
     private final Map<Long, Set<Region>> skyColumns = new HashMap<>();
+    private static final class Outdoor {
+        final RoomPast.Model model;
+        final Set<ChunkPos> chunks;
+        Outdoor(RoomPast.Model model,Set<ChunkPos> chunks) { this.model=model;this.chunks=chunks; }
+    }
+    private final Map<Long, Outdoor> outdoors = new HashMap<>();
+    private final Map<Long, Set<Outdoor>> outdoorChunks = new HashMap<>();
     private final Map<Long, Registration> registrations = new HashMap<>();
     private final Map<Long, RoomSearch> jobs = new LinkedHashMap<>();
     private final RoomHistory history = new RoomHistory();
@@ -162,14 +172,65 @@ public final class RoomAir extends SavedData {
         if (provider != null) { refreshPast(); flushPending(); }
     }
 
+    private Accuracy accuracy(BlockPos pos,long tick) {
+        return past.approximate(pos.asLong(),tick) ? Accuracy.APPROXIMATE : Accuracy.OBSERVED;
+    }
+    private Sample outdoorSample(BlockPos pos,long tick) {
+        return boundary(pos,tick,tick).map(rows -> new Sample(Status.OUTDOOR,
+                Optional.of(RoomPhysics.State.ambient(rows.getFirst().air)),false,true,0,0,accuracy(pos,tick)))
+                .orElseGet(() -> unknown(Status.MISSING_BOUNDARY));
+    }
+    private void watchOutdoor(RoomPast.Model model) {
+        var chunks = new HashSet<ChunkPos>();
+        for (long cell : model.watch) chunks.add(new ChunkPos(BlockPos.of(cell)));
+        var record = new Outdoor(model,chunks);
+        outdoors.put(model.cells[0],record);
+        for (var chunk : chunks) outdoorChunks.computeIfAbsent(chunk.toLong(),p -> new HashSet<>()).add(record);
+    }
+    private void closeOutdoor(Outdoor record,long tick) {
+        past.end(record.model,tick);
+        outdoors.remove(record.model.cells[0]);
+        for (var chunk : record.chunks) {
+            var records = outdoorChunks.get(chunk.toLong());
+            if (records != null) { records.remove(record); if (records.isEmpty()) outdoorChunks.remove(chunk.toLong()); }
+        }
+        setDirty();
+    }
+    private void observeOutdoor(RoomSearch search,long tick) {
+        long cell = search.origin.asLong();
+        var model = past.outdoor(cell,tick);
+        if (model == null) {
+            past.observeOutdoor(nextRegionId++,tick,cell,search.visited.toLongArray(),RoomSearch.exposed(level,search.origin));
+            model = past.outdoor(cell,tick); setDirty();
+        }
+        if (!outdoors.containsKey(cell)) watchOutdoor(model);
+        var registration = registrations.remove(cell);
+        if (registration != null) registration.discard();
+        jobs.remove(cell);
+    }
+    private void changedOutdoor(BlockPos pos,long tick) {
+        var records = outdoorChunks.get(chunk(pos.asLong()));
+        if (records == null) return;
+        for (var record : List.copyOf(records)) {
+            var origin = BlockPos.of(record.model.cells[0]);
+            boolean above = origin.getX()==pos.getX() && origin.getZ()==pos.getZ() && pos.getY()>=origin.getY();
+            if (above || Arrays.binarySearch(record.model.watch,pos.asLong())>=0) {
+                if (record.model.sky && level.hasChunkAt(origin) && RoomSearch.passable(level,origin) && RoomSearch.exposed(level,origin)) continue;
+                closeOutdoor(record,tick);
+            }
+        }
+    }
+
     /** 部屋探索を要求し、現在または過去の状態を返す。airPositionは設備直上/生理の目位置の空間。 */
     public Sample sample(BlockPos airPosition, long tick) {
         flushPending();
         if (tick < 0 || tick > level.getGameTime()) throw new IllegalArgumentException("室内照会時刻が不正です");
         if (!ENABLED.get()) return unknown(Status.DISABLED);
+        if (tick == level.getGameTime() && !level.hasChunkAt(airPosition)) return unknown(Status.UNLOADED);
         Region region = regions.stream().filter(r -> r.ready && r.from <= tick && tick < r.to && r.contains(airPosition.asLong()))
                 .max(Comparator.comparingInt(r -> r.id)).orElse(null);
         if (region == null && tick < level.getGameTime()) {
+            if (past.outdoor(airPosition.asLong(),tick) != null) return outdoorSample(airPosition,tick);
             var historical = past.historical(airPosition.asLong(), tick, inputs.entries(), this::boundary);
             if (historical.isPresent()) {
                 var value = historical.get();
@@ -177,16 +238,23 @@ public final class RoomAir extends SavedData {
                 if (out.isEmpty()) return unknown(Status.MISSING_BOUNDARY);
                 return new Sample(Status.INDOOR, Optional.of(value.state()), true, value.model().openings > 0,
                         value.model().cells.length, RoomPhysics.flow(value.model().openings, value.model().height,
-                        value.state().temperatureK(), out.get().getFirst().air));
+                        value.state().temperatureK(), out.get().getFirst().air),accuracy(airPosition,tick));
             }
             return unknown(past.known(airPosition.asLong(), tick) ? Status.MISSING_BOUNDARY : Status.HISTORY_MISSING);
         }
+        var observed = outdoors.get(airPosition.asLong());
+        if (region == null && tick == level.getGameTime() && observed != null) {
+            if (observed.chunks.stream().anyMatch(c -> !level.hasChunk(c.x,c.z))) return unknown(Status.UNLOADED);
+            if (!RoomSearch.passable(level,airPosition) || observed.model.sky && !RoomSearch.exposed(level,airPosition))
+                closeOutdoor(observed,tick);
+            else return outdoorSample(airPosition,tick);
+        }
         if (region == null && tick == level.getGameTime() && level.hasChunkAt(airPosition)
                 && RoomSearch.passable(level, airPosition) && RoomSearch.exposed(level, airPosition)) {
-            jobs.remove(airPosition.asLong());
-            var rows = boundary(airPosition, tick, tick);
-            return rows.map(r -> new Sample(Status.OUTDOOR, Optional.of(RoomPhysics.State.ambient(r.getFirst().air)),
-                    false, true, 0, 0)).orElseGet(() -> unknown(Status.MISSING_BOUNDARY));
+            var observation = new RoomSearch(airPosition,tick);
+            observation.status = RoomSearch.Status.OUTDOOR; observation.visited.add(airPosition.asLong());
+            observeOutdoor(observation,tick);
+            return outdoorSample(airPosition,tick);
         }
         if (region == null) {
             if (tick < level.getGameTime() && !jobs.containsKey(airPosition.asLong())) return unknown(Status.HISTORY_MISSING);
@@ -199,9 +267,7 @@ public final class RoomAir extends SavedData {
                     && priorJob.visited.stream().allMatch(cell -> level.hasChunkAt(BlockPos.of(cell)))) jobs.remove(airPosition.asLong());
             var search = jobs.computeIfAbsent(airPosition.asLong(), p -> new RoomSearch(airPosition, tick));
             if (search.status == RoomSearch.Status.OUTDOOR) {
-                var rows = boundary(airPosition, tick, tick);
-                return rows.map(r -> new Sample(Status.OUTDOOR, Optional.of(RoomPhysics.State.ambient(r.getFirst().air)),
-                        false, true, 0, 0)).orElseGet(() -> unknown(Status.MISSING_BOUNDARY));
+                observeOutdoor(search,tick); return outdoorSample(airPosition,tick);
             }
             var registration = registrations.get(airPosition.asLong());
             if (registration != null) return unknown(registration.boundaryMissing ? Status.MISSING_BOUNDARY : Status.SCANNING);
@@ -216,12 +282,13 @@ public final class RoomAir extends SavedData {
         var out = boundary(airPosition, tick, tick);
         if (out.isEmpty()) return unknown(Status.MISSING_BOUNDARY);
         double q = exchange(region, state.get(), out.get().getFirst().air);
-        return new Sample(Status.INDOOR, state, true, region.openings > 0, region.cells.length, q);
+        return new Sample(Status.INDOOR, state, true, region.openings > 0, region.cells.length, q, accuracy(airPosition,tick));
     }
 
     /** C04が日長/気象境界と併合する室構成・発生源の境界。端点を含む昇順列。 */
     public List<Long> boundaries(BlockPos airPosition, long from, long to) {
         var points = new TreeSet<Long>(List.of(from, to));
+        past.cuts(airPosition.asLong(),from,to,points);
         for (var r : regions) if (r.contains(airPosition.asLong())) {
             if (r.from > from && r.from < to) points.add(r.from);
             if (r.to > from && r.to < to) points.add(r.to);
@@ -433,7 +500,7 @@ public final class RoomAir extends SavedData {
         if (next != to) throw new IllegalArgumentException("屋外区間が要求を満たしません");
         return response;
     }
-    private static Sample unknown(Status status) { return new Sample(status, Optional.empty(), false, false, 0, 0); }
+    private static Sample unknown(Status status) { return new Sample(status, Optional.empty(), false, false, 0, 0, Accuracy.UNKNOWN); }
 
     private Optional<RoomPhysics.State> evaluate(Region r, long tick, Map<String, Snapshot> memo) {
         return simulate(r, tick, memo).map(Snapshot::state);
@@ -624,7 +691,7 @@ public final class RoomAir extends SavedData {
                         inheritGroups();
                         indexing = chunks.iterator();
                     }
-                    if (pastVersion != past.version()) {
+                    if (pastVersion != past.version() || room.pastModel.preparedVersion != pastVersion) {
                         pastVersion = past.version(); pastCursor = 0; past.prepare(room.pastModel);
                     }
                     if (pastCursor < cells.length) {
@@ -711,6 +778,7 @@ public final class RoomAir extends SavedData {
         if (job == null) return;
         if (job.status == RoomSearch.Status.SCANNING) {
             job.work(level, VISITS.get(), 4096);
+            if (job.status == RoomSearch.Status.OUTDOOR) { observeOutdoor(job,level.getGameTime()); return; }
             if (job.status != RoomSearch.Status.INDOOR) return;
             var existing = latest(job.origin.asLong());
             if (existing != null && existing.to == Long.MAX_VALUE) { jobs.remove(job.origin.asLong()); return; }
@@ -730,6 +798,7 @@ public final class RoomAir extends SavedData {
     /** 構成の変更時刻まで旧幾何を維持し、その時刻を新しい探索の境界にする。 */
     public void changed(BlockPos pos) {
         long tick = level.getGameTime();
+        changedOutdoor(pos,tick);
         if (!jobs.isEmpty()) changedChunks.put(chunk(pos.asLong()), tick);
         var iterator = jobs.entrySet().iterator();
         while (iterator.hasNext()) {
@@ -886,7 +955,7 @@ public final class RoomAir extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
-        tag.putInt("format", 8);
+        tag.putInt("format", 9);
         past.save(tag);
         tag.putInt("next_region", nextRegionId);
         tag.putLong("checkpoint_tick", history.checkpoint());
@@ -1006,7 +1075,7 @@ public final class RoomAir extends SavedData {
     }
 
     static RoomAir load(ServerLevel level, CompoundTag tag) {
-        if (tag.getInt("format") != 8) throw new IllegalStateException("室内の保存形式が不正です");
+        if (tag.getInt("format") != 9) throw new IllegalStateException("室内の保存形式が不正です");
         var data = new RoomAir(level);
         data.past = RoomPast.load(tag);
         data.nextRegionId = tag.getInt("next_region");
@@ -1073,6 +1142,7 @@ public final class RoomAir extends SavedData {
                 loadEntries(tag.getList("pending_recent", Tag.TAG_LONG_ARRAY)));
         data.history.restoreArchivedInput(new RoomPhysics.Amount(tag.getDouble("archived_heat"), tag.getDouble("archived_co"),
                 tag.getDouble("archived_co2"), tag.getDouble("archived_oxygen")));
+        for (var model : data.past.outdoors(level.getGameTime())) data.watchOutdoor(model);
         return data;
     }
 }

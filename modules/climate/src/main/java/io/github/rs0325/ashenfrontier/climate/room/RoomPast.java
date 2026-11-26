@@ -3,6 +3,7 @@ package io.github.rs0325.ashenfrontier.climate.room;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -30,6 +31,10 @@ final class RoomPast {
         final int cellsHash;
         final double height;
         double temperature = Double.NaN;
+        boolean approximate;
+        boolean outdoor;
+        boolean sky;
+        long[] watch = new long[0];
         boolean published;
         long preparedVersion = -1;
         Model(int id, long from, long[] cells, int walls, int openings, double height) {
@@ -39,22 +44,48 @@ final class RoomPast {
             id = first.id; from = first.from; cells = first.cells; cellsHash = first.cellsHash;
             walls = first.walls; openings = first.openings; height = first.height;
             this.until = until; temperature = first.temperature; published = true;
+            approximate = true;
+            outdoor = first.outdoor; sky = first.sky; watch = first.watch;
         }
         @Override public int hashCode() { return id * 31 + Long.hashCode(from) * 31 + Long.hashCode(until) + cellsHash; }
         @Override public boolean equals(Object other) {
             if (this == other) return true;
             return other instanceof Model m && id == m.id && from == m.from && until == m.until && walls == m.walls
                     && openings == m.openings && height == m.height && Double.compare(temperature, m.temperature) == 0
-                    && Arrays.equals(cells, m.cells);
+                    && approximate == m.approximate && outdoor == m.outdoor && sky == m.sky && Arrays.equals(watch, m.watch) && Arrays.equals(cells, m.cells);
         }
         boolean sameGeometry(Model other) {
-            return from == other.from && walls == other.walls && openings == other.openings && height == other.height
+            return outdoor == other.outdoor && from == other.from && walls == other.walls && openings == other.openings && height == other.height
                     && Double.compare(temperature, other.temperature) == 0 && Arrays.equals(cells, other.cells);
         }
         boolean contains(long cell) { return Arrays.binarySearch(cells, cell) >= 0; }
     }
     @FunctionalInterface interface Boundaries {
         Optional<List<RoomAir.Boundary>> get(BlockPos pos, long from, long to);
+    }
+    boolean approximate(long cell,long tick) {
+        var model=at(cell,tick);
+        return model!=null && tick<model.until && model.approximate;
+    }
+    Model outdoor(long cell, long tick) {
+        var model = at(cell, tick);
+        return model != null && model.outdoor && tick < model.until ? model : null;
+    }
+    List<Model> outdoors(long tick) {
+        var result = new ArrayList<Model>();
+        for (long cell : cells.keySet()) {
+            var model = outdoor(cell, tick);
+            if (model != null) result.add(model);
+        }
+        return result;
+    }
+    void observeOutdoor(int id, long tick, long cell, long[] watch, boolean sky) {
+        var model = new Model(id,tick,new long[]{cell},0,0,0);
+        model.outdoor = true; model.sky = sky; model.watch = sky ? model.cells : watch;
+        Arrays.sort(model.watch);
+        invalidateOutdoor(cell);
+        bind(cell,model);
+        if (!publish(model)) throw new IllegalStateException("屋外観測の公開版が変わりました");
     }
     private static final class Line {
         final Model owner;
@@ -99,12 +130,20 @@ final class RoomPast {
         }
         cells.put(cell, new Line(model, prepared, before));
     }
-    /** 全セルの準備が済み、以降に他の公開がなければ、可視性だけを原子的に切り替える。 */
+    /** 室内版と同位置の屋外観測が準備中に変わらなければ、可視性だけを原子的に切り替える。 */
     boolean publish(Model model) {
         if (model.preparedVersion != version) return false;
-        model.published = true; version++; return true;
+        model.published = true; if (!model.outdoor) version++; return true;
     }
-    void end(Model model, long tick) { model.until = tick; version++; }
+    private void invalidateOutdoor(long cell) {
+        for (var line = cells.get(cell); line != null; line = line.before)
+            if (line.owner != null && !line.owner.published) line.owner.preparedVersion = -1;
+    }
+    void end(Model model, long tick) {
+        model.until = tick;
+        if (model.outdoor) for (long cell : model.cells) invalidateOutdoor(cell);
+        else version++;
+    }
     void discard(Model model) {
         if (model.published) throw new IllegalStateException("公開済みの構成は取り消せません");
         for (long cell : model.cells) {
@@ -165,7 +204,7 @@ final class RoomPast {
         for (long cell : reachable) {
             var rows = rows(cell);
             if (rows != null) for (var model : rows.values())
-                if (model.published && model.from > from && model.from <= end) births.add(model);
+                if (model.published && !model.outdoor && model.from > from && model.from <= end) births.add(model);
         }
         if (from == to) {
             Model owner = null;
@@ -176,7 +215,7 @@ final class RoomPast {
                 for (long cell : owner.cells) values.put(cell, new Delta(RoomHistory.scale(input, 1.0/owner.cells.length), ZERO));
                 var later = new HashSet<Model>();
                 for (long cell : reachable) { var rows = rows(cell);
-                    if (rows != null) for (var m : rows.values()) if (m.published && m.from == from && m.id > context) later.add(m); }
+                    if (rows != null) for (var m : rows.values()) if (m.published && !m.outdoor && m.from == from && m.id > context) later.add(m); }
                 for (var m : later.stream().sorted(java.util.Comparator.comparingInt(m -> m.id)).toList()) mix(values, m);
             }
         }
@@ -189,7 +228,7 @@ final class RoomPast {
             if (from != to && a < to) involved.add(source);
             for (long cell : involved) {
                 var model = at(cell, a);
-                if (model == null || a >= model.until) held.add(cell);
+                if (model == null || model.outdoor || a >= model.until) held.add(cell);
                 else if (active.stream().noneMatch(model::sameGeometry)) active.add(model);
             }
             var next = new HashMap<Long, Delta>(values);
@@ -251,14 +290,14 @@ final class RoomPast {
         var result = new ArrayList<Long>();
         for (long cell : model.cells) {
             var owner = at(cell, tick);
-            if (owner != null && tick < owner.until && model.sameGeometry(owner)) result.add(cell);
+            if (owner != null && !owner.outdoor && tick < owner.until && model.sameGeometry(owner)) result.add(cell);
         }
         return result;
     }
 
     private void inject(Map<Long, Delta> values, long source, long tick, RoomPhysics.Amount amount) {
         var model = at(source, tick);
-        if (tick >= model.until) values.put(source, new Delta(amount, ZERO));
+        if (model.outdoor || tick >= model.until) values.put(source, new Delta(amount, ZERO));
         else {
             var members = members(model, tick);
             for (long cell : members) values.put(cell, new Delta(RoomHistory.scale(amount, 1.0 / members.size()), ZERO));
@@ -272,7 +311,7 @@ final class RoomPast {
     }
     Optional<Historical> historical(long cell, long tick, List<RoomHistory.Entry> inputs, Boundaries outside) {
         var model = at(cell, tick);
-        if (model == null || tick >= model.until) return Optional.empty();
+        if (model == null || model.outdoor || tick >= model.until) return Optional.empty();
         var base = background(cell, tick, outside);
         if (base.isEmpty()) return Optional.empty();
         var values = base.get();
@@ -300,7 +339,7 @@ final class RoomPast {
         for (int n = 0; n < queue.size(); n++) {
             var rows = rows(queue.get(n));
             if (rows == null) continue;
-            for (var model : rows.values()) if (model.published && model.from <= end && models.putIfAbsent(model.id, model) == null)
+            for (var model : rows.values()) if (model.published && !model.outdoor && model.from <= end && models.putIfAbsent(model.id, model) == null)
                 for (long cell : model.cells) if (reachable.add(cell)) queue.add(cell);
         }
         var cuts = new TreeSet<Long>(); cuts.add(end);
@@ -330,7 +369,7 @@ final class RoomPast {
             var active = new ArrayList<Model>();
             for (long cell : values.keySet()) {
                 var model = at(cell, a);
-                if (model != null && a < model.until && active.stream().noneMatch(model::sameGeometry)) active.add(model);
+                if (model != null && !model.outdoor && a < model.until && active.stream().noneMatch(model::sameGeometry)) active.add(model);
             }
             for (var model : active) {
                 if (model.openings > 0 && !Double.isFinite(model.temperature)) return Optional.empty();
@@ -376,8 +415,11 @@ final class RoomPast {
         var records = new ListTag();
         for (var model : models) {
             var row = new CompoundTag(); row.putInt("id", model.id); row.putLong("from", model.from); row.putLong("until", model.until);
+            row.putBoolean("approximate",model.approximate);
             row.putLongArray("cells", model.cells); row.putInt("walls", model.walls); row.putInt("openings", model.openings);
-            row.putDouble("height", model.height); row.putDouble("temperature", model.temperature); records.add(row);
+            row.putDouble("height", model.height); if (!model.outdoor) row.putDouble("temperature", model.temperature);
+            if (model.outdoor) { row.putBoolean("outdoor",true); row.putBoolean("sky",model.sky); if (!model.sky) row.putLongArray("watch",model.watch); }
+            records.add(row);
         }
         tag.put("past_models", records); tag.put("past_cells", locations);
     }
@@ -385,9 +427,13 @@ final class RoomPast {
         var result = new RoomPast(); var models = new ArrayList<Model>();
         for (var element : tag.getList("past_models", 10)) {
             var row = (CompoundTag) element;
+            if (!row.contains("approximate",Tag.TAG_BYTE)) throw new IllegalStateException("精度の印がない試験用の室内履歴は再生成が必要です");
             var model = new Model(row.getInt("id"), row.getLong("from"), row.getLongArray("cells"), row.getInt("walls"),
                     row.getInt("openings"), row.getDouble("height"));
             model.until = row.getLong("until"); model.temperature = row.getDouble("temperature"); model.published = true;
+            model.approximate = row.getBoolean("approximate");
+            model.outdoor = row.getBoolean("outdoor"); model.sky = row.getBoolean("sky"); model.watch = row.getLongArray("watch");
+            if (model.outdoor) { model.temperature = Double.NaN; if (model.sky) model.watch = model.cells; Arrays.sort(model.watch); }
             models.add(model);
         }
         for (var element : tag.getList("past_cells", 10)) {

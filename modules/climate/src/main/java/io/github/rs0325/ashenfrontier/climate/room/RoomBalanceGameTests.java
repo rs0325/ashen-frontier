@@ -48,7 +48,7 @@ public final class RoomBalanceGameTests {
     private static final BlockPos[] CELLS = {new BlockPos(1, 1, 1), new BlockPos(2, 1, 1), new BlockPos(3, 1, 1), new BlockPos(2, 2, 1), new BlockPos(2, 3, 1)};
     private static final BlockPos HELPER = new BlockPos(10, 1, 1), VENT = new BlockPos(4, 1, 1);
     private static final ResourceLocation HEARTH = AshenFrontierCore.id("hearth");
-    private enum Kind { INPUT, DELAY, REPLAY, SPLIT, MERGE, OPEN, CLOSE, ROOF_OPEN, ROOF_CLOSE, CHIMNEY_OPEN, CHIMNEY_CLOSE, BLOCK_ALL, RECOVER, TRIM, COMPACT, SAVE, MOVE, CLONE, REMOVE, PLACE, EXCHANGE, CANCEL, PREPARE }
+    private enum Kind { INPUT, DELAY, REPLAY, SPLIT, MERGE, OPEN, CLOSE, ROOF_OPEN, ROOF_CLOSE, CHIMNEY_OPEN, CHIMNEY_CLOSE, BLOCK_ALL, RECOVER, TRIM, COMPACT, SAVE, MOVE, CLONE, REMOVE, PLACE, EXCHANGE, CANCEL, PREPARE, OUTDOOR, RETAIN, NOISE, WATCH }
     private record Step(Kind kind, long salt, int ticks) {
         Step(Kind kind, long salt) { this(kind, salt, 1); }
     }
@@ -88,9 +88,15 @@ public final class RoomBalanceGameTests {
             if (combos.getOrDefault(key, 0) < 64) throw new AssertionError("重要な組合せの実効回数不足: "+key+" "+combos);
         for (var key : List.of("prepare_other","prepare_overlap","prepare_save","prepare_cancel","prepare_delay","prepare_resume"))
             if (combos.getOrDefault(key,0)<32) throw new AssertionError("整理途中の割込みの実効回数不足: "+key+" "+combos);
+        for (var key : List.of("outdoor_observed","outdoor_covered","outdoor_removed","outdoor_delay","outdoor_save","outdoor_past"))
+            if (combos.getOrDefault(key,0)<64) throw new AssertionError("屋外期間の実効回数不足: "+key+" "+combos);
+        for(var key:List.of("approximate_indoor","approximate_outdoor"))
+            if(combos.getOrDefault(key,0)<16) throw new AssertionError("保持上限を越える実効回数不足: "+combos);
+        for(var key:List.of("outdoor_interrupt_progress","outdoor_multi_watch"))
+            if(combos.getOrDefault(key,0)<64) throw new AssertionError("屋外の割込み/複数監視の実効回数不足: "+combos);
         for (var kind : Kind.values()) if (effective.getOrDefault(kind, 0) < 16)
             throw new AssertionError("操作の実効回数不足: "+kind+" "+effective);
-        var result = "programs="+PROGRAMS+" seed_base="+SEED+" steps=25_or_26"+" expanded="+expanded
+        var result = "programs="+PROGRAMS+" seed_base="+SEED+" steps=25_to_27"+" expanded="+expanded
                 +" elapsed_ms="+(System.nanoTime()-start)/1e6+" attempts="+coverage+" effective="+effective+" combos="+combos;
         Files.writeString(Path.of("room-balance-generated.txt"), result);
         LogUtils.getLogger().info("M3-137 generated {}", result);
@@ -255,13 +261,17 @@ public final class RoomBalanceGameTests {
             result.add(new Step(kind, salt, index < 256 ? 1 : (int) (salt & 1)));
         }
         while (result.size()<STEPS) {
-            var kind = Kind.values()[random.nextInt(Kind.values().length-2)];
+            var kind = Kind.values()[random.nextInt(Kind.values().length-6)];
             if (kind == Kind.TRIM || kind == Kind.COMPACT && result.stream().anyMatch(s->s.kind == Kind.COMPACT)) continue;
             long salt = random.nextLong();
             result.add(new Step(kind, salt, index < 256 ? 1 : (int) (salt & 1)));
         }
         result.add(index % (STEPS+1), new Step(Kind.CANCEL, seed, 0));
         if (index % 4 == 0) result.add(1, new Step(Kind.PREPARE, seed, 0));
+        if (index % 4 == 1) result.add(1, new Step(Kind.OUTDOOR, seed, 0));
+        if (index % 16 == 1) result.add(2, new Step(Kind.RETAIN, seed, 0));
+        if (index % 8 == 2) result.add(1,new Step(Kind.NOISE,seed,0));
+        if (index % 8 == 3) result.add(2,new Step(Kind.WATCH,seed,0));
         return List.copyOf(result);
     }
     private static Failure run(GameTestHelper h, long seed, List<Step> program, EnumMap<Kind, Integer> coverage) {
@@ -275,7 +285,7 @@ public final class RoomBalanceGameTests {
                 state.observe(); state.check("step="+n+" "+program.get(n));
                 var after = state.service.balance().orElseThrow();
                 var kind = program.get(n).kind;
-                if (kind != Kind.INPUT && kind != Kind.DELAY && kind != Kind.EXCHANGE && kind != Kind.PREPARE) {
+                if (kind != Kind.INPUT && kind != Kind.DELAY && kind != Kind.EXCHANGE && kind != Kind.PREPARE && kind != Kind.OUTDOOR && kind != Kind.RETAIN) {
                     equal("ZERO_TIME_STATE", before.retained(), after.retained(),"時間0: "+program.get(n));
                     equal("ZERO_TIME_EXCHANGE", before.exchange(), after.exchange(),"時間0: "+program.get(n));
                 }
@@ -310,10 +320,12 @@ public final class RoomBalanceGameTests {
         final FakePlayer player;
         RoomAir service;
         RoomOracle oracle;
+        final BlockPos probe;
         final EnumMap<Kind, Integer> effective = new EnumMap<>(Kind.class);
         final HashMap<String, Integer> combos = new HashMap<>();
         final List<long[]> closedSpans = new ArrayList<>();
         long closedSince, lastRecovery = -1;
+        long outdoorObserved = -1;
         int lateSequence, replayChecks;
         boolean splitSeen, splitSaved;
         RoomPhysics.Amount inputs = ZERO, initial;
@@ -324,9 +336,11 @@ public final class RoomBalanceGameTests {
         long expanded;
         boolean split, roof, chimney, open, blocked;
         State(GameTestHelper h, long seed) {
-            this.h = h; this.seed = seed; originalTime = h.getLevel().getGameTime(); original = RoomAir.get(h.getLevel());
+            this.h = h; this.seed = seed;
+            probe = h.absolutePos(new BlockPos(6,1,1)).atY(h.getLevel().getMaxBuildHeight()-4);
+            originalTime = h.getLevel().getGameTime(); original = RoomAir.get(h.getLevel());
             player = FakePlayerFactory.get(h.getLevel(), new GameProfile(UUID.randomUUID(),"room-balance"));
-            var tag = new CompoundTag(); tag.putInt("format", 8);
+            var tag = new CompoundTag(); tag.putInt("format", 9);
             service = RoomAir.load(h.getLevel(), tag); h.getLevel().getDataStorage().set(RoomAir.ID, service); bind();
             StructureUtils.removeBarriers(h.getBounds(), h.getLevel());
             for (int x = 0;x <= 4;x++) for (int y = 0;y <= 4;y++) for (int z = 0;z <= 2;z++) h.setBlock(new BlockPos(x, y, z), Blocks.STONE);
@@ -339,8 +353,10 @@ public final class RoomBalanceGameTests {
             player.setPos(standing.getX()+.5, standing.getY()+1, standing.getZ()+.5);
             player.getInventory().clearContent(); h.getLevel().addNewPlayer(player);
             place(0, new ItemStack(BuiltInRegistries.ITEM.get(HEARTH)), false);
+            for (var direction : Direction.values()) h.getLevel().setBlockAndUpdate(probe.relative(direction),Blocks.AIR.defaultBlockState());
+            h.getLevel().setBlockAndUpdate(probe,Blocks.AIR.defaultBlockState());
             var roots = new ArrayList<BlockPos>();
-            for (var cell : CELLS) roots.add(absolute(cell)); roots.add(absolute(HELPER));
+            for (var cell : CELLS) roots.add(absolute(cell)); roots.add(absolute(HELPER)); roots.add(probe);
             oracle = new RoomOracle(h, roots, originalTime); observe();
             var balance = service.balance().orElseThrow();
             double mol = 8*101325/(8.314462618*293.15);
@@ -446,6 +462,99 @@ public final class RoomBalanceGameTests {
                     var copied = actor(1-source).saveWithoutMetadata(h.getLevel().registryAccess()).getUUID("source_id");
                     if (id.equals(copied)) throw new Violation("IDENTITY","有効な複製のIDが衝突");
                 }
+                case RETAIN -> {
+                    boolean indoorFirst=(step.salt>>>4&1)==0;
+                    var target=indoorFirst ? absolute(HELPER) : probe;
+                    long old=indoorFirst ? originalTime : outdoorObserved;
+                    if(old<0) return;
+                    for(int n=0;n<65;n++) {
+                        advance(1);
+                        h.getLevel().setBlockAndUpdate(target.above(),Blocks.AIR.defaultBlockState());service.changed(target.above());
+                        oracle.record(h.getLevel().getGameTime());
+                        if(service.sample(target,h.getLevel().getGameTime()).status()!=RoomAir.Status.OUTDOOR)
+                            throw new Violation("PRECISION","屋外への切替が成立しない");
+                        check("retain outdoor="+n);
+                        advance(1);
+                        h.getLevel().setBlockAndUpdate(target.above(),Blocks.STONE.defaultBlockState());service.changed(target.above());
+                        oracle.record(h.getLevel().getGameTime());
+                        if(discover(target).status()!=RoomAir.Status.INDOOR) throw new Violation("PRECISION","覆いの復旧が成立しない");
+                        check("retain indoor="+n);
+                    }
+                    var before=service.sample(target,old);
+                    var expected=indoorFirst ? RoomAir.Status.INDOOR : RoomAir.Status.OUTDOOR;
+                    if(before.status()!=expected || before.accuracy()!=RoomAir.Accuracy.APPROXIMATE || !before.confirmed())
+                        throw new Violation("PRECISION","古い代表構成の印がない: "+before);
+                    service=RoomAir.load(h.getLevel(),service.save(new CompoundTag(),h.getLevel().registryAccess()));
+                    h.getLevel().getDataStorage().set(RoomAir.ID,service);bind();
+                    var after=service.sample(target,old);
+                    if(after.status()!=expected || after.accuracy()!=RoomAir.Accuracy.APPROXIMATE || !after.confirmed()
+                            ||service.sample(target,h.getLevel().getGameTime()).accuracy()!=RoomAir.Accuracy.OBSERVED)
+                        throw new Violation("PRECISION","保存復元または現在の精度が違う: "+after);
+                    var saved=service.save(new CompoundTag(),h.getLevel().registryAccess());
+                    for(var item:saved.getList("past_cells",10))
+                        if(((CompoundTag)item).getIntArray("models").length>64) throw new Violation("PRECISION","構成数の上限超過");
+                    combos.merge(indoorFirst ? "approximate_indoor" : "approximate_outdoor",1,Integer::sum);
+                }
+                case NOISE -> {
+                    var origin=absolute(HELPER);
+                    h.setBlock(HELPER,Blocks.STONE);service.changed(origin);
+                    h.setBlock(HELPER,Blocks.AIR);service.changed(origin);
+                    try {
+                        var pending=RoomPublicationGameTests.partial(service,h,origin);
+                        int[] count={0};
+                        int works=RoomPublicationGameTests.finish(service,pending,origin,1,()->{
+                            int n=count[0]++;
+                            var outdoor=probe.offset(n%16,2,8+n/16);
+                            h.getLevel().getChunkAt(outdoor);
+                            h.getLevel().setBlockAndUpdate(outdoor,Blocks.AIR.defaultBlockState());
+                            if(service.sample(outdoor,h.getLevel().getGameTime()).status()!=RoomAir.Status.OUTDOOR)
+                                throw new Violation("OUTDOOR_PROGRESS","割込みの屋外観測が成立しない");
+                        });
+                        if(works>128 || count[0]!=works || service.sample(origin,h.getLevel().getGameTime()).status()!=RoomAir.Status.INDOOR)
+                            throw new Violation("OUTDOOR_PROGRESS","毎更新の割込み中に登録が完了しない: "+works);
+                        combos.merge("outdoor_interrupt_progress",1,Integer::sum);
+                    } catch(ReflectiveOperationException error) {throw new IllegalStateException(error);}
+                }
+                case WATCH -> {
+                    RoomOutdoorGameTests.assertWatchedPassages(h,service,absolute(new BlockPos(6,1,6)),false);
+                    combos.merge("outdoor_multi_watch",1,Integer::sum);
+                }
+                case OUTDOOR -> {
+                    for (var direction : Direction.values()) {
+                        var pos=probe.relative(direction);
+                        h.getLevel().setBlockAndUpdate(pos,(direction==Direction.UP?Blocks.AIR:Blocks.STONE).defaultBlockState());service.changed(pos);
+                    }
+                    long outsideTick=h.getLevel().getGameTime(); outdoorObserved=outsideTick;
+                    if (service.sample(probe,outsideTick).status()!=RoomAir.Status.OUTDOOR) throw new Violation("OUTDOOR_HISTORY","露天の観測が成立しない");
+                    combos.merge("outdoor_observed",1,Integer::sum);
+                    oracle.record(outsideTick);advance(1);
+                    if (service.sample(probe,outsideTick).status()!=RoomAir.Status.OUTDOOR) throw new Violation("OUTDOOR_HISTORY","屋外の過去が欠落");
+                    long coveredTick=h.getLevel().getGameTime();
+                    h.getLevel().setBlockAndUpdate(probe.above(),Blocks.STONE.defaultBlockState());service.changed(probe.above());
+                    oracle.record(coveredTick);
+                    if (discover(probe).status()!=RoomAir.Status.INDOOR) throw new Violation("OUTDOOR_HISTORY","覆いが成立しない");
+                    combos.merge("outdoor_covered",1,Integer::sum);
+                    post(new CombustionEvent(h.getLevel(),probe.below(),coveredTick,coveredTick,AshenFrontierCore.id("dry_wood"),
+                            .0001*.028/.1263,0,0,new UUID(seed,999997),1));
+                    advance(1);
+                    long again=h.getLevel().getGameTime();
+                    h.getLevel().setBlockAndUpdate(probe.above(),Blocks.AIR.defaultBlockState());service.changed(probe.above());
+                    oracle.record(again);
+                    if (service.sample(probe,again).status()!=RoomAir.Status.OUTDOOR) throw new Violation("OUTDOOR_HISTORY","屋外の復旧が成立しない");
+                    combos.merge("outdoor_removed",1,Integer::sum);
+                    post(new CombustionEvent(h.getLevel(),probe.below(),coveredTick,coveredTick+1,AshenFrontierCore.id("dry_wood"),
+                            .0002*.028/.1263,0,0,new UUID(seed,999996),1));
+                    combos.merge("outdoor_delay",1,Integer::sum);
+                    service=RoomAir.load(h.getLevel(),service.save(new CompoundTag(),h.getLevel().registryAccess()));
+                    h.getLevel().getDataStorage().set(RoomAir.ID,service);bind();combos.merge("outdoor_save",1,Integer::sum);
+                    advance(1);
+                    if (service.sample(probe,outsideTick).status()!=RoomAir.Status.OUTDOOR
+                            ||service.sample(probe,coveredTick).status()!=RoomAir.Status.INDOOR
+                            ||service.sample(probe,again).status()!=RoomAir.Status.OUTDOOR
+                            ||service.sample(probe.offset(4,0,0),outsideTick).status()!=RoomAir.Status.HISTORY_MISSING)
+                        throw new Violation("OUTDOOR_HISTORY","独立した変更時刻の履歴/未観測の区別が違う");
+                    combos.merge("outdoor_past",1,Integer::sum);
+                }
                 case PREPARE -> {
                     var origin = absolute(HELPER);
                     try {
@@ -513,7 +622,7 @@ public final class RoomBalanceGameTests {
                 case RECOVER -> (wasBlocked || !geometry.equals(afterGeometry)) && mainRooms(afterGeometry) > 0;
                 case TRIM -> afterRegion > oldRegion;
                 case COMPACT -> compacted;
-                case SAVE, CANCEL, PREPARE -> true;
+                case SAVE, CANCEL, PREPARE, OUTDOOR, RETAIN, NOISE, WATCH -> true;
                 case EXCHANGE -> h.getLevel().getGameTime() > timeBefore;
                 case MOVE, CLONE, REMOVE, PLACE -> !devices.equals(devices());
                 default -> !geometry.equals(afterGeometry);
