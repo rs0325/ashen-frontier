@@ -203,7 +203,7 @@ public final class MiningGameTests {
 
         private Mining(GameTestHelper helper) {
             this.helper = helper;
-            pos = helper.absolutePos(new BlockPos(1, 1, 1));
+            pos = helper.absolutePos(new BlockPos(0, 1, 0));
             player = new FakePlayer(helper.getLevel(), new GameProfile(UUID.randomUUID(), "miner"));
             player.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
             player.setPos(pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5);
