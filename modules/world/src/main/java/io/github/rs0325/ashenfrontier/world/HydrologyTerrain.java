@@ -20,24 +20,30 @@ final class HydrologyTerrain {
     private record Shore(HydrologyLayout.Point a,HydrologyLayout.Point b,double station) {}
     private static final class Samples {
         int chunkX=Integer.MIN_VALUE,chunkZ=Integer.MIN_VALUE,x0,z0;
+        long tileKey=Long.MIN_VALUE;
+        Tile tile;
         final double[] neighbors=new double[9];
         final double[] natural=new double[400],carved=new double[400],minimum=new double[400];
 
         void use(int x,int z) {
             if(chunkX==(x>>4) && chunkZ==(z>>4))return;
-            if((x>>4)==chunkX+1 && (z>>4)==chunkZ) {
-                advance(natural);advance(carved);advance(minimum);
+            int dx=(x>>4)-chunkX,dz=(z>>4)-chunkZ;
+            if((Math.abs(dx)==1 && dz==0) || (dx==0 && Math.abs(dz)==1)) {
+                advance(natural,dx,dz);advance(carved,dx,dz);advance(minimum,dx,dz);
             } else {
                 Arrays.fill(natural,Double.NaN);Arrays.fill(carved,Double.NaN);Arrays.fill(minimum,Double.NaN);
             }
             chunkX=x>>4;chunkZ=z>>4;x0=chunkX*16-2;z0=chunkZ*16-2;
         }
 
-        private static void advance(double[] values) {
-            for(int row=0;row<20;row++) {
+        private static void advance(double[] values,int dx,int dz) {
+            if(dz!=0) {
+                System.arraycopy(values,dz>0?320:0,values,dz>0?0:320,80);
+                Arrays.fill(values,dz>0?80:0,dz>0?400:320,Double.NaN);
+            } else for(int row=0;row<20;row++) {
                 int start=row*20;
-                System.arraycopy(values,start+16,values,start,4);
-                Arrays.fill(values,start+4,start+20,Double.NaN);
+                System.arraycopy(values,start+(dx>0?16:0),values,start+(dx>0?0:16),4);
+                Arrays.fill(values,start+(dx>0?4:0),start+(dx>0?20:16),Double.NaN);
             }
         }
 
@@ -176,10 +182,15 @@ final class HydrologyTerrain {
     }
 
     private static long key(int x,int z) {return ((long)x<<32)^(z&0xffffffffL);}
-    int owner(int x,int z) {var t=tiles.get(key(x>>7,z>>7));return t==null?0:Byte.toUnsignedInt(t.owner[(z&127)*128+(x&127)]);}
+    private Tile tile(int x,int z) {
+        var cache=samples.get();long tileKey=key(x>>7,z>>7);
+        if(cache.tileKey!=tileKey) {cache.tileKey=tileKey;cache.tile=tiles.get(tileKey);}
+        return cache.tile;
+    }
+    int owner(int x,int z) {var t=tile(x,z);return t==null?0:Byte.toUnsignedInt(t.owner[(z&127)*128+(x&127)]);}
     int inventory(int x,int z) {return inventory[owner(x,z)];}
-    int water(int x,int z) {var t=tiles.get(key(x>>7,z>>7));int at=(z&127)*128+(x&127);return t==null || t.water[at]==0?Integer.MIN_VALUE:t.water[at];}
-    int bed(int x,int z) {var t=tiles.get(key(x>>7,z>>7));return t==null?Integer.MIN_VALUE:t.bed[(z&127)*128+(x&127)];}
+    int water(int x,int z) {var t=tile(x,z);int at=(z&127)*128+(x&127);return t==null || t.water[at]==0?Integer.MIN_VALUE:t.water[at];}
+    int bed(int x,int z) {var t=tile(x,z);return t==null?Integer.MIN_VALUE:t.bed[(z&127)*128+(x&127)];}
     long initialVolume(int id) {
         if(id<2 || id>4)throw new IllegalArgumentException("有限の初期幾何体積はinventory 2～4です");
         return volume[id];
@@ -190,16 +201,17 @@ final class HydrologyTerrain {
         double result=natural,bankEdge=Double.POSITIVE_INFINITY;
         var nearby=cells.getOrDefault(key(x>>6,z>>6),List.of());
         for(int i=0;i<nearby.size();) {
-            int start=i,reach=nearby.get(i).reach;double best=Double.POSITIVE_INFINITY;Segment closest=null;double fraction=0;
+            int start=i,reach=nearby.get(i).reach;double best=Double.POSITIVE_INFINITY,maxWidth=0;Segment closest=null;double fraction=0;
             while(i<nearby.size() && nearby.get(i).reach==reach) {
                 var a=nearby.get(i++);double dx=a.dx,dz=a.dz,length=a.length2;
+                maxWidth=Math.max(maxWidth,Math.max(a.aw,a.bw));
                 double t=length==0?0:Math.clamp(((x-a.ax)*dx+(z-a.az)*dz)/length,0,1);
                 double px=a.ax+t*dx,pz=a.az+t*dz,distance=(x-px)*(x-px)+(z-pz)*(z-pz);
                 if(distance<best) {
                     best=distance;closest=a;fraction=t;
                 }
             }
-            if(closest!=null) {
+            if(closest!=null && Math.sqrt(best)-maxWidth<270) {
                 var a=closest;double t=fraction;
                 double station=a.station+t*a.span;
                 boolean coherent=a.reshape && a.oblique;
@@ -223,7 +235,7 @@ final class HydrologyTerrain {
                 double side=Math.signum(cross);
                 if(a.source)side+=(Math.clamp(cross/(a.length*8),-1,1)-side)*coherence;
                 var nearest=new Bank(Math.sqrt(best),a.ay+t*(a.by-a.ay),a.aw+t*(a.bw-a.aw),station,a.source,side);
-                double carved=bankHeight(x,z,natural,nearest);
+                double carved=bankHeight(natural,nearest.distance,nearest.grade,nearest.width,nearest.station,nearest.source,nearest.side);
                 for(int k=start;k<i;k++) {
                     var other=nearby.get(k);
                     double separation=Math.abs(other.station-nearest.station);
@@ -232,16 +244,17 @@ final class HydrologyTerrain {
                     if(blend==0)continue;
                     double ox=other.dx,oz=other.dz,l=other.length2;
                     double u=l==0?0:Math.clamp(((x-other.ax)*ox+(z-other.az)*oz)/l,0,1);
-                    double distance=Math.hypot(x-other.ax-u*ox,z-other.az-u*oz);
-                    if(distance>=nearest.distance+32)continue;
+                    double px=x-other.ax-u*ox,pz=z-other.az-u*oz,limit=nearest.distance+32;
+                    if(Math.abs(px)>=limit || Math.abs(pz)>=limit)continue;
+                    double distance=Math.hypot(px,pz);
+                    if(distance>=limit)continue;
                     double grade=other.ay+u*(other.by-other.ay);
                     double fade=TerrainMath.smooth((nearest.distance+32-distance)/16);
                     if(coherent && !a.source && natural-Math.max(0,natural-grade)*blend*fade>=carved+2)continue;
                     double signed=ox*(z-other.az-u*oz)-oz*(x-other.ax-u*ox),branchSide=Math.signum(signed);
                     if(other.source)branchSide+=(Math.clamp(signed/(other.length*8),-1,1)-branchSide)*coherence;
-                    var branch=new Bank(distance,grade,other.aw+u*(other.bw-other.aw),
+                    double cut=bankHeight(natural,distance,grade,other.aw+u*(other.bw-other.aw),
                             other.station+u*other.span,other.source,branchSide);
-                    double cut=bankHeight(x,z,natural,branch);
                     double otherCut=natural-(natural-cut)*blend*fade;
                     carved=nearest.source && nearest.station<256?Math.min(carved,otherCut):join(natural,carved,otherCut);
                 }
@@ -401,50 +414,51 @@ final class HydrologyTerrain {
         return 1-remaining;
     }
 
-    private double bankHeight(int x,int z,double natural,Bank bank) {
-        double d=Math.max(0,bank.distance-bank.width);
-        double reach=170+100*TerrainMath.noise(seed,"canyon_extent",bank.station,bank.side*37,112);
+    private double bankHeight(double natural,double distance,double grade,double halfWidth,double station,boolean source,double bankSide) {
+        double d=Math.max(0,distance-halfWidth);
+        if(d>=270)return natural;
+        double reach=170+100*TerrainMath.noise(seed,"canyon_extent",station,bankSide*37,112);
         if(d>=reach)return natural;
-        double head=bank.source?1-TerrainMath.smooth((bank.station-256)/256):0;
-        double level=Math.floor(bank.grade+1e-7);
-        level+=(bank.grade-level)*TerrainMath.smooth((d-2)/10);
-        double correction=head*(1-TerrainMath.smooth((bank.station-80)/80));
-        double shift=correction>0?.75*TerrainMath.noise(seed,"source_bank_offset",bank.station,d*.4,3):0;
-        double path=bank.side>0?1.75*head:.21*head+correction*shift;
+        double head=source?1-TerrainMath.smooth((station-256)/256):0;
+        double level=Math.floor(grade+1e-7);
+        level+=(grade-level)*TerrainMath.smooth((d-2)/10);
+        double correction=head*(1-TerrainMath.smooth((station-80)/80));
+        double shift=correction>0?.75*TerrainMath.noise(seed,"source_bank_offset",station,d*.4,3):0;
+        double path=bankSide>0?1.75*head:.21*head+correction*shift;
         double side=Math.max(0,d-path);
-        double bend=TerrainMath.fbm(seed,"canyon_bend",bank.station,d*.6,96)*28;
-        double joint=TerrainMath.fbm(seed,"canyon_joint",bank.station+bend,d*.65,40);
-        double gully=1-Math.abs(2*TerrainMath.noise(seed,"canyon_gully",bank.station+bend,d*.4,32)-1);
-        double slope=.28+.4*head+.13*TerrainMath.noise(seed,"canyon_slope",bank.station,bank.side*51,72);
+        double bend=TerrainMath.fbm(seed,"canyon_bend",station,d*.6,96)*28;
+        double joint=TerrainMath.fbm(seed,"canyon_joint",station+bend,d*.65,40);
+        double gully=1-Math.abs(2*TerrainMath.noise(seed,"canyon_gully",station+bend,d*.4,32)-1);
+        double slope=.28+.4*head+.13*TerrainMath.noise(seed,"canyon_slope",station,bankSide*51,72);
         double rise=side*slope+Math.pow(side,1.45)*.022+head*2*TerrainMath.smooth(side/1.25);
-        if(correction>0 && bank.side<0) {
-            double width=5+3*TerrainMath.noise(seed,"source_toe_width",bank.station,d*.5,23);
-            double lift=.8+.6*TerrainMath.noise(seed,"source_toe_lift",bank.station,d*.4,9);
+        if(correction>0 && bankSide<0) {
+            double width=5+3*TerrainMath.noise(seed,"source_toe_width",station,d*.5,23);
+            double lift=.8+.6*TerrainMath.noise(seed,"source_toe_lift",station,d*.4,9);
             rise+=correction*lift*TerrainMath.smooth(d/1.5)*(1-TerrainMath.smooth(d/width));
         }
-        if(head>0 && bank.side<0) {
-            double toe=TerrainMath.noise(seed,"source_bank_toe",bank.station,d*.25,4);
+        if(head>0 && bankSide<0) {
+            double toe=TerrainMath.noise(seed,"source_bank_toe",station,d*.25,4);
             rise+=(head-correction)*1.8*TerrainMath.smooth((toe-.25)/.5)*(1-TerrainMath.smooth(side/2));
         }
         if(head>0) {
-            double warp=(TerrainMath.noise(seed,"source_spur_bend",bank.station,bank.side*43,37)-.5)*19;
-            double spur=TerrainMath.noise(seed,"source_spur",bank.station+warp+side*.6,side*.45+bank.side*71,8);
-            rise+=Math.min(rise,8)*head*(spur*.7-.35)*TerrainMath.smooth(bank.side<0?side/1.25:(side-.75)/2.5);
+            double warp=(TerrainMath.noise(seed,"source_spur_bend",station,bankSide*43,37)-.5)*19;
+            double spur=TerrainMath.noise(seed,"source_spur",station+warp+side*.6,side*.45+bankSide*71,8);
+            rise+=Math.min(rise,8)*head*(spur*.7-.35)*TerrainMath.smooth(bankSide<0?side/1.25:(side-.75)/2.5);
         }
         double cut=level+1+rise+Math.min(11,rise*.28)*(joint-Math.pow(gully,3)*.8);
-        double small=1-Math.abs(2*TerrainMath.noise(seed,"canyon_small_gully",bank.station+bend+joint*7,d*.55,12)-1);
+        double small=1-Math.abs(2*TerrainMath.noise(seed,"canyon_small_gully",station+bend+joint*7,d*.55,12)-1);
         double detail=(1-head+head*TerrainMath.smooth((side-12)/20))*TerrainMath.smooth(side/4);
         cut-=detail*Math.min(7,rise*.35)*Math.pow(TerrainMath.smooth(small),3);
         if(head>0) {
-            double cross=bank.station+bank.side*83+TerrainMath.noise(seed,"source_branch_bend",bank.station,d,24)*12;
+            double cross=station+bankSide*83+TerrainMath.noise(seed,"source_branch_bend",station,d,24)*12;
             double tributary=1-Math.abs(2*TerrainMath.noise(seed,"source_branch",cross,d*.25,9)-1);
             double relief=TerrainMath.smooth((side-3)/6)*head;
-            cut-=relief*(2+3*TerrainMath.noise(seed,"source_branch_depth",bank.station,bank.side*41,22))
+            cut-=relief*(2+3*TerrainMath.noise(seed,"source_branch_depth",station,bankSide*41,22))
                     *Math.pow(TerrainMath.smooth(tributary),2);
         }
         double depth=Math.max(0,natural-cut);
         depth*=1-TerrainMath.smooth(side/8)*(1-TerrainMath.smooth(depth/12));
-        double start=24+30*TerrainMath.noise(seed,"canyon_transition",bank.station,bank.side*71,88);
+        double start=24+30*TerrainMath.noise(seed,"canyon_transition",station,bankSide*71,88);
         return natural-depth*(1-TerrainMath.smooth((d-start)/(reach-start)));
     }
 

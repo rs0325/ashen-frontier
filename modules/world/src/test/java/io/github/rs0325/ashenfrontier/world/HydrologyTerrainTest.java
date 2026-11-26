@@ -473,14 +473,14 @@ class HydrologyTerrainTest {
 
     @Test void adjacentChunksKeepColumnsWhenTheCacheAdvances() throws Exception {
         var terrain=new FixedTerrain(TerrainBasisTest.version());int checked=0;
+        int[][] orders={{0,1,2,5,4,3,6,7,8},{8,7,6,3,4,5,2,1,0},{0,3,6,7,4,1,2,5,8},{4,0,8,2,6,1,7,3,5}};
         for(int[] origin:new int[][]{{-640,-800},{-388,-643},{-412,-648},{-331,-871}}) {
-            long[] expected=new long[768];
-            for(int pass=0;pass<2;pass++) {
+            long[] expected=new long[2304];
+            for(int pass=0;pass<orders.length;pass++) {
                 terrain.column(-8192,-8192);
-                for(int i=0;i<3;i++) {
-                    int chunk=pass==0?i:2-i;
+                for(int chunk:orders[pass]) {
                     for(int dz=0;dz<16;dz++)for(int dx=0;dx<16;dx++) {
-                        int x=(origin[0]+chunk)*16+dx,z=origin[1]*16+dz,at=chunk*256+dz*16+dx;
+                        int x=(origin[0]+chunk%3)*16+dx,z=(origin[1]+chunk/3)*16+dz,at=chunk*256+dz*16+dx;
                         var column=terrain.column(x,z);
                         long value=((long)column.surfaceY()<<32)^(column.topY()&0xffffffffL);
                         if(pass==0)expected[at]=value;
