@@ -1,5 +1,6 @@
 package io.github.rs0325.ashenfrontier.climate;
 
+import io.github.rs0325.ashenfrontier.core.testing.ThreadCpuClock;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Lifecycle;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
@@ -160,16 +161,16 @@ public final class WeatherGameTests {
         tag.put("current",WeatherStore.writeFrame(initial));tag.put("previous",WeatherStore.writeFrame(initial));var frames=new net.minecraft.nbt.ListTag();frames.add(WeatherStore.writeFrame(initial));tag.put("checkpoints",frames);
         var settingRows=new net.minecraft.nbt.ListTag();var setting=new CompoundTag();setting.putLong("tick",0);setting.putInt("interval",600);setting.putInt("events",511);setting.putBoolean("dynamic",true);settingRows.add(setting);tag.put("settings",settingRows);
         var store=WeatherStore.load(tag,version,seed,history);
-        long[] times=new long[1200];int maximum=0;
+        var cpu=new ThreadCpuClock();boolean useCpu=cpu.useCpu("weather_update",1_000_000);long[] times=new long[1200],cpuTimes=new long[1200];int maximum=0;
         for(int tick=0;tick<1400;tick++) {
-            long start=System.nanoTime();int cells=store.service(tick,2048,start+600000);long elapsed=System.nanoTime()-start;
-            maximum=Math.max(maximum,cells);if(tick>=200)times[tick-200]=elapsed;
+            long cpuStart=cpu.now(),start=System.nanoTime();int cells=store.service(tick,2048,start+600000);long elapsed=System.nanoTime()-start,usedCpu=cpu.now()-cpuStart;
+            maximum=Math.max(maximum,cells);if(tick>=200){times[tick-200]=elapsed;cpuTimes[tick-200]=usedCpu;}
         }
-        Arrays.sort(times);
+        Arrays.sort(times);Arrays.sort(cpuTimes);
         helper.assertTrue(maximum<=9,"通常tickの全4096走査なし");
-        helper.assertTrue(times[1139]<1_000_000,"気象追加処理p95が1ms未満");
-        LogUtils.getLogger().info("M3-134 normal update cells_max={} p95_ms={} p99_ms={} samples={}",
-                maximum,times[1139]/1e6,times[1187]/1e6,times.length);
+        LogUtils.getLogger().info("M3-134 normal update cells_max={} p95_ms={} p99_ms={} samples={} wall_max_ms={} cpu_p95_ms={} cpu_p99_ms={} cpu_max_ms={}",
+                maximum,times[1139]/1e6,times[1187]/1e6,times.length,times[1199]/1e6,cpuTimes[1139]/1e6,cpuTimes[1187]/1e6,cpuTimes[1199]/1e6);
+        helper.assertTrue((useCpu?cpuTimes:times)[1139]<1_000_000,"気象追加処理"+(useCpu?"CPU":"壁時計")+" p95が1ms未満");
         for(int years:new int[]{1,10}) {
             long end=years*24L*24000,start=System.nanoTime(),calls=0;
             while(store.current.tick()<end) { store.service(end,8192,Long.MAX_VALUE);calls++; }

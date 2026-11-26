@@ -36,14 +36,15 @@ import java.util.UUID;
 @PrefixGameTestTemplate(false)
 public final class SurvivalGameTests {
     static final class Inputs implements SurvivalRuntime.Inputs {
-        final DayLengthHistory clock;boolean waiting;double oxygen=21200;
+        final DayLengthHistory clock;boolean waiting,waitingHistory;double oxygen=21200;
+        long hypoxicFrom=Long.MAX_VALUE,hypoxicTo=Long.MAX_VALUE;
         Inputs(long start) { clock=new DayLengthHistory(start,24000); }
         public Optional<DayLengthHistory> clock(ServerLevel level) { return Optional.of(clock); }
         public Optional<SurvivalRuntime.Observation> sample(ServerLevel level,BlockPos pos,long from,long to,boolean submerged) {
-            if(waiting)return Optional.empty();
+            if(waiting||waitingHistory&&from<to)return Optional.empty();
             var interval=clock.intervals(from,to).getFirst();
-            return Optional.of(new SurvivalRuntime.Observation(from,interval.endTick(),interval.ticksPerDay(),
-                    new Physiology.Air(295.15,.5,.1,0,101325,oxygen,0,true,submerged)));
+            return Optional.of(new SurvivalRuntime.Observation(from,Math.min(interval.endTick(),from<hypoxicFrom?hypoxicFrom:from<hypoxicTo?hypoxicTo:Long.MAX_VALUE),interval.ticksPerDay(),
+                    new Physiology.Air(295.15,.5,.1,0,101325,from>=hypoxicFrom&&from<hypoxicTo?15000:oxygen,0,true,submerged)));
         }
     }
     static final class Person implements AutoCloseable {
@@ -120,6 +121,64 @@ public final class SurvivalGameTests {
             com.mojang.logging.LogUtils.getLogger().info("M3-124 generated saves={} same={} day_changes={} pending_resumes={} feed_saves={} logouts={}",
                     saves,same,changes,pending,feeds,logouts);
         } finally { SurvivalRuntime.INPUTS.remove(level);time(level,original); }
+        h.succeed();
+    }
+
+    @GameTest(template="empty",templateNamespace=AshenFrontierSurvival.MOD_ID,timeoutTicks=400,batch="survival_fixture")
+    public static void sameTickWakeAndResleepRejectsNewHypoxicGeneration(GameTestHelper h) {
+        var level=h.getLevel();long original=level.getGameTime(),oldDay=level.getDayTime();
+        boolean daylight=level.getGameRules().getBoolean(GameRules.RULE_DAYLIGHT);
+        var inputs=new Inputs(original);SurvivalRuntime.INPUTS.put(level,inputs);
+        try(var person=new Person(level,h.absolutePos(new BlockPos(0,2,0)),"resleep124")) {
+            level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false,level.getServer());
+            level.setDayTime(6000);drain(h,person.runtime);
+            var bed=person.player.blockPosition();
+            level.setBlock(bed,Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING,Direction.SOUTH).setValue(BedBlock.PART,BedPart.HEAD),3);
+            level.setBlock(bed.north(),Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING,Direction.SOUTH).setValue(BedBlock.PART,BedPart.FOOT),3);
+            person.runtime.data.body.sleepDebt=40000;
+            h.assertTrue(person.player.startSleepInBed(bed).right().isPresent(),"第1世代を実寝床から開始");
+            NeoForge.EVENT_BUS.post(new PlayerTickEvent.Post(person.player));
+            long lease=person.runtime.data.currentLease;inputs.waitingHistory=true;
+            for(int tick=1;tick<=20;tick++) {
+                time(level,original+tick);person.player.doTick();
+                NeoForge.EVENT_BUS.post(new PlayerTickEvent.Post(person.player));
+            }
+            person.player.stopSleeping();person.player.setPos(bed.getX()+.5,bed.getY(),bed.getZ()+.5);
+            person.runtime.capture();
+            h.assertTrue(person.player.startSleepInBed(bed).right().isPresent(),"同tickに同じ寝床へ再就寝");
+            NeoForge.EVENT_BUS.post(new PlayerTickEvent.Post(person.player));
+            h.assertTrue(person.runtime.data.currentLease==lease&&person.runtime.data.sleepGeneration==2,
+                    "保持位置を変えず第2世代へ移る");
+            inputs.hypoxicFrom=original+20;inputs.hypoxicTo=original+21;
+            boolean separated=false;
+            for(int tick=21;tick<=120;tick++) {
+                time(level,original+tick);
+                // 過去の区間を保留したまま、就寝の継続判定に使う現在観測だけを更新する。
+                for(int probe=0;probe<2;probe++)person.runtime.work(Long.MAX_VALUE,0);
+                person.player.doTick();
+                NeoForge.EVENT_BUS.post(new PlayerTickEvent.Post(person.player));
+                if(tick==40) {
+                    var spans=person.runtime.data.frames.stream().filter(f->f.kind==PhysiologyData.Kind.SPAN).toList();
+                    separated=spans.size()==2&&spans.get(0).generation==1&&spans.get(0).to==original+20
+                            &&spans.get(1).generation==2&&spans.get(1).from==original+20&&spans.get(1).to==original+40;
+                }
+            }
+            person.runtime.work(System.nanoTime()+10_000_000,32);
+            h.assertTrue(person.runtime.data.pendingSleep==2&&person.runtime.data.lastCredit==-1,
+                    "第2世代の深睡眠候補も未評価の区間を追い越さない");
+            inputs.waitingHistory=false;drain(h,person.runtime);
+            h.assertTrue(person.runtime.data.invalidSleep==2&&person.runtime.data.consumedSleep==2
+                    &&person.runtime.data.pendingSleep==0&&person.runtime.data.lastCredit==-1,
+                    "新しい世代の低酸素を記録し、その返済を拒否する");
+            h.assertTrue(separated,"同tickの起床・再就寝をまたいでSPANを合算しない");
+            double expected=40000-119*86400.0/24000+86400.0/24000*.5;
+            h.assertTrue(Math.abs(person.runtime.data.body.sleepDebt-expected)<1e-8,
+                    "健康な旧睡眠と低酸素の新睡眠の実経過だけを収支へ反映");
+            person.player.stopSleeping();person.runtime.capture();
+        } finally {
+            SurvivalRuntime.INPUTS.remove(level);time(level,original);level.setDayTime(oldDay);
+            level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(daylight,level.getServer());
+        }
         h.succeed();
     }
 

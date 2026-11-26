@@ -216,17 +216,17 @@ public final class EnvironmentProvider {
     public record Exposure(EnvironmentSample sample,double windMps,double oxygenPa,RoomAir.Accuracy accuracy) {}
     /** 未計算/未観測なら空。最初の区間を確定した後、次の末尾から再照会する。 */
     public Optional<Exposure> exposure(BlockPos station,long from,long to) {
-        var values=environment(station,from,to);
-        if(values.isEmpty())return Optional.empty();
-        var sample=values.get().getFirst();var pos=station.above();
-        var local=rooms.sample(pos,sample.startTick());
-        var rows=data(pos,from,to);
-        if(!local.confirmed()||local.state().isEmpty()||rows.isEmpty())return Optional.empty();
-        var row=rows.get().get(index(rows.get(),sample.startTick()));
-        return Optional.of(new Exposure(sample,local.status()==RoomAir.Status.INDOOR?.1:row.air.windMS(),
-                local.state().get().oxygen()*sample.pressurePa(),local.accuracy()));
+        return resolve(station,from,to).map(value->{
+            var sample=value.samples.getFirst();var local=value.first;
+            return new Exposure(sample,local.status()==RoomAir.Status.INDOOR?.1:value.outdoor.air.windMS(),
+                    local.state().orElseThrow().oxygen()*sample.pressurePa(),local.accuracy());
+        });
     }
+    private record Resolved(List<EnvironmentSample> samples,RoomAir.Sample first,OutdoorRow outdoor) {}
     private Optional<List<EnvironmentSample>> environment(BlockPos station,long from,long to) {
+        return resolve(station,from,to).map(Resolved::samples);
+    }
+    private Optional<Resolved> resolve(BlockPos station,long from,long to) {
         var pos=station.above();
         var observed=rooms.sample(pos,from);
         if(!observed.confirmed()&&observed.status()!=RoomAir.Status.MISSING_BOUNDARY) {
@@ -243,7 +243,7 @@ public final class EnvironmentProvider {
         for(int n=0;n+1<initialCuts.size();n++) {
             long a=initialCuts.get(n),b=initialCuts.get(n+1);
             if(b-a<=1)continue;
-            var first=rooms.sample(pos,a);var last=rooms.sample(pos,b-1);
+            var first=a==from&&observed.confirmed()?observed:rooms.sample(pos,a);var last=rooms.sample(pos,b-1);
             if(!first.confirmed()||!last.confirmed()) {
                 reason="environment.ashen_frontier_climate.replaying";return Optional.empty();
             }
@@ -258,13 +258,15 @@ public final class EnvironmentProvider {
             cuts.add(left);
         }
         var points=new ArrayList<>(cuts);var result=new ArrayList<EnvironmentSample>();
+        RoomAir.Sample first=null;
         for(int i=0;i<Math.max(1,points.size()-1);i++) {
             long a=points.get(i),b=from==to?a:points.get(i+1);
-            var local=rooms.sample(pos,a);
+            var local=a==from&&observed.confirmed()?observed:rooms.sample(pos,a);
             if(!local.confirmed()||local.state().isEmpty()) {
                 reason="room_status.ashen_frontier_climate."+local.status().name().toLowerCase(java.util.Locale.ROOT);
                 return Optional.empty();
             }
+            if(first==null)first=local;
             var row=outdoor.get().get(index(outdoor.get(),a));
             double seconds=GameTime.gameSeconds(b-a,row.day);
             double gameA=row.gameFrom+GameTime.gameSeconds(a-row.from,row.day);
@@ -274,6 +276,6 @@ public final class EnvironmentProvider {
                     rain,energy,rain>0?Optional.of(AshenFrontierCore.id(row.contaminated?"contaminated_water":"raw_water")):Optional.empty(),
                     local.covered(),local.ventilated()));
         }
-        return Optional.of(List.copyOf(result));
+        return Optional.of(new Resolved(List.copyOf(result),first,outdoor.get().get(index(outdoor.get(),from))));
     }
 }

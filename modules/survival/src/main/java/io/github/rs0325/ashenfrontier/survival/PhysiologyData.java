@@ -52,7 +52,7 @@ public final class PhysiologyData {
     }
     enum Kind { SPAN, HIT, JUMP, INTAKE, SLEEP, OFFLINE }
     static final class Frame {
-        final Kind kind;final long lease,to;long from;
+        final Kind kind;final long lease;long from,to;
         final Activity activity;final boolean submerged;boolean effects=true;
         final double a,b,c,d;final boolean vitaminC,vitaminFat;final long generation;
         Frame(Kind kind,long lease,long from,long to,Activity activity,boolean submerged,
@@ -84,13 +84,13 @@ public final class PhysiologyData {
     void span(long to) {
         if(to<observed)throw new IllegalStateException("生理の時計が逆転しました");
         if(to==observed)return;
+        long generation=activity==Activity.SLEEP?sleepGeneration:0;
         var last=frames.peekLast();
         if(last!=null&&last.kind==Kind.SPAN&&last.lease==currentLease&&last.to==observed
-                &&last.activity==activity&&last.submerged==submerged&&last.effects==effects) {
-            frames.removeLast();var frame=Frame.span(currentLease,last.from,to,activity,submerged,activity==Activity.SLEEP?sleepGeneration:0);
-            frame.effects=effects;frames.addLast(frame);
+                &&last.activity==activity&&last.submerged==submerged&&last.effects==effects&&last.generation==generation) {
+            last.to=to;
         } else {
-            var frame=Frame.span(currentLease,observed,to,activity,submerged,activity==Activity.SLEEP?sleepGeneration:0);
+            var frame=Frame.span(currentLease,observed,to,activity,submerged,generation);
             frame.effects=effects;addFrame(frame);
         }
         observed=to;

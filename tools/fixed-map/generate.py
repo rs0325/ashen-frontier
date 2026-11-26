@@ -579,7 +579,7 @@ def generate(input_dir, output):
     """検査済みの資産一式を置き換える。生成中・通常の置換失敗では旧出力を保持する。"""
     input_dir, output = Path(input_dir).resolve(), Path(output).resolve()
     version = json.loads((input_dir/"layout.json").read_text(encoding="utf-8"))["map_version"]
-    extra = ("landform.png", "landform.json", "hydrology.json") if version == "earth_002" else ()
+    extra = ("landform.png", "landform.json", "hydrology.json", "hydrology_owner.png", "hydrology_surface.png", "hydrology_bed.png") if version == "earth_002" else ()
     if output.exists() and any(not p.is_file() or p.name not in (*RESOURCE_FILES,*extra,"manifest.json") for p in output.iterdir()):
         raise ValueError("出力先に生成資産以外のファイルがあります")
     output.parent.mkdir(parents=True,exist_ok=True)
@@ -890,7 +890,7 @@ def validate(output, expected_version):
         raise ValueError("マップ版・形式が一致しません")
     required = set(RESOURCE_FILES)
     if expected_version == "earth_002":
-        required.update(("landform.json", "hydrology.json", "landform.png"))
+        required.update(("landform.json", "hydrology.json", "landform.png", "hydrology_owner.png", "hydrology_surface.png", "hydrology_bed.png"))
         if any(type(manifest.get(k)) is not int or manifest[k] != 1 for k in ("landform_schema_version", "hydrology_schema_version")):
             raise ValueError("地形・水系のschemaが不正です")
     if not required <= manifest["files"].keys():
@@ -900,7 +900,9 @@ def validate(output, expected_version):
             raise ValueError(f"不足・ハッシュ不一致: {name}")
     if expected_version == "earth_002":
         from layout_contract import validate as validate_contract
+        from generate_hydrology import validate_assets
         validate_contract(output, expected_version)
+        validate_assets(output)
         with Image.open(output/"landform.png") as image:
             units = json.loads((output/"landform.json").read_text(encoding="utf-8"))["units"]
             if image.size != (SIZE,SIZE) or image.mode != "L" or set(np.unique(np.array(image)))-{0} != {u["id"] for u in units}:

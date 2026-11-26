@@ -90,6 +90,35 @@ public final class EnvironmentConnectionGameTests {
         }
         h.succeed();
     }
+    @GameTest(template="empty",templateNamespace=AshenFrontierClimate.MOD_ID,timeoutTicks=400)
+    public static void physiologyExposureSharesIntervalsWithoutCachingLaterHeat(GameTestHelper h) throws Exception {
+        try(var f=new Fixture(h)) {
+            f.ready(h,0,0);
+            f.clock.setGameTime(600);
+            var clock=ClimateClock.get(f.level);clock.changeDayLength(600,12000);
+            WeatherStore.get(f.level).clock(clock.history(),clock.revision(),600);
+            f.clock.setGameTime(1200);
+            var rooms=RoomAir.get(f.level);var provider=EnvironmentProvider.get(f.level);
+            var rows=f.ready(h,0,1200);
+            h.assertTrue(rows.stream().anyMatch(row->row.startTick()==600),"日長と気象の境界を維持");
+            for(var row:rows) {
+                var value=provider.exposure(f.pos,row.startTick(),1200).orElseThrow();
+                var local=rooms.sample(f.pos.above(),row.startTick());
+                h.assertTrue(value.sample().equals(row),"C01と生理へ同じ確定区間を渡す");
+                h.assertTrue(value.oxygenPa()==local.state().orElseThrow().oxygen()*row.pressurePa()
+                        &&value.accuracy()==local.accuracy()&&value.windMps()==.1,"同じ始点の空気と近似区分");
+            }
+            double before=provider.exposure(f.pos,1200,1200).orElseThrow().sample().temperatureK();
+            rooms.receive(new io.github.rs0325.ashenfrontier.core.environment.CombustionEvent(f.level,f.pos,
+                    1200,1200,AshenFrontierCore.id("dry_wood"),0,0,-1_000_000,
+                    new java.util.UUID(124,135),1));
+            f.ready(h,1200,1200);
+            var after=provider.exposure(f.pos,1200,1200).orElseThrow();
+            h.assertTrue(after.sample().temperatureK()>before,"同tickの後続放熱を古い照会結果で隠さない");
+        }
+        h.succeed();
+    }
+
     private static final class CoolingOracle {
         final Fixture fixture;
         double expected,before;

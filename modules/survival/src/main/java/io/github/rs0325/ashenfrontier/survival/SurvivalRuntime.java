@@ -20,6 +20,7 @@ import java.util.Optional;
 
 /** プレイヤーのイベント順と評価cursorを保つ。未観測入力を既定の空気で埋めない。 */
 final class SurvivalRuntime {
+    private static final ResourceLocation STRAIN=AshenFrontierSurvival.id("strain");
     record Observation(long from,long to,long day,Physiology.Air air) {}
     interface Inputs {
         Optional<Observation> sample(ServerLevel level,BlockPos position,long from,long to,boolean submerged);
@@ -45,6 +46,7 @@ final class SurvivalRuntime {
     final Inputs input;
     long scheduled=-1,heavyUntil=-1,probeTick=-1,lastSent=-1;
     private PhysiologyUpdate sent;
+    private double appliedWorkFactor=Double.NaN;
     private Observation current;
     private net.minecraft.world.phys.Vec3 movementPosition;
     private String movementDimension;
@@ -238,10 +240,14 @@ final class SurvivalRuntime {
     }
     private void applyEffects() {
         var body=data.body;boolean enabled=AshenFrontierSurvival.EFFECTS.get();
-        var attribute=player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
-        var id=AshenFrontierSurvival.id("strain");attribute.removeModifier(id);
-        if(enabled&&body.workFactor()<1)attribute.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
-                id,Math.max(.5,body.workFactor())-1,net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        double factor=enabled?Math.max(.5,body.workFactor()):1;
+        if(factor!=appliedWorkFactor) {
+            var attribute=player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
+            attribute.removeModifier(STRAIN);
+            if(factor<1)attribute.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                    STRAIN,factor-1,net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+            appliedWorkFactor=factor;
+        }
         if(enabled&&body.exhausted)player.setSprinting(false);
         player.getFoodData().setFoodLevel((int)Math.clamp(Math.round(body.energy/1_000_000),0,20));
         player.getFoodData().setSaturation(0);player.getFoodData().setExhaustion(0);

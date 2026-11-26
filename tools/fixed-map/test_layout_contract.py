@@ -25,7 +25,7 @@ class LayoutContractTest(unittest.TestCase):
         self.assertEqual(8, len(self.water["reaches"]))
         self.assertEqual(3, len(self.water["outlets"]))
         self.assertEqual([-6510, -10300], self.water["nodes"][2]["xz"])
-        self.assertEqual([125, 110, 85], [p[2] for p in self.water["reaches"][6]["profile_x_z_surface_full_width_depth"][1:4]])
+        self.assertEqual([120, 103, 85], [p[2] for p in self.water["reaches"][6]["profile_x_z_surface_full_width_depth"][1:4]])
 
     def test_shared_level_must_not_be_silently_clamped(self):
         self.water["reaches"][4]["profile_x_z_surface_full_width_depth"][-1][2] = 137

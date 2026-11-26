@@ -1,5 +1,6 @@
 package io.github.rs0325.ashenfrontier.climate;
 
+import io.github.rs0325.ashenfrontier.core.testing.ThreadCpuClock;
 import io.github.rs0325.ashenfrontier.climate.room.RoomAir;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import io.github.rs0325.ashenfrontier.core.environment.EnvironmentBudget;
@@ -28,9 +29,15 @@ public final class EnvironmentPerformanceGameTests {
     public static void combinedWeatherRoomsAndFortyStations(GameTestHelper h) throws Exception {
         runWorkload(h,(level,players)->{});h.succeed();
     }
-    /** #124も同じ実加工/着火の仕事を実行する。計測/判定は既存のまま。 */
+    /** #124も同じ実加工/着火の仕事と共通時計の判定を再利用する。 */
     public static void runWorkload(GameTestHelper h,java.util.function.BiConsumer<net.minecraft.server.level.ServerLevel,
             java.util.List<net.minecraft.server.level.ServerPlayer>> hook) throws Exception {
+        runWorkload(h,hook,"weather_rooms_stations");
+    }
+    public static void runWorkload(GameTestHelper h,java.util.function.BiConsumer<net.minecraft.server.level.ServerLevel,
+            java.util.List<net.minecraft.server.level.ServerPlayer>> hook,String measurement) throws Exception {
+        var cpu=new ThreadCpuClock();boolean useCpu=cpu.useCpu(measurement,1_000_000);
+
         try(var f=new EnvironmentConnectionGameTests.Fixture(h)) {
             var rooms=RoomAir.get(f.level);
             var actors=new ArrayList<net.minecraft.world.level.block.entity.BlockEntity>();
@@ -103,8 +110,8 @@ public final class EnvironmentPerformanceGameTests {
             NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,emissions);
             long processingTicks=0,ignitionTicks=0,overlapTicks=0,playerOperations=0;
             var work=actors.getFirst().getClass().getDeclaredMethod("scheduledWork");work.setAccessible(true);
-            long[] elapsed=new long[2000];long[][] stages=new long[5][2000];int firstActor=0;
-            com.mojang.logging.LogUtils.getLogger().info("M3-135 workload start");
+            long[] elapsed=new long[2000],cpuTimes=new long[2000];long[][] stages=new long[5][2000];int firstActor=0;
+            com.mojang.logging.LogUtils.getLogger().info("M3-135 workload start test={}",measurement);
             long heapBefore=usedHeap(),gcBefore=gcMillis(),wall=System.nanoTime();
             h.assertTrue(EnvironmentBudget.remaining(f.level)!=Long.MAX_VALUE,"実providerの共有予算が有効");
             var recording=new jdk.jfr.Recording();
@@ -114,8 +121,9 @@ public final class EnvironmentPerformanceGameTests {
                 for(int tick=1;tick<=2500;tick++) {
                     f.clock.setGameTime(tick);
                     EnvironmentBudget.beginTick(f.level.getServer());
-                    long start=System.nanoTime();
+                    long cpuStart=cpu.now(),start=System.nanoTime();
                     hook.accept(f.level,players);
+
                     NeoForge.EVENT_BUS.post(new ServerTickEvent.Pre(()->true,f.level.getServer()));
                     long afterPre=System.nanoTime();
                     WeatherService.work(f.level);
@@ -147,14 +155,15 @@ public final class EnvironmentPerformanceGameTests {
                     firstActor=(firstActor+1)%actors.size();
                     NeoForge.EVENT_BUS.post(new ServerTickEvent.Post(()->true,f.level.getServer()));
                     if(tick>500) {
-                        int index=tick-501;long end=System.nanoTime();elapsed[index]=end-start;
+                        int index=tick-501;long end=System.nanoTime();elapsed[index]=end-start;cpuTimes[index]=cpu.now()-cpuStart;
                         stages[0][index]=afterPre-start;stages[1][index]=afterWeather-afterPre;
                         stages[2][index]=afterRooms-afterWeather;stages[3][index]=afterStations-afterRooms;
                         stages[4][index]=end-afterStations;
                     }
                 }
-                Arrays.sort(elapsed);
-                double p95=elapsed[1899]/1e6,p99=elapsed[1979]/1e6;
+                Arrays.sort(elapsed);Arrays.sort(cpuTimes);
+                var selected=useCpu?cpuTimes:elapsed;
+                double p95=selected[1899]/1e6,p99=selected[1979]/1e6;
                 for(int n=0;n<stages.length;n++) {
                     Arrays.sort(stages[n]);
                     com.mojang.logging.LogUtils.getLogger().info("M3-135 stage={} p95_ms={} p99_ms={} max_ms={}",n,stages[n][1899]/1e6,stages[n][1979]/1e6,stages[n][1999]/1e6);
@@ -175,8 +184,8 @@ public final class EnvironmentPerformanceGameTests {
                 com.mojang.logging.LogUtils.getLogger().info("M3-135 progress stations=40 through_min={} through_max={} current=2500",minThrough,maxThrough);
 
                 com.mojang.logging.LogUtils.getLogger().info(
-                        "M3-135 combined ticks=2000 warmup=500 rooms=64 stations=40 fake_players=4 p95_ms={} p99_ms={} max_ms={} wall_ms={} heap_delta={} gc_ms={}",
-                        p95,p99,elapsed[1999]/1e6,(System.nanoTime()-wall)/1e6,usedHeap()-heapBefore,gcMillis()-gcBefore);
+                        "M3-135 combined test={} selected={} ticks=2000 warmup=500 rooms=64 stations=40 fake_players=4 p95_ms={} p99_ms={} max_ms={} wall_ms={} heap_delta={} gc_ms={} cpu_p95_ms={} cpu_p99_ms={} cpu_max_ms={}",
+                        measurement,useCpu?"cpu":"wall",elapsed[1899]/1e6,elapsed[1979]/1e6,elapsed[1999]/1e6,(System.nanoTime()-wall)/1e6,usedHeap()-heapBefore,gcMillis()-gcBefore,cpuTimes[1899]/1e6,cpuTimes[1979]/1e6,cpuTimes[1999]/1e6);
                 for(int n=4;n<40;n++) {
                     var station=stations.get(n);
                     double seconds=station.save(f.level.registryAccess()).getDouble("seconds");
@@ -190,7 +199,7 @@ public final class EnvironmentPerformanceGameTests {
                 h.assertTrue(processingTicks>=32000&&ignitionTicks>=500&&overlapTicks>=100
                         &&wear>=4&&combustion[0]>=100&&chemical[0]>1000000,"加工/4人の着火完了/燃焼が実行された負荷を測定");
                 h.assertTrue(minThrough>=1900,"40設備すべてが継続前進し、末尾との差を気象1周期600 tick以内に保つ: "+minThrough);
-                h.assertTrue(p95<1&&p99<3,"統合目標 p95<1/p99<3 ms: "+p95+"/"+p99);
+                h.assertTrue(p95<1&&p99<3,"統合目標 "+(useCpu?"CPU":"壁時計")+" p95<1/p99<3 ms: "+p95+"/"+p99);
             } finally {
                 recording.stop();recording.dump(java.nio.file.Path.of("environment-135.jfr"));recording.close();
                 NeoForge.EVENT_BUS.unregister(emissions);players.forEach(net.minecraft.server.level.ServerPlayer::discard);

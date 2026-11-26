@@ -32,6 +32,7 @@ public final class MapRenderGameTest {
     private static final class Sampling implements AutoCloseable {
         final String name;
         final int x0, z0, step, width, height;
+        final boolean basisOnly;
         final DataOutputStream stream;
         final Map<Block, Integer> ids = new HashMap<>();
         final List<String> palette = new ArrayList<>();
@@ -39,6 +40,7 @@ public final class MapRenderGameTest {
 
         Sampling(Path out, JsonObject job) throws IOException {
             name = job.get("name").getAsString();
+            basisOnly = job.has("d1_basis_only") && job.get("d1_basis_only").getAsBoolean();
             var bounds = job.getAsJsonArray("bounds");
             x0 = bounds.get(0).getAsInt();
             z0 = bounds.get(1).getAsInt();
@@ -67,6 +69,19 @@ public final class MapRenderGameTest {
             int z = z0 + row * step + step / 2;
             for (int col = 0; col < width; col++) {
                 int x = x0 + col * step + step / 2;
+                if (basisOnly) {
+                    var map = terrain.map();
+                    if (map.basis() == null) throw new IllegalArgumentException("D1実測はearth_002専用です");
+                    int ground = map.basis().contains(x,z) && map.coastDistance(x,z)>=0
+                            ? (int)Math.round(Math.clamp(map.basis().height(x,z),63,520))
+                            : FixedTerrain.surfaceY(map.background(),x,z);
+                    stream.writeShort(ground);
+                    stream.writeShort(ground);
+                    stream.writeShort(id(Blocks.STONE));
+                    stream.writeShort(id(Blocks.STONE));
+                    stream.writeByte(map.coastDistance(x,z)<0?1:0);
+                    continue;
+                }
                 var column = terrain.column(x, z);
                 int ground = column.surfaceY(), top = column.topY();
                 var surface = column.state(ground);

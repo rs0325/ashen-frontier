@@ -51,4 +51,11 @@ format=2は、内部のLease番号とdimension内のC06登録番号を分離し�
 
 OFFではHPの全端数を破棄する。各未精算オンライン区間にも効果ON/OFFを保存し、OFF中の区間がON後に応答しても損傷を持ち越さない。切替境界で区間の合成を止める。
 
-#124独自の性能計測はSurvivalPerformanceGameTests内で行う。共有EnvironmentPerformanceGameTestsの既存の壁時計計測/合否は変更せず、実加工のworkload hookだけを再利用する。#99のThreadCpuClockは未mergeなので複製しない。標準ThreadMXBeanの生値と壁時計を記録し、WindowsのCPU合否は未判定。merge後に共通部品へ統合する。
+#124の統合性能検査はSurvivalPerformanceGameTestsから実加工workloadを呼び出し、EnvironmentPerformanceGameTestsとcore.testing.ThreadCpuClockの計測/判定をそのまま再利用する。較正は準備前、正のCPU更新16回、最厳閾値の1%以下の分解能ならCPU、粗ければ壁時計を選ぶ。各回500 tick準備＋2000 tick採集でp95<1 ms/p99<3 msを判定する。独自ThreadMXBean・OS名分岐・別の標本配列は持たない。physiology_weather_rooms_stationsの選択時計とCPU/壁時計の値をログに残す。
+
+
+## 同期処理の削減（2026-11-26）
+
+環境の照会1回の中で、C01の先頭区間を作った室内状態と屋外行を生理入力にも使う。同じ始点の室内再生と屋外履歴の再探索を重ねない。再利用はその呼出し内だけで、次の照会では同tickでも新しい放熱や構成変更を反映する。日長・気象・温度の境界、酸素分圧とAPPROXIMATEの扱いは変えない。
+
+同じ位置・活動・濡れ条件・効果設定・睡眠世代の隣接SPANは、末尾を延長して集約する。未処理の先頭と保持の計数を維持し、イベントや効果切替・睡眠世代の変更をまたいで統合しない。同tickの起床・再就寝でも新しい世代の低酸素をその世代へ記録し、B2返済を拒否する。保存の形式は変わらない。移動速度の生理修正は係数が変わったときだけ付け直し、OFFや症状の回復も同じ係数比較で解除する。通常20 tickの期限、共有100 µs予算、1 REAL秒の計算刻み、本人への変更時/20 tick同期は維持する。

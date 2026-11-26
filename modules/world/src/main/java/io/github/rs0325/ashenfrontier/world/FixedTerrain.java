@@ -124,9 +124,13 @@ public final class FixedTerrain {
 
     static int surfaceY(FixedMapData map, int x, int z) {
         if (!MapCoordinates.contains(x, z)) return -65;
+        if (map.hydrology()!=null && map.hydrology().owner(x,z)>0) return map.hydrology().bed(x,z);
         if (map.basis() != null && map.basis().contains(x,z) && map.coastDistance(x,z) >= 0)
-            return (int)Math.round(Math.clamp(map.basis().height(x,z),63,520));
-        if (map.background() != null) return surfaceY(map.background(),x,z);
+            return map.hydrology().surfaceY(x,z,map.basis());
+        if (map.background() != null) {
+            int natural=surfaceY(map.background(),x,z);
+            return map.hydrology().water(x,z)==Integer.MIN_VALUE?natural:Math.min(natural,map.hydrology().bed(x,z));
+        }
         return sampleSurface(map, x, z).height;
     }
 
@@ -357,9 +361,19 @@ public final class FixedTerrain {
     /** 列ごとに地層境界を一度計算する。列は呼出し元専有で、全Yの照会に再利用できる。 */
     public Column column(int x, int z) {
         if (!MapCoordinates.contains(x, z)) return new Column(SoilContamination.CLEAN, -65, Integer.MIN_VALUE, null, null, new int[0], null, 0, 0, x, z, null, 0, null, -64, false, null, 0,0,0,1, null, 575, false, Integer.MIN_VALUE);
-        if (basisProfile != null && map.basis().contains(x,z) && map.coastDistance(x,z) >= 0)
-            return new Column(SoilContamination.CLEAN, surfaceY(x,z), Integer.MIN_VALUE, null, null, new int[0], basisProfile,
-                    0,0,x,z,null,0,null,575,false,null,0,0,0,1,null,575,false,Integer.MIN_VALUE);
+        if (basisProfile != null && (map.basis().contains(x,z) && map.coastDistance(x,z)>=0
+                || map.hydrology().water(x,z)!=Integer.MIN_VALUE)) {
+            int ground=surfaceY(x,z),water=map.waterSurface(x,z),quality=map.waterQuality(x,z),spill=water;
+            if(water!=Integer.MIN_VALUE)for(var direction:Direction.Plane.HORIZONTAL) {
+                int next=map.waterSurface(x+direction.getStepX(),z+direction.getStepZ());
+                if(next!=Integer.MIN_VALUE)spill=Math.max(spill,next);
+            }
+            // D3の雪氷制作までは新しい淡水を液面で示す。既存の海氷は引き継ぐ。
+            BlockState frozen=map.coastDistance(x,z)<0?backgroundTerrain.column(x,z).frozenWater:null;
+            return new Column(SoilContamination.CLEAN,ground,water,water==Integer.MIN_VALUE?null:riverGravel,
+                    waters[quality],new int[0],basisProfile,0,0,x,z,null,water==Integer.MIN_VALUE?0:2,null,
+                    575,false,null,0,0,0,1,frozen,575,false,spill);
+        }
         if (backgroundTerrain != null) return backgroundTerrain.column(x,z);
         var relief = sampleSurface(map, x, z);
         int surface = relief.height;

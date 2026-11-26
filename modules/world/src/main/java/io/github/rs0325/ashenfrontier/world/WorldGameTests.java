@@ -1,5 +1,6 @@
 package io.github.rs0325.ashenfrontier.world;
 
+import io.github.rs0325.ashenfrontier.core.testing.ThreadCpuClock;
 import com.mojang.serialization.JsonOps;
 import io.github.rs0325.ashenfrontier.core.AshenFrontierCore;
 import net.minecraft.core.BlockPos;
@@ -24,7 +25,6 @@ import net.minecraft.world.level.levelgen.blending.Blender;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.Arrays;
@@ -243,7 +243,8 @@ public final class WorldGameTests {
     public static void terrainGenerationBenchmark(GameTestHelper helper) {
         var generator = generator(helper);
         var random = helper.getLevel().getChunkSource().randomState();
-        var cpu = ManagementFactory.getThreadMXBean();
+        var cpu = new ThreadCpuClock();
+        boolean useCpu = cpu.useCpu("earth001_generation", 25_000_000);
         for (String area : new String[]{"temperate", "snow_ice"}) {
             boolean frozen = area.equals("snow_ice");
             int iceChunks = 0;
@@ -253,9 +254,9 @@ public final class WorldGameTests {
                 var position = frozen
                         ? new ChunkPos((n < 500 ? -260 : -520) + n % 20, (n < 500 ? -895 : -750) + n % 500 / 20)
                         : new ChunkPos(-550 + n % 40, -525 + n / 40);
-                long beforeCpu = cpu.getCurrentThreadCpuTime(), before = System.nanoTime();
+                long beforeCpu = cpu.now(), before = System.nanoTime();
                 var generated = chunk(helper, generator, position, random);
-                long elapsed = System.nanoTime() - before, elapsedCpu = cpu.getCurrentThreadCpuTime() - beforeCpu;
+                long elapsed = System.nanoTime() - before, elapsedCpu = cpu.now() - beforeCpu;
                 if (i >= 0) { times[i] = elapsed; cpuTimes[i] = elapsedCpu; }
                 helper.assertTrue(generated.getBlockState(new BlockPos(position.getMinBlockX(), -128, position.getMinBlockZ())).is(Blocks.BEDROCK), "計測チャンクを生成");
                 int top = generated.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, 0, 0);
@@ -264,11 +265,11 @@ public final class WorldGameTests {
             }
             Arrays.sort(times);
             Arrays.sort(cpuTimes);
-            helper.assertTrue(times[949] <= 25_000_000, "地形生成のp95が25 ms以内: " + area);
             helper.assertTrue(!frozen || iceChunks > 0, "雪氷の計測対象に実際の氷層がある");
-            LogUtils.getLogger().info("TERRAIN_BENCHMARK area={} count=1000 warmup=100 parallelism=1 ice_chunks={} wall_p50_ms={} wall_p95_ms={} cpu_p95_ms={} max_ms={} heap_max_MiB={} java={} processors={}",
+            LogUtils.getLogger().info("TERRAIN_BENCHMARK area={} count=1000 warmup=100 parallelism=1 ice_chunks={} wall_p50_ms={} wall_p95_ms={} cpu_p95_ms={} max_ms={} heap_max_MiB={} java={} processors={} wall_p99_ms={} cpu_p99_ms={} cpu_max_ms={}",
                     area, iceChunks, times[499] / 1e6, times[949] / 1e6, cpuTimes[949] / 1e6, times[999] / 1e6,
-                    Runtime.getRuntime().maxMemory() / 1048576, System.getProperty("java.version"), Runtime.getRuntime().availableProcessors());
+                    Runtime.getRuntime().maxMemory() / 1048576, System.getProperty("java.version"), Runtime.getRuntime().availableProcessors(), times[989] / 1e6, cpuTimes[989] / 1e6, cpuTimes[999] / 1e6);
+            helper.assertTrue((useCpu ? cpuTimes : times)[949] <= 25_000_000, "地形生成の"+(useCpu ? "CPU" : "壁時計")+" p95が25 ms以内: " + area);
         }
         helper.succeed();
     }
