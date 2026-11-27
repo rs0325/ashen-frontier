@@ -19,6 +19,7 @@ public final class FixedMapData {
     private static final int SIZE = 2048;
     private final short[] heights;
     private final byte[][] categories;
+    private final byte[] geologyIds;
     private final short[] waterSurface;
     private final boolean[] protectedArea;
     private final float[] coastDistance;
@@ -98,9 +99,30 @@ public final class FixedMapData {
             seed = previous.seed;
             terminationJoin = previous.terminationJoin;
             terminationTransition = previous.terminationTransition;
-            geology = previous.geology;
+            String root = "/data/ashen_frontier/fixed_map/" + version.mapVersion() + "/";
+            try {
+                if (json(root+"manifest.json").get("stage").getAsString().equals("D4")) {
+                    geology=json(root+"geology_profiles.json");
+                    geologyIds=new byte[SIZE*SIZE];
+                    try(var stream=FixedMapData.class.getResourceAsStream(root+"geology.png")) {
+                        var image=ImageIO.read(stream);
+                        if(image==null || image.getWidth()!=SIZE || image.getHeight()!=SIZE
+                                || image.getRaster().getNumBands()!=1 || image.getSampleModel().getSampleSize(0)!=8)
+                            throw new IllegalStateException("D4の地質ラスターが不正です");
+                        var raster=image.getRaster();
+                        for(int z=0;z<SIZE;z++)for(int x=0;x<SIZE;x++)geologyIds[z*SIZE+x]=(byte)raster.getSample(x,z,0);
+                        image.flush();
+                    }
+                } else {
+                    geology=previous.geology;
+                    geologyIds=null;
+                }
+            } catch(IOException error) {
+                throw new IllegalStateException("D4の地質を読めません: "+version.mapVersion(),error);
+            }
             return;
         }
+        geologyIds = null;
         basis = null;
         details = null;
         hydrology = null;
@@ -689,6 +711,7 @@ public final class FixedMapData {
         return new Boundary(region,soil,dry,cold);
     }
     int category(int layer, int x, int z) {
+        if(layer==3 && geologyIds!=null)return MapCoordinates.contains(x,z)?Byte.toUnsignedInt(geologyIds[at(x,z)]):0;
         if (basis != null && basis.contains(x,z)) return layer == 0 ? 255 : layer == 4 ? 1 : 0;
         return MapCoordinates.contains(x, z) ? Byte.toUnsignedInt(categories[layer][at(x, z)]) : 0;
     }

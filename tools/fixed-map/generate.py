@@ -561,7 +561,7 @@ def validate_geology(definition):
     """カタログで確認済みの岩石参照と、地層の正の厚さ範囲を検査する。"""
     if not -127 <= definition["island_reference_y"] <= 575:
         raise ValueError("島の地層の基準Yが生成範囲外です")
-    rocks = set(definition["catalog"]["rock_ids"]) | {"minecraft:stone", "minecraft:granite", "minecraft:sandstone"}
+    rocks = set(definition["catalog"]["rock_ids"]) | {"minecraft:stone", "minecraft:granite", "minecraft:sandstone", "minecraft:andesite", "minecraft:tuff", "minecraft:basalt", "minecraft:diorite"}
     for profile in definition["profiles"].values():
         if not -127 <= profile["reference_y"] <= 575:
             raise ValueError("地質の絶対基準Yが生成範囲外です")

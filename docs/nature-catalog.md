@@ -45,3 +45,7 @@ Issue #50の入力は`core/src/main/resources/catalog/nature.json`。登録、�
 画像原本、組込みGPT imageのプロンプト、16pxへの変換・母岩合成・周期流体模様のスクリプトは`tools/nature-assets/`。縮小後の確認画像も同梱する。生成コマンドは同ディレクトリのREADMEを参照する。
 
 `runData`でモデル・翻訳・loot・データマップを再生成してから`build`を実行する。単体テストがカタログ参照・生成物・禁止タグ・共有燃料プロファイルを照合し、GameTestがItem/Fluid/BlockStateの保存往復、品質維持、有限性、実際のloot解決を検査する。バケツはサーバーのアイテム使用処理から実行し、空バケツで12品質の源が残り、水入りバケツで固体面の隣にある12品質の源・流動状態が変わらないことも検査する。対照としてバニラ水源の回収と空き位置への配置が成功することを確かめる。バケツ試験はcore名前空間の3×4×5の`nature_buckets.nbt`、それ以外は既存の`empty.nbt`を使う。両テンプレートの`size`はInt3件のTAG_List。
+
+## 原油の描画（ユーザー指示 2026-11-27）
+
+coreのNatureContentが原油4品質のsource/flowingと液体ブロックを登録し、NatureClientが描画する。原油だけはtools/nature-assets/generate.pyの既存fluid関数で生成する品質別still/flowテクスチャ（全画素alpha=255）を使い、描画層をsolid、色乗算を不透明な白、水用overlayなしとする。水のテクスチャ・色・半透明層は変更しない。粒子も同じ原油stillを参照する。量・流動・品質・採取規則は変更しない。

@@ -29,7 +29,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(AshenFrontierWorld.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class TerrainBasisGameTests {
-    private static FixedMapChunkGenerator generator(GameTestHelper helper) throws Exception {
+    static FixedMapChunkGenerator generator(GameTestHelper helper) throws Exception {
         var original = TerrainPreviewGameTests.generator(helper);
         try (var stream = TerrainBasisGameTests.class.getResourceAsStream("/data/ashen_frontier/fixed_map/earth_002/manifest.json")) {
             var version = new MapVersion("earth_002", 1, HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(stream.readAllBytes())));
@@ -37,14 +37,14 @@ public final class TerrainBasisGameTests {
         }
     }
 
-    private static ProtoChunk chunk(GameTestHelper helper, FixedMapChunkGenerator generator, ChunkPos pos, RandomState random) {
+    static ProtoChunk chunk(GameTestHelper helper, FixedMapChunkGenerator generator, ChunkPos pos, RandomState random) {
         var level = helper.getLevel();
         var chunk = new ProtoChunk(pos, UpgradeData.EMPTY, LevelHeightAccessor.create(-128,704), level.registryAccess().registryOrThrow(Registries.BIOME), null);
         generator.fillFromNoise(Blender.empty(), random, level.structureManager(), chunk).join();
         return chunk;
     }
 
-    private static long hash(ProtoChunk chunk) {
+    static long hash(ProtoChunk chunk) {
         long hash = 0xcbf29ce484222325L;
         var pos = new BlockPos.MutableBlockPos();
         for (int x=0;x<16;x++) for (int z=0;z<16;z++) for (int y=-128;y<576;y++)
@@ -66,7 +66,7 @@ public final class TerrainBasisGameTests {
             for (int dx=0;dx<16;dx++) for (int dz=0;dz<16;dz++) {
                 int x=pos.getMinBlockX()+dx,z=pos.getMinBlockZ()+dz;
                 var column=generator.terrain().column(x,z);
-                helper.assertTrue(column.state(column.surfaceY()-16).is(Blocks.STONE),"細地形と雪氷の下は鉱床・施設を先取りしない母岩");
+                helper.assertTrue(column.state(column.surfaceY()-16).equals(column.rockState(column.surfaceY()-16)),"D4の層序を細地形と雪氷の下へ適用する");
                 for(int y=-128;y<576;y++) helper.assertTrue(generated.getBlockState(new BlockPos(x,y,z)).equals(column.state(y)),"実チャンクと全Yの列の一致");
             }
         }

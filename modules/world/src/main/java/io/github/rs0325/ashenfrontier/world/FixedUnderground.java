@@ -38,16 +38,62 @@ public final class FixedUnderground {
         }
     }
 
-    record Cell(List<Body> bodies, List<Passage> passages) {}
+    record Cell(List<Body> bodies, List<Passage> passages, Voxels[] columns) {
+        Cell(List<Body> bodies, List<Passage> passages) { this(bodies, passages, null); }
+    }
+    record Voxels(int[] runs, BlockState[][] palette) {
+        BlockState state(int y, int component) {
+            for (int i=0;i<runs.length;i+=3) {
+                if (y<runs[i]) break;
+                if (y<=runs[i+1]) return palette[runs[i+2]][component];
+            }
+            return null;
+        }
+        int surface(int original) {
+            for (int i=0;i<runs.length;i+=3) {
+                if (runs[i]>original) break;
+                if (runs[i+1]>=original && palette[runs[i+2]][0].isAir()) return runs[i]-1;
+            }
+            return original;
+        }
+    }
     private static final Cell EMPTY = new Cell(List.of(), List.of());
     private static final int[] NO_PASSAGES = new int[0];
     private final Map<Long, Cell> cells;
+    private final boolean detailed;
     private final List<Body> bodies;
     private final List<Passage> passages;
 
     FixedUnderground(MapVersion version, FixedTerrain terrain) {
         var layout = UndergroundLayout.read(version);
         if (layout.fixed_seed() != terrain.map().seed()) throw new IllegalStateException("地下の固定シードが一致しません");
+        detailed=layout.d4()!=null;
+        if (detailed) {
+            if (layout.d4().schema_version()!=1) throw new IllegalStateException("D4地下のschemaが不正です");
+            var palette=new BlockState[layout.d4().palette().size()][2];
+            for(int i=0;i<palette.length;i++) {
+                var pair=layout.d4().palette().get(i);
+                palette[i][0]=block(pair.get(0));palette[i][1]=block(pair.get(1));
+            }
+            var compiled=new HashMap<Long,Cell>();
+            for(var column:layout.d4().columns()) {
+                var cell=compiled.computeIfAbsent(key(column.x()>>4,column.z()>>4),
+                        ignored->new Cell(List.of(),List.of(),new Voxels[256]));
+                int[] runs=column.runs().stream().mapToInt(Integer::intValue).toArray();
+                if(runs.length%3!=0)throw new IllegalStateException("D4列の区間が不正です");
+                int previous=-128;
+                for(int i=0;i<runs.length;i+=3) {
+                    if(runs[i]<=previous || runs[i]>runs[i+1] || runs[i+1]>575 || runs[i+2]<0 || runs[i+2]>=palette.length)
+                        throw new IllegalStateException("D4列の順序・範囲が不正です");
+                    previous=runs[i+1];
+                }
+                int at=(column.z()&15)*16+(column.x()&15);
+                if(cell.columns[at]!=null)throw new IllegalStateException("D4列の重複");
+                cell.columns[at]=new Voxels(runs,palette);
+            }
+            cells=Map.copyOf(compiled);this.bodies=List.of();this.passages=List.of();
+            return;
+        }
         var bodies = new ArrayList<Body>();
         var passages = new ArrayList<Passage>();
         for (var data : layout.deposits()) {
@@ -156,6 +202,14 @@ public final class FixedUnderground {
 
     private static long key(int x, int z) { return ((long) x << 32) ^ (z & 0xffffffffL); }
     Cell cell(int x, int z) { return cells.getOrDefault(key(x >> 4, z >> 4), EMPTY); }
+    boolean detailed() { return detailed; }
+    static Voxels voxels(Cell cell,int x,int z) {
+        return cell==null || cell.columns==null?null:cell.columns[(z&15)*16+(x&15)];
+    }
+    int surface(int x,int z,int original) {
+        var column=voxels(cell(x,z),x,z);
+        return column==null?original:column.surface(original);
+    }
     List<Body> bodies() { return bodies; }
     List<Passage> passages() { return passages; }
 

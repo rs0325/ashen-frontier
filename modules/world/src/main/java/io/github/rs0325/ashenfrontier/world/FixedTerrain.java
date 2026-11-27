@@ -27,7 +27,7 @@ public final class FixedTerrain {
     private final Profile basisProfile;
     private final TerrainDetails details;
     private final FixedTerrain backgroundTerrain;
-    private final Profile[] profiles = new Profile[6];
+    private final Profile[] profiles;
     private final BlockState[] soils = new BlockState[4];
     private final FixedContamination contamination;
     private final BlockState[] waters = new BlockState[9];
@@ -67,6 +67,7 @@ public final class FixedTerrain {
                 Blocks.COBBLESTONE.defaultBlockState()};
         var geology = map.geology();
         islandReferenceY = geology.get("island_reference_y").getAsDouble();
+        profiles=new Profile[1+geology.getAsJsonObject("profiles").keySet().stream().mapToInt(Integer::parseInt).max().orElseThrow()];
         String salt = geology.get("thickness_salt").getAsString();
         for (var entry : geology.getAsJsonObject("profiles").entrySet()) {
             var profile = entry.getValue().getAsJsonObject();
@@ -121,7 +122,8 @@ public final class FixedTerrain {
 
     /** 地面の基準Y。地面の上の雪層・水面を含めず、範囲外は−65。 */
     public int surfaceY(int x, int z) {
-        return surfaceY(map, x, z);
+        int original=surfaceY(map,x,z);
+        return underground==null?original:underground.surface(x,z,original);
     }
 
     static int surfaceY(FixedMapData map, int x, int z) {
@@ -389,8 +391,12 @@ public final class FixedTerrain {
                 if(details.outwash(x,z))material=riverGravel;
                 if(details.moraine(x,z))material=till;
             }
+            boolean geological=underground.detailed() && map.basis().contains(x,z) && coast>=0;
+            var profile=geological?profiles[map.geologyProfile(x,z)]:basisProfile;
+            int[] boundaries=geological?geologyBoundaries(profile,x,z):new int[0];
+            var cell=underground.cell(x,z);
             return new Column(SoilContamination.CLEAN,ground,water,material,
-                    waters[quality],new int[0],basisProfile,cover.ice(),cover.snow(),x,z,null,material==null?0:2,cap,
+                    waters[quality],boundaries,profile,cover.ice(),cover.snow(),x,z,cell,material==null?0:2,cap,
                     ground+1,cover.powder(),null,0,0,0,1,frozen,575,false,spill);
         }
         if (backgroundTerrain != null) return backgroundTerrain.column(x,z);
@@ -549,6 +555,19 @@ public final class FixedTerrain {
                 18+24*TerrainMath.noise(map.seed(),"rock_band_width",x,z,192), frozen, anchor == null ? 575 : (int) anchorY - 20, contactWeathered, spill);
     }
 
+    private int[] geologyBoundaries(Profile profile,int x,int z) {
+        double top=profile.referenceY+(x-profile.ax)*profile.gx+(z-profile.az)*profile.gz;
+        top+=TerrainMath.fbm(map.seed(),"d4_fold",x,z,840)*18
+                +TerrainMath.fbm(map.seed(),"d4_fold_local",x,z,310)*6;
+        int[] result=new int[profile.layers.size()];
+        for(int i=0;i<result.length;i++) {
+            var layer=profile.layers.get(i);
+            top-=layer.min+(layer.max-layer.min)*TerrainMath.noise(map.seed(),layer.salt,x,z,570+i*137);
+            result[i]=(int)Math.round(top);
+        }
+        return result;
+    }
+
     BlockState frozenWater(int quality, int x, int z, int water, int depth, int kind, double cold) {
         double latitude = Math.abs(MapCoordinates.latitude(z)) + TerrainMath.fbm(map.seed(), "freezing_edge", x, z, 384) * 1.5;
         return quality >= 4 && quality <= 8 && TerrainMath.freezes(latitude, water, depth, kind, cold)
@@ -640,6 +659,7 @@ public final class FixedTerrain {
         private final int x, z;
         private final FixedUnderground.Cell underground;
         private final int[] passageFloors;
+        private final FixedUnderground.Voxels voxels;
         private final int soilDepth;
         private final BlockState cover;
         private final int coverY;
@@ -668,6 +688,7 @@ public final class FixedTerrain {
             this.x = x;
             this.z = z;
             this.underground = underground;
+            voxels=FixedUnderground.voxels(underground,x,z);
             passageFloors = FixedUnderground.passageFloors(underground, x, z);
             this.soilDepth = soilDepth;
             this.cover = FixedUnderground.carved(passageFloors, coverY) ? null : cover;
@@ -696,6 +717,10 @@ public final class FixedTerrain {
             if (profile == null || y < -128 || y > 575 || y > topY()) return Blocks.AIR.defaultBlockState();
             if (y == -128) return Blocks.BEDROCK.defaultBlockState();
             if (FixedUnderground.carved(passageFloors, y)) return Blocks.AIR.defaultBlockState();
+            if(voxels!=null && y<=surface) {
+                var state=voxels.state(y,0);
+                if(state!=null && state.isAir())return state;
+            }
             if (y > surface) return frozenWater != null && y == waterY ? frozenWater : cover != null && y == coverY ? cover
                     : y>waterY ? water.setValue(LiquidBlock.LEVEL,8) : water;
             if (cover != null && y == coverY) return cover;
@@ -703,6 +728,10 @@ public final class FixedTerrain {
             if (snow > 0 && y > surface - snow) return Blocks.SNOW_BLOCK.defaultBlockState();
             int iceDepth = surface - snow + 1 - y;
             if (iceDepth >= 1 && iceDepth <= ice) return (iceDepth >= 4 ? Blocks.BLUE_ICE : Blocks.PACKED_ICE).defaultBlockState();
+            if(voxels!=null) {
+                var state=voxels.state(y,0);
+                if(state!=null)return state;
+            }
             if (soil != null && y > surface - soilDepth) return soil;
             var rock = rockState(y);
             return underground == null ? rock : FixedUnderground.state(underground, x, y, z, rock);
@@ -712,6 +741,10 @@ public final class FixedTerrain {
         public BlockState rockState(int y) {
             if (profile == null || y < -128 || y > surface) return Blocks.AIR.defaultBlockState();
             if (y == -128) return Blocks.BEDROCK.defaultBlockState();
+            if(voxels!=null) {
+                var host=voxels.state(y,1);
+                if(host!=null)return host;
+            }
             BlockState material=profile.basement;
             for (int i=0;i<boundaries.length;i++)if(y>boundaries[i]){material=profile.layers.get(i).rock;break;}
             if(facing!=null && (y>surface-3 || contactWeathered && geologyWeight<1 && y>contactFloor)) {

@@ -70,6 +70,13 @@ public final class BundledMaps {
                 if (!hash(resource.apply(entry.getKey())).equals(entry.getValue().getAsString()))
                     throw new IllegalStateException("資産ハッシュ不一致 " + entry.getKey());
             }
+            if (preview && manifest.has("stage") && manifest.get("stage").getAsString().equals("D4")) {
+                var underground=json(resource.apply("underground.json"));
+                if (!underground.has("d4") || integer(underground.getAsJsonObject("d4").get("schema_version"))!=1
+                        || underground.getAsJsonArray("deposits").size()!=40
+                        || underground.getAsJsonObject("d4").getAsJsonArray("handoffs").size()!=40)
+                    throw new IllegalStateException("D4の地質・残鉱・引継ぎ契約が不足しています");
+            }
             return preview ? new Definitions(
                     LandformLayout.parse(json(resource.apply("landform.json")), version.mapVersion()),
                     HydrologyLayout.parse(json(resource.apply("hydrology.json")), version.mapVersion()))
