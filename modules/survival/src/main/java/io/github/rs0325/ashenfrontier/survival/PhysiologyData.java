@@ -24,6 +24,9 @@ public final class PhysiologyData {
         } catch(RuntimeException e) { return DataResult.error(()->"生理保存が不正です: "+e.getMessage()); }
     },value->new Dynamic<>(NbtOps.INSTANCE,value.save()));
     public Body body;
+    public Exposure.State exposure=new Exposure.State();
+    RadiationField.Point radiation;
+    final LinkedHashMap<String,Long> breathSerials=new LinkedHashMap<>();
     Tag failure;
     boolean blocked() { return failure!=null; }
     static PhysiologyData failed(Tag raw) {
@@ -50,10 +53,13 @@ public final class PhysiologyData {
             this.id=id;registration=id;this.from=from;through=from;this.pos=pos.immutable();this.dimension=dimension;
         }
     }
-    enum Kind { SPAN, HIT, JUMP, INTAKE, SLEEP, OFFLINE }
+    enum Kind { SPAN, HIT, JUMP, INTAKE, SLEEP, OFFLINE, MINING }
     static final class Frame {
         final Kind kind;final long lease;long from,to;
         final Activity activity;final boolean submerged;boolean effects=true;
+        io.github.rs0325.ashenfrontier.core.food.IntakeExposure intakeExposure;
+        boolean intakeCommitted;
+        RadiationField.Point radiation;
         final double a,b,c,d;final boolean vitaminC,vitaminFat;final long generation;
         Frame(Kind kind,long lease,long from,long to,Activity activity,boolean submerged,
               double a,double b,double c,double d,boolean vc,boolean vf,long generation) {
@@ -87,18 +93,21 @@ public final class PhysiologyData {
         long generation=activity==Activity.SLEEP?sleepGeneration:0;
         var last=frames.peekLast();
         if(last!=null&&last.kind==Kind.SPAN&&last.lease==currentLease&&last.to==observed
-                &&last.activity==activity&&last.submerged==submerged&&last.effects==effects&&last.generation==generation) {
+                &&last.activity==activity&&last.submerged==submerged&&last.effects==effects&&last.generation==generation&&last.radiation==radiation) {
             last.to=to;
         } else {
             var frame=Frame.span(currentLease,observed,to,activity,submerged,generation);
-            frame.effects=effects;addFrame(frame);
+            frame.effects=effects;frame.radiation=radiation;addFrame(frame);
         }
         observed=to;
     }
     void addFrame(Frame frame) { frames.addLast(frame);if(frame.lease!=0)leases.get(frame.lease).queued++; }
     public CompoundTag save() {
         if(blocked())throw new IllegalStateException("破損状態はAttachment serializerで原文保存してください");
-        var tag=new CompoundTag();tag.putInt("format",2);tag.putUUID("owner",owner);
+        var tag=new CompoundTag();tag.putInt("format",3);tag.put("exposure",ExposureCodec.write(exposure));
+        var breathing=new ListTag();
+        breathSerials.forEach((dimension,serial)->{var row=new CompoundTag();row.putString("dimension",dimension);row.putLong("serial",serial);breathing.add(row);});
+        tag.put("breathing",breathing);tag.putUUID("owner",owner);
         var values=new ListTag();for(double value:body.values())values.add(DoubleTag.valueOf(value));
         tag.put("body",values);tag.putIntArray("levels",body.levels);tag.putBoolean("exhausted",body.exhausted);
         tag.putLong("observed",observed);tag.putLong("cursor",cursor);tag.putLong("lease_serial",leaseSerial);
@@ -124,6 +133,9 @@ public final class PhysiologyData {
             row.putLong("from",f.from);row.putLong("to",f.to);row.putInt("activity",f.activity.ordinal());
             row.putBoolean("submerged",f.submerged);row.putDouble("a",f.a);row.putDouble("b",f.b);
             row.putDouble("c",f.c);row.putDouble("d",f.d);row.putBoolean("vc",f.vitaminC);row.putBoolean("vf",f.vitaminFat);
+            if(f.radiation!=null)row.put("radiation",f.radiation.save(observed));
+            if(f.kind==Kind.INTAKE)row.putBoolean("intake_committed",f.intakeCommitted);
+            if(f.intakeExposure!=null)row.put("intake_exposure",ExposureCodec.write(f.intakeExposure));
             row.putLong("generation",f.generation);row.putBoolean("effects",f.effects);periods.add(row);
         }
         tag.put("frames",periods);return tag;
@@ -133,8 +145,16 @@ public final class PhysiologyData {
     }
     public static PhysiologyData load(CompoundTag tag) {
         require(tag,"format",Tag.TAG_INT);require(tag,"owner",Tag.TAG_INT_ARRAY);
-        if(tag.getInt("format")!=2)throw new IllegalArgumentException("未知の生理保存形式です");
+        if(tag.getInt("format")!=3)throw new IllegalArgumentException("未知の生理保存形式です");
         var data=new PhysiologyData(tag.getUUID("owner"));
+        require(tag,"exposure",Tag.TAG_COMPOUND);data.exposure=ExposureCodec.read(tag.getCompound("exposure"));
+        require(tag,"breathing",Tag.TAG_LIST);
+        for(var element:NbtLists.read(tag,"breathing",Tag.TAG_COMPOUND)) {
+            var row=(CompoundTag)element;require(row,"dimension",Tag.TAG_STRING);require(row,"serial",Tag.TAG_LONG);
+            String dimension=row.getString("dimension");long serial=row.getLong("serial");
+            if(net.minecraft.resources.ResourceLocation.tryParse(dimension)==null||serial<1||data.breathSerials.put(dimension,serial)!=null)
+                throw new IllegalArgumentException("呼吸の通知番号が不正です");
+        }
         require(tag,"body",Tag.TAG_LIST);var values=NbtLists.read(tag,"body",Tag.TAG_DOUBLE);var numbers=new double[values.size()];
         for(int i=0;i<numbers.length;i++)numbers[i]=values.getDouble(i);
         data.body.values(numbers);
@@ -154,7 +174,7 @@ public final class PhysiologyData {
         data.sleepGeneration=tag.getLong("sleep_generation");data.consumedSleep=tag.getLong("consumed_sleep");
         data.lastCredit=tag.getLong("last_credit");data.pendingSleep=tag.getLong("pending_sleep");
         data.invalidSleep=tag.getLong("invalid_sleep");data.sleeping=tag.getBoolean("sleeping");data.body.exhausted=tag.getBoolean("exhausted");
-        if((data.observed==-1)!=(data.cursor==-1)||data.observed< -1||data.cursor< -1||data.cursor>data.observed||data.lastCredit>data.observed
+        if((data.observed==-1)!=(data.cursor==-1)||data.observed< -1||data.cursor< -1||data.cursor>data.observed||data.exposure.notificationTick>data.observed||data.lastCredit>data.observed
                 ||data.lastCredit< -1||data.leaseSerial<0||data.currentLease<0||data.sleepGeneration<0
                 ||data.consumedSleep<0||data.consumedSleep>data.sleepGeneration||data.pendingSleep<0
                 ||data.invalidSleep<0||data.invalidSleep>data.sleepGeneration||data.pendingSleep>data.sleepGeneration||data.pendingSleep!=0&&data.pendingSleep<=data.consumedSleep)
@@ -194,6 +214,19 @@ public final class PhysiologyData {
                     Activity.values()[row.getInt("activity")],row.getBoolean("submerged"),row.getDouble("a"),row.getDouble("b"),
                     row.getDouble("c"),row.getDouble("d"),row.getBoolean("vc"),row.getBoolean("vf"),row.getLong("generation"));
             f.effects=row.getBoolean("effects");
+            if(row.contains("radiation")) {
+                require(row,"radiation",Tag.TAG_COMPOUND);f.radiation=RadiationField.Point.load(row.getCompound("radiation"));
+                if(f.kind!=Kind.SPAN||f.radiation.tick>f.from||f.radiation.until>data.observed)throw new IllegalArgumentException("線源観測の時刻が不正です");
+            }
+            if(row.contains("intake_exposure")) {
+                require(row,"intake_exposure",Tag.TAG_COMPOUND);f.intakeExposure=ExposureCodec.intake(row.getCompound("intake_exposure"));
+                if(f.kind!=Kind.INTAKE||f.intakeExposure.tick()!=f.from)throw new IllegalArgumentException("摂取曝露の作用時刻が不正です");
+            }
+            if(f.kind==Kind.INTAKE) {
+                require(row,"intake_committed",Tag.TAG_BYTE);f.intakeCommitted=row.getBoolean("intake_committed");
+                if(f.intakeCommitted!=(f.intakeExposure!=null)||!f.intakeCommitted&&(f.a!=0||f.b!=0||f.c!=0||f.d!=0||f.vitaminC||f.vitaminFat))
+                    throw new IllegalArgumentException("確定摂取の曝露または確定印が欠けています");
+            }
             if(f.from!=prior||f.to>data.observed||f.kind!=Kind.OFFLINE&&!data.leases.containsKey(f.lease))
                 throw new IllegalArgumentException("生理区間に欠落があります");
             if(f.kind==Kind.SLEEP) {

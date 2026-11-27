@@ -84,10 +84,24 @@ public final class RoomAir extends SavedData {
     private Outside outside;
     private java.util.function.LongSupplier outsideRevision;
     private long sampleTick=-1,sampleOutsideRevision=-1;
-    private final Map<String,Snapshot> sampleMemo=new HashMap<>();
+    private record ReplayKey(int region,long tick) {}
+    private final Map<ReplayKey,Snapshot> sampleMemo=new HashMap<>();
+    private final Map<Long,List<Region>> dependents=new HashMap<>();
     private record SampleKey(long position,long tick) {}
     private final Map<SampleKey,Sample> sampleCache=new HashMap<>();
     private void clearSamples() { sampleMemo.clear();sampleCache.clear(); }
+    private List<Region> dependents(long anchor) {
+        return dependents.computeIfAbsent(anchor,key->regions.stream().filter(r->r.receives(key)).toList());
+    }
+    private void invalidate(long anchor,long from,boolean instant,boolean changedAmount) {
+        for(var r:dependents(anchor)) {
+            r.inputRevision=-1;r.invalidations++;
+            if(changedAmount)r.checkpoints.tailMap(from,instant).clear();
+            sampleMemo.keySet().removeIf(k->k.region==r.id&&(instant?k.tick>=from:k.tick>from));
+            sampleCache.keySet().removeIf(k->(instant?k.tick>=from:k.tick>from)&&r.contains(k.position));
+        }
+    }
+
     private RoomRetention retention=new RoomRetention();
     private Long forgetting;
     private Outdoor forgettingOutdoor;
@@ -118,6 +132,26 @@ public final class RoomAir extends SavedData {
     private int nextRegionId;
     private static final RoomPhysics.Amount ZERO = new RoomPhysics.Amount(0, 0, 0, 0);
     private record Snapshot(RoomPhysics.State state, RoomPhysics.Amount exchange) {}
+    private record ReplayRoot(int region,long base,Snapshot initial,boolean checkpoint) {}
+    private record ReplayStep(long from,long to,RoomPhysics.Air air,RoomPhysics.Rate source,
+                              RoomPhysics.Amount instant,RoomPhysics.Amount recoveredExchange) {
+        boolean matches(long a,long b,RoomPhysics.Air outside,RoomPhysics.Rate rate,
+                        RoomPhysics.Amount injection,RoomPhysics.Amount recovered) {
+            return from==a&&to==b&&air.equals(outside)&&source.equals(rate)
+                    &&java.util.Objects.equals(instant,injection)&&java.util.Objects.equals(recoveredExchange,recovered);
+        }
+    }
+    private record ReplayEdge(ReplayStep step,Snapshot start,Snapshot end) {}
+    private static final class ReplayTrace { final List<ReplayEdge> edges=new ArrayList<>(); }
+    private final LinkedHashMap<ReplayRoot,ReplayTrace> replay=new LinkedHashMap<>(16,.75f,true);
+    private int replaySteps;
+    private boolean replayEnabled=true;
+    private void trimReplay() {
+        while(replay.size()>64||replaySteps>2048) {
+            var iterator=replay.entrySet().iterator();replaySteps-=iterator.next().getValue().edges.size();iterator.remove();
+        }
+    }
+
     private record Origin(long from, long until, double volume, int walls, int openings, double height, double temperature) {}
     private record Stored(RoomPhysics.Amount amount, RoomPhysics.Amount exchange, Origin origin) {}
     private final Map<Long, Stored> displaced = new HashMap<>();
@@ -156,7 +190,9 @@ public final class RoomAir extends SavedData {
         RoomPast.Model pastModel;
         Map.Entry<Long, Snapshot> committed;
         long inputRevision=-1,archiveStart;
+        long inputBuilds,memoHits,memoMisses,invalidations,advanceIntervals,replayHits,replayMisses;
         List<RoomHistory.Entry> localInputs=List.of();
+        long[] localThrough=new long[0];
         Region(int id, long from, long[] cells, int walls, int openings, double height, Map<Integer, Integer> parents,
                Set<ChunkPos> chunks, long[] portals) {
             this.id = id; this.from = from; this.replayFrom = from; this.cells = cells; this.walls = walls; this.openings = openings;
@@ -475,7 +511,7 @@ public final class RoomAir extends SavedData {
         }
         if (region == null) return unknown(Status.HISTORY_MISSING);
         if (tick == level.getGameTime() && region.chunks.stream().anyMatch(c -> !level.hasChunk(c.x, c.z))) return unknown(Status.UNLOADED);
-        Map<String,Snapshot> memo;
+        Map<ReplayKey,Snapshot> memo;
         if(outsideRevision==null)memo=new HashMap<>();
         else {
             long version=outsideRevision.getAsLong();
@@ -501,6 +537,10 @@ public final class RoomAir extends SavedData {
 
     /** C04が日長/気象境界と併合する室構成・発生源の境界。端点を含む昇順列。 */
     public List<Long> boundaries(BlockPos airPosition, long from, long to) {
+        return boundaries(airPosition,from,to,false);
+    }
+    /** 先頭要求では同じ境界の最初の1区間だけを返し、後続通知の時刻を列へ展開しない。 */
+    public List<Long> boundaries(BlockPos airPosition,long from,long to,boolean firstOnly) {
         var points = new TreeSet<Long>(List.of(from, to));
         past.cuts(airPosition.asLong(),from,to,points);
         var localRooms=byChunk.getOrDefault(chunk(airPosition.asLong()),List.of()).stream()
@@ -509,12 +549,23 @@ public final class RoomAir extends SavedData {
             if (r.from > from && r.from < to) points.add(r.from);
             if (r.to > from && r.to < to) points.add(r.to);
         }
-        for(var r:localRooms)for (var p : localInputs(r)) if (p.from() < to && p.to() >= from
-                && r.replayFrom <= p.to() && p.from() < r.to) {
-            if (p.from() > from) points.add(p.from()); if (p.to() < to) points.add(p.to());
+        long first=from==to?to:points.higher(from);
+        for(var r:localRooms) {
+            var inputs=localInputs(r);
+            for(int n=firstOnly?firstInput(r.localThrough,from):0;n<inputs.size();n++) {
+                var p=inputs.get(n);
+                if(p.from()>=to||p.to()<from||r.replayFrom>p.to()||p.from()>=r.to)continue;
+                if(firstOnly) {
+                    if(p.from()>from)first=Math.min(first,p.from());
+                    if(p.to()>from)first=Math.min(first,p.to());
+                } else {
+                    if(p.from()>from)points.add(p.from());if(p.to()<to)points.add(p.to());
+                }
+            }
         }
         var representative = latest(airPosition.asLong());
-        if (representative != null) addArchiveCuts(points, representative, from, to);
+        if (representative != null) addArchiveCuts(points, representative, from, firstOnly?first:to);
+        if(firstOnly)return from==to?List.of(from):List.of(from,Math.min(first,points.higher(from)));
         return List.copyOf(points);
     }
 
@@ -547,7 +598,6 @@ public final class RoomAir extends SavedData {
             throw new IllegalArgumentException("室内通知の区間/発生量が不正です");
         var result = receipts.accept(source, sequence, payload);
         if (result == SourceReceipts.Result.ACCEPTED) {
-            clearSamples();
             if(amount.heatJ()!=0||amount.coMol()!=0||amount.co2Mol()!=0||amount.oxygenMol()!=0)
                 retention.physical(pos.asLong());
             var owner = latest(pos.asLong());
@@ -601,9 +651,8 @@ public final class RoomAir extends SavedData {
                 if (projectPast(pos, a, b, part)) history.archiveInput(part);
                 else pending.add(new RoomHistory.Entry(pos.asLong(), a, b, part));
             } else {
+                invalidate(owner.anchor,a,a==b,part.heatJ()!=0||part.coMol()!=0||part.co2Mol()!=0||part.oxygenMol()!=0);
                 history.append(new RoomHistory.Entry(owner.anchor, a, b, part));
-                if (part.heatJ() != 0 || part.coMol() != 0 || part.co2Mol() != 0 || part.oxygenMol() != 0) for (var r : regions)
-                    if (r.receives(owner.anchor)) r.checkpoints.tailMap(a, a==b).clear();
                 if (history.retainedCount() > RoomHistory.LIMIT) {
                     if(compactingAt<0)compactingAt=level.getGameTime();
                     compactingBoundary=history.compactionBoundary();
@@ -612,11 +661,11 @@ public final class RoomAir extends SavedData {
                     var affectedRooms=regions.stream().filter(r->r.from<=retentionFrontier(r)
                             &&positions.longStream().anyMatch(r::receives)).toList();
                     var observed = new HashMap<Integer, Snapshot>();
-                    var memo = new HashMap<String, Snapshot>();
+                    var memo = new HashMap<ReplayKey, Snapshot>();
                     for (var r : affectedRooms)
                         simulate(r,retentionFrontier(r),memo).ifPresent(value->observed.put(r.id,value));
                     if(observed.size()!=affectedRooms.size())continue;
-                    history.compactIfNeeded();
+                    clearSamples();history.compactIfNeeded();
                     for (var r : regions) {
                         r.checkpoints.clear();
                         var value = observed.get(r.id);
@@ -636,6 +685,7 @@ public final class RoomAir extends SavedData {
     }
 
     private boolean projectPast(BlockPos pos, long from, long to, RoomPhysics.Amount input) {
+        clearSamples();
         long now = level.getGameTime();
         if (input.heatJ() == 0 && input.coMol() == 0 && input.co2Mol() == 0 && input.oxygenMol() == 0) {
             return true;
@@ -653,7 +703,7 @@ public final class RoomAir extends SavedData {
         if (response.isEmpty()) return false;
         var snapshots = new HashMap<Region, Snapshot>();
         var held = new HashMap<Long, Stored>();
-        var memo = new HashMap<String, Snapshot>();
+        var memo = new HashMap<ReplayKey, Snapshot>();
         for (var entry : response.get().entrySet()) {
             if (displaced.containsKey(entry.getKey())) continue;
             var holder = latest(entry.getKey());
@@ -737,19 +787,23 @@ public final class RoomAir extends SavedData {
     }
     private static Sample unknown(Status status) { return new Sample(status, Optional.empty(), false, false, 0, 0, Accuracy.UNKNOWN); }
 
-    private Optional<RoomPhysics.State> evaluate(Region r, long tick, Map<String, Snapshot> memo) {
+    private Optional<RoomPhysics.State> evaluate(Region r, long tick, Map<ReplayKey, Snapshot> memo) {
         return simulate(r, tick, memo).map(Snapshot::state);
     }
 
-    private Optional<Snapshot> simulate(Region r, long tick, Map<String, Snapshot> memo) {
-        String key = r.id + "/" + tick;
-        if (memo.containsKey(key)) return Optional.of(memo.get(key));
+    private Optional<Snapshot> simulate(Region r, long tick, Map<ReplayKey, Snapshot> memo) {
+        var key = new ReplayKey(r.id,tick);
+        if (memo.containsKey(key)) {r.memoHits++;return Optional.of(memo.get(key));}
+        r.memoMisses++;
         var checkpoint = r.checkpoints.floorEntry(tick);
         if (r.committed != null && r.committed.getKey() <= tick
                 && (checkpoint == null || checkpoint.getKey() <= r.committed.getKey())) checkpoint = r.committed;
         long base = checkpoint == null ? r.replayFrom : checkpoint.getKey();
         var rows = boundary(BlockPos.of(r.cells[0]), base, tick);
         if (rows.isEmpty()) return Optional.empty();
+        if(replayEnabled&&checkpoint!=null&&base==tick) {
+            memo.put(key,checkpoint.getValue());return Optional.of(checkpoint.getValue());
+        }
         RoomPhysics.State state;
         RoomPhysics.Amount exchanged;
         if(checkpoint!=null) {
@@ -784,7 +838,9 @@ public final class RoomAir extends SavedData {
             instants.put(r.from, RoomHistory.plus(r.recovered, r.adjustment));
         }
         for (var row : rows.get()) { cuts.add(row.from); cuts.add(row.to); }
-        for (var pulse : relevant) {
+        int first=firstInput(r.localThrough,base);
+        for (int index=first;index<relevant.size();index++) {
+            var pulse=relevant.get(index);
             if(pulse.to()<base||pulse.from()>tick)continue;
             if (pulse.from() == pulse.to()) {
                 if (pulse.from() >= base && (pulse.from() < r.to || pulse.from() == r.to && pulse.position() == r.anchor)
@@ -804,6 +860,12 @@ public final class RoomAir extends SavedData {
         }
         addArchiveCuts(cuts, r, base, tick);
         var times = new ArrayList<>(cuts);
+        ReplayTrace trace=null;
+        if(replayEnabled&&times.size()>2) {
+            var root=new ReplayRoot(r.id,base,new Snapshot(state,exchanged),checkpoint!=null);
+            trace=replay.computeIfAbsent(root,k->new ReplayTrace());trimReplay();
+        }
+        boolean matching=true;
         var source = RoomPhysics.Rate.ZERO;
         int outsideIndex = 0;
         for (int i = 0; i < times.size(); i++) {
@@ -811,28 +873,53 @@ public final class RoomAir extends SavedData {
             while (outsideIndex + 1 < rows.get().size() && rows.get().get(outsideIndex).to <= a) outsideIndex++;
             var out = rows.get().get(outsideIndex).air;
             var instant = instants.get(a);
-            if (instant != null) state = RoomPhysics.inject(state, out, r.cells.length, r.walls, instant);
-            if (a == r.from && !(checkpoint != null && a == base))
-                exchanged = RoomHistory.plus(exchanged, RoomHistory.plus(r.recoveredExchange, r.adjustmentExchange));
-            if (i + 1 == times.size()) break;
-            r.checkpoints.put(a, new Snapshot(state, exchanged));
-            while (r.checkpoints.size() > 2) r.checkpoints.pollFirstEntry();
-            if(!flattening&&i>=128&&rows.get().size()>128
-                    &&EnvironmentBudget.remaining(level)!=Long.MAX_VALUE)return Optional.empty();
-            source = source.plus(deltas.getOrDefault(a, RoomPhysics.Rate.ZERO));
-            long b = times.get(i + 1);
-            double seconds = (b - a) / 20.0;
-            var before = RoomPhysics.amount(state, r.cells.length, r.walls);
-            state = RoomPhysics.advance(state, out, r.cells.length, r.walls, exchange(r, state, out), source, seconds);
-            var input = new RoomPhysics.Amount(source.heatW() * seconds, source.coMolS() * seconds,
-                    source.co2MolS() * seconds, source.oxygenMolS() * seconds);
-            exchanged = RoomHistory.plus(exchanged, RoomHistory.plus(input,
-                    RoomHistory.plus(before, RoomHistory.scale(RoomPhysics.amount(state, r.cells.length, r.walls), -1))));
+            var recovered=a==r.from&&!(checkpoint!=null&&a==base)?RoomHistory.plus(r.recoveredExchange,r.adjustmentExchange):null;
+            boolean terminal=i+1==times.size();
+            boolean limited=!flattening&&i>=128&&rows.get().size()>128&&EnvironmentBudget.remaining(level)!=Long.MAX_VALUE;
+            if(terminal||limited) {
+                if(instant!=null)state=RoomPhysics.inject(state,out,r.cells.length,r.walls,instant);
+                if(recovered!=null)exchanged=RoomHistory.plus(exchanged,recovered);
+                if(terminal)break;
+                r.checkpoints.put(a,new Snapshot(state,exchanged));while(r.checkpoints.size()>2)r.checkpoints.pollFirstEntry();
+                return Optional.empty();
+            }
+            source=source.plus(deltas.getOrDefault(a,RoomPhysics.Rate.ZERO));
+            long b=times.get(i+1);
+            ReplayEdge edge=trace!=null&&matching&&i<trace.edges.size()?trace.edges.get(i):null;
+            if(edge!=null&&edge.step.matches(a,b,out,source,instant,recovered)) {
+                r.replayHits++;
+            } else {
+                if(matching&&trace!=null) {
+                    while(trace.edges.size()>i){trace.edges.removeLast();replaySteps--;}
+                }
+                matching=false;r.replayMisses++;
+                if(instant!=null)state=RoomPhysics.inject(state,out,r.cells.length,r.walls,instant);
+                if(recovered!=null)exchanged=RoomHistory.plus(exchanged,recovered);
+                var start=new Snapshot(state,exchanged);
+                double seconds=(b-a)/20.0;
+                var before=RoomPhysics.amount(state,r.cells.length,r.walls);
+                r.advanceIntervals++;
+                state=RoomPhysics.advance(state,out,r.cells.length,r.walls,exchange(r,state,out),source,seconds);
+                var input=new RoomPhysics.Amount(source.heatW()*seconds,source.coMolS()*seconds,source.co2MolS()*seconds,source.oxygenMolS()*seconds);
+                exchanged=RoomHistory.plus(exchanged,RoomHistory.plus(input,
+                        RoomHistory.plus(before,RoomHistory.scale(RoomPhysics.amount(state,r.cells.length,r.walls),-1))));
+                edge=new ReplayEdge(new ReplayStep(a,b,out,source,instant,recovered),start,new Snapshot(state,exchanged));
+                if(trace!=null&&i<128){trace.edges.add(edge);replaySteps++;trimReplay();}
+            }
+            // 正本checkpointは従来の境界と2件のまま。派生traceを新しい積分起点にはしない。
+            r.checkpoints.put(a,edge.start);while(r.checkpoints.size()>2)r.checkpoints.pollFirstEntry();
+            state=edge.end.state;exchanged=edge.end.exchange;
         }
         var result = new Snapshot(state, exchanged);
         memo.put(key, result);
         return Optional.of(result);
     }
+    private static int firstInput(long[] through,long base) {
+        int first=0,last=through.length;
+        while(first<last) { int middle=(first+last)>>>1;if(through[middle]<base)first=middle+1;else last=middle; }
+        return first;
+    }
+
     private void addArchiveCuts(Set<Long> cuts, Region room, long from, long to) {
         localInputs(room);
         long start = room.archiveStart;
@@ -846,11 +933,16 @@ public final class RoomAir extends SavedData {
     }
 
     private List<RoomHistory.Entry> localInputs(Region room) {
-        if(room.inputRevision!=history.revision()) {
+        if(room.inputRevision!=history.structureRevision()) {
+            room.inputBuilds++;
             room.localInputs=history.matching(room::receives);
+            room.localThrough=new long[room.localInputs.size()];long through=-1;
+            for(int n=0;n<room.localInputs.size();n++) {
+                through=Math.max(through,room.localInputs.get(n).to());room.localThrough[n]=through;
+            }
             room.archiveStart=history.cumulative().stream().filter(p->room.receives(p.position()))
                     .mapToLong(RoomHistory.Entry::from).min().orElse(history.checkpoint());
-            room.inputRevision=room.to==Long.MAX_VALUE?history.revision():-1;
+            room.inputRevision=room.to==Long.MAX_VALUE?history.structureRevision():-1;
         }
         var result=room.localInputs;
         if(room.to!=Long.MAX_VALUE)room.localInputs=List.of();
@@ -983,7 +1075,7 @@ public final class RoomAir extends SavedData {
                         }
                         for (long cell : recovered) displaced.remove(cell);
                         room.ready = true;
-                        regions.add(room); regionIds.put(room.id, room);
+                        regions.add(room); regionIds.put(room.id, room);dependents.clear();
                         simulate(room, room.from, new HashMap<>()).ifPresent(value -> room.pastModel.temperature = value.state.temperatureK());
                         trimGenerations(); return true;
                     }
@@ -999,7 +1091,7 @@ public final class RoomAir extends SavedData {
             groupsDirty = room != null;
         }
         private void inheritGroups() {
-            room.groups.clear();
+            dependents.clear();room.groups.clear();
             room.inputRevision=-1;
             for (var parent : parents.entrySet()) {
                 var old = regionIds.get(parent.getKey());
@@ -1071,8 +1163,33 @@ public final class RoomAir extends SavedData {
         } finally { clearSamples(); }
     }
 
+    private final Map<Long,Set<ExposureGeometry>> exposureGeometry=new HashMap<>();
+    /** 半径8mの局所線源観測だけが保持する幾何の変更印。不要になった観測はcloseする。 */
+    public final class ExposureGeometry implements AutoCloseable {
+        private final Set<Long> chunks=new HashSet<>();
+        private long changedAt=Long.MAX_VALUE;
+        private ExposureGeometry(BlockPos position) {
+            for(int x=(position.getX()-9)>>4;x<=(position.getX()+9)>>4;x++)
+                for(int z=(position.getZ()-9)>>4;z<=(position.getZ()+9)>>4;z++) {
+                    long key=ChunkPos.asLong(x,z);chunks.add(key);
+                    exposureGeometry.computeIfAbsent(key,k->new HashSet<>()).add(this);
+                }
+        }
+        public long changedAt() { return changedAt; }
+        @Override public void close() {
+            for(long key:chunks) {
+                var observers=exposureGeometry.get(key);if(observers!=null) {
+                    observers.remove(this);if(observers.isEmpty())exposureGeometry.remove(key);
+                }
+            }
+            chunks.clear();
+        }
+    }
+    public ExposureGeometry observeExposureGeometry(BlockPos position) { return new ExposureGeometry(position); }
     /** 構成の変更時刻まで旧幾何を維持し、その時刻を新しい探索の境界にする。 */
     public void changed(BlockPos pos) {
+        for(var observer:exposureGeometry.getOrDefault(chunk(pos.asLong()),Set.of()))
+            observer.changedAt=Math.min(observer.changedAt,level.getGameTime());
         clearSamples();
         lastFailedSearch=null;
         long tick = level.getGameTime();
@@ -1133,7 +1250,7 @@ public final class RoomAir extends SavedData {
     private boolean canTrim(Region candidate) {
         if (regions.stream().filter(r -> r.to != Long.MAX_VALUE).count() <= 64) return true;
         var old = regions.stream().filter(r -> r.to != Long.MAX_VALUE).findFirst().orElseThrow();
-        var memo = new HashMap<String, Snapshot>();
+        var memo = new HashMap<ReplayKey, Snapshot>();
         for(var child:regions)if(child!=old&&child.groups.containsKey(old.anchor))
             if(!prepareFlattening(child))return false;
         if(candidate.groups.containsKey(old.anchor)&&!prepareFlattening(candidate))return false;
@@ -1148,7 +1265,7 @@ public final class RoomAir extends SavedData {
         try {
         while (regions.stream().filter(r -> r.to != Long.MAX_VALUE).count() > 64) {
             var old = regions.stream().filter(r -> r.to != Long.MAX_VALUE).findFirst().orElseThrow();
-            var memo = new HashMap<String, Snapshot>();
+            var memo = new HashMap<ReplayKey, Snapshot>();
             var observed = new HashMap<Integer, Snapshot>();
             for (var r : regions) if (r.from <= Math.min(level.getGameTime(), r.to))
                         simulate(r, Math.min(level.getGameTime(), r.to), memo)
@@ -1166,7 +1283,7 @@ public final class RoomAir extends SavedData {
                 targets.put(r.id, simulate(r, r.from, memo).orElseThrow());
             var recipients = new HashMap<Long, Double>();
             for (var child : children) recipients.put(child.anchor, (double) child.parents.get(old.id) / old.cells.length);
-            history.transfer(old.anchor, recipients);
+            history.transfer(old.anchor, recipients);dependents.clear();
             for (var retained : regions) { retained.groups.remove(old.anchor); retained.inputRevision=-1;retained.checkpoints.clear(); }
             for (var child : children) {
                 long beginning = child.replayFrom;
@@ -1184,7 +1301,7 @@ public final class RoomAir extends SavedData {
                         RoomHistory.plus(target.exchange, RoomHistory.scale(replay.exchange, -1)));
                 for (var retained : regions) retained.checkpoints.clear();
             }
-            regions.remove(old); regionIds.remove(old.id);
+            regions.remove(old); regionIds.remove(old.id);dependents.clear();
             for (var r : regions) {
                 var value = observed.get(r.id);
                 if (value != null) commit(r,Math.min(level.getGameTime(),r.to),value);
@@ -1210,7 +1327,7 @@ public final class RoomAir extends SavedData {
         flushPending();
         var sum = ZERO;
         var exchanged = ZERO;
-        var memo = new HashMap<String, Snapshot>();
+        var memo = new HashMap<ReplayKey, Snapshot>();
         for (var room : regions) {
             int owned = 0;
             for (long cell : room.cells) if (latest(cell) == room && !displaced.containsKey(cell)) owned++;
@@ -1266,7 +1383,7 @@ public final class RoomAir extends SavedData {
         var geometryRows = new ListTag();
         var geometryIds = new HashMap<String, Integer>();
         var regionRows = new ListTag();
-        var checkpointMemo = new HashMap<String, Snapshot>();
+        var checkpointMemo = new HashMap<ReplayKey, Snapshot>();
         for (var r : regions) {
             long cut = Math.min(history.checkpoint(), r.to);
             if (outside != null && cut >= r.replayFrom && cut >= r.from) {

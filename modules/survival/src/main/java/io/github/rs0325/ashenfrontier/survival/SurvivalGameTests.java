@@ -44,7 +44,7 @@ public final class SurvivalGameTests {
             if(waiting||waitingHistory&&from<to)return Optional.empty();
             var interval=clock.intervals(from,to).getFirst();
             return Optional.of(new SurvivalRuntime.Observation(from,Math.min(interval.endTick(),from<hypoxicFrom?hypoxicFrom:from<hypoxicTo?hypoxicTo:Long.MAX_VALUE),interval.ticksPerDay(),
-                    new Physiology.Air(295.15,.5,.1,0,101325,from>=hypoxicFrom&&from<hypoxicTo?15000:oxygen,0,true,submerged)));
+                    new Physiology.Air(295.15,.5,.1,0,101325,from>=hypoxicFrom&&from<hypoxicTo?15000:oxygen,0,true,submerged),new Exposure.Air(0,420e-6,from>=hypoxicFrom&&from<hypoxicTo?15000:oxygen,0,true),false,false));
         }
     }
     static final class Person implements AutoCloseable {
@@ -104,7 +104,8 @@ public final class SurvivalGameTests {
                 now+=elapsed;
                 var stable=runtime.data.body.values();runtime.work(System.nanoTime()+10_000_000,32);
                 h.assertTrue(java.util.Arrays.equals(stable,runtime.data.body.values()),"同時刻を二重適用しない");same++;
-                SurvivalIntake.accepted(person.player,.001,100,.00001,.00001,false,false);drain(h,runtime);feeds++;
+                SurvivalIntake.accepted(person.player,.001,100,.00001,.00001,false,false,
+                        new io.github.rs0325.ashenfrontier.core.food.IntakeExposure(.001,java.util.Map.of(),"",0,0,level.getGameTime()));drain(h,runtime);feeds++;
                 expectedWater=Math.min(42,expectedWater+.001);expectedEnergy=Math.min(20e6,expectedEnergy+100);
                 expectedProtein=Math.min(.18,expectedProtein+.00001);expectedFat=Math.min(.12,expectedFat+.00001);
                 h.assertTrue(Math.abs(runtime.data.body.protein-expectedProtein)<1e-10

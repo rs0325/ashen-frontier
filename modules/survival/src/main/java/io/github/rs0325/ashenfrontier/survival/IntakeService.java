@@ -25,7 +25,10 @@ public final class IntakeService {
     }
     private static final Map<ServerPlayer, Use> USES = new IdentityHashMap<>();
     private IntakeService() {}
-    static void clear(ServerPlayer player) { USES.remove(player); }
+    static void clear(ServerPlayer player) {
+        var use=USES.remove(player);
+        if(use!=null&&use.target>=0&&use.expected.has(ItemProperties.RADIOACTIVITY))ExposureSources.changedSource(player);
+    }
     static void clear() { USES.clear(); }
     static boolean pending(ServerPlayer player,long operation) {
         var use=USES.get(player);return use!=null&&use.operation==operation&&use.target>=0;
@@ -59,6 +62,8 @@ public final class IntakeService {
                 var result = check(player, stack, false);
                 if (!result.accepted()) { message(player, result.reason()); return; }
                 if (available(runtime, stack) <= 0) { message(player, "full"); return; }
+                var trace=stack.get(ItemProperties.CONTAMINATION);
+                if(trace!=null&&trace.amounts().values().stream().anyMatch(value->value>0))message(player,"trace_contamination");
                 if(!water(stack)) {
                     FoodStorageService.remember(player);
                     FoodStorage.observe(player.serverLevel(),player.getUUID(),player.blockPosition(),stack);
@@ -75,7 +80,9 @@ public final class IntakeService {
                 if (current.getCount() != use.expected.getCount() || !ItemStack.isSameItemSameComponents(current, use.expected)){clear(player);return;}
                 var runtime = AshenFrontierSurvival.ACTIVE.get(player);
                 if (runtime == null || runtime.data.blocked()){clear(player);return;}
-                if(use.target<0){use.target=player.serverLevel().getGameTime();runtime.reserveIntake(use.operation);}
+                if(use.target<0){use.target=player.serverLevel().getGameTime();runtime.reserveIntake(use.operation);
+                    if(current.has(ItemProperties.RADIOACTIVITY))ExposureSources.changedSource(player);
+                }
                 var evaluated = current;
                 if (!water(current)) {
                     var rot = current.get(ItemProperties.ROT);
@@ -114,15 +121,37 @@ public final class IntakeService {
                 } else remainder.shrink(1);
                 // 以後は同一サーバー呼出し内で完了する。capture失敗時には在庫を変更しない。
                 runtime.completeIntake(use.operation,nutrition.waterKg(),nutrition.energyJoules(),nutrition.proteinKg(),nutrition.fatKg(),
-                        nutrition.vitaminGroups().contains("c"),nutrition.vitaminGroups().contains("fat_soluble"));
+                        nutrition.vitaminGroups().contains("c"),nutrition.vitaminGroups().contains("fat_soluble"),exposure(player,evaluated,quantity,use.target));
                 if(!water(evaluated))FoodStorage.consume(player.serverLevel(),evaluated,1);
                 clear(player);
                 player.setItemInHand(event.hand(),remainder);
                 if (!returned.isEmpty() && !player.getInventory().add(returned)) throw new IllegalStateException("確認済みの返却先が変わりました");
-                player.getInventory().setChanged(); event.accept();
+                player.getInventory().setChanged();
+                if(evaluated.has(ItemProperties.RADIOACTIVITY))ExposureSources.changedSource(player);
+                event.accept();
                 if (result.warning()) message(player,"rot_warning");
             }
         }
+    }
+    private static io.github.rs0325.ashenfrontier.core.food.IntakeExposure exposure(ServerPlayer player,ItemStack stack,double quantity,long tick) {
+        double mass=water(stack)?quantity:MaterialData.get(stack.getItem()).orElseThrow().massKg();
+        var substances=new java.util.LinkedHashMap<String,Double>();
+        var contamination=stack.get(ItemProperties.CONTAMINATION);
+        if(contamination!=null)contamination.amounts().forEach((id,fraction)->substances.put(id,fraction*mass));
+        var radiation=stack.get(ItemProperties.RADIOACTIVITY);double lower=0,upper=0;String nuclide="";
+        if(radiation!=null) {
+            nuclide=radiation.nuclide();var definition=Nuclides.get(nuclide).orElseThrow();
+            var history=ClimateQuery.dayLengthHistory(player.serverLevel()).orElseThrow();
+            double factor=Math.exp(-Math.log(2)*GameTime.gameSeconds(radiation.gameTime(),tick,history)/definition.halfLifeGameSeconds());
+            double portion=water(stack)?mass/stack.get(RelicProperties.CONTENT_MASS):1;
+            lower=radiation.becquerels()*factor*portion;
+            upper=(radiation.becquerels()+stack.getOrDefault(FoodProperties.ACTIVITY_UNCERTAINTY,ItemProperties.ACTIVITY_STEP_BQ))*factor*portion;
+        }
+        return new io.github.rs0325.ashenfrontier.core.food.IntakeExposure(mass,substances,nuclide,lower,upper,tick);
+    }
+    static boolean unresolvedSource(ServerPlayer owner,ItemStack stack) {
+        var use=USES.get(owner);
+        return use!=null&&use.target>=0&&owner.getItemInHand(use.hand)==stack;
     }
     private static boolean roomFor(ServerPlayer player, ItemStack returned) {
         for (var stack : player.getInventory().items)
@@ -141,6 +170,7 @@ public final class IntakeService {
     /** 可食部を照合する。checkHistory=falseは予備判定、または別途固定末尾まで履歴を確定したコピーに使う。 */
     public static IntakeRules.Result check(ServerPlayer player, ItemStack stack, boolean checkHistory) {
         if (stack.isEmpty()) return IntakeRules.unknown("food_profile");
+        if(stack.has(ItemProperties.SOIL_CONTAMINATION))return IntakeRules.unknown("contamination_unconfirmed");
         var evidence=stack.get(FoodProperties.EVIDENCE);
         if (evidence==null) return IntakeRules.unknown("origin_unconfirmed");
         var origin=evidence.origin();
@@ -173,6 +203,7 @@ public final class IntakeService {
         if (chemicals==null && !evidence.cleanBaseline() || radiation==null && !evidence.cleanBaseline()) return IntakeRules.unknown("contamination_unconfirmed");
         double elapsed=0;
         if (radiation!=null) {
+            if(Nuclides.get(radiation.nuclide()).isEmpty())return IntakeRules.unknown("nuclide");
             var history=ClimateQuery.dayLengthHistory(player.serverLevel());
             if (history.isEmpty() || radiation.gameTime()<0 || radiation.gameTime()>now) return IntakeRules.unknown("clock");
             elapsed=GameTime.gameSeconds(radiation.gameTime(),now,history.get());

@@ -5,6 +5,30 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RoomHistoryTest {
+    @Test void indexedAppendDoesNotCopyTheGlobalHistory() throws Exception {
+        var history=new RoomHistory();
+        history.restore(20,java.util.List.of(new RoomHistory.Entry(1,0,20,new RoomPhysics.Amount(1,0,0,0))),java.util.List.of());
+        history.matching(p->p==1);var totals=history.cumulative();
+        var entries=RoomHistory.class.getDeclaredField("entries");entries.setAccessible(true);
+        for(int n=0;n<100;n++) {
+            var entry=new RoomHistory.Entry(2,20+n,21+n,new RoomPhysics.Amount(n,0,0,0));history.append(entry);
+            assertEquals(java.util.List.of(entry),history.matching(p->p==2).subList(n,n+1));
+            assertNull(entries.get(history),"位置別の照会に全履歴の複製を作らない");
+            assertSame(totals,history.cumulative(),"通常追記は累積一覧を変更しない");
+        }
+    }
+    @Test void normalAppendKeepsStructuralGenerationButCompactionAndTransferChangeIt() {
+        var history=new RoomHistory();long version=history.structureRevision();
+        for(int n=0;n<RoomHistory.LIMIT;n++)history.append(new RoomHistory.Entry(n%4,n,n+1,new RoomPhysics.Amount(1,0,0,0)));
+        assertEquals(version,history.structureRevision());
+        history.append(new RoomHistory.Entry(1,2048,2049,new RoomPhysics.Amount(2,0,0,0)));
+        assertTrue(history.compactIfNeeded());assertTrue(history.structureRevision()>version);
+        version=history.structureRevision();history.append(new RoomHistory.Entry(1,0,1,new RoomPhysics.Amount(3,0,0,0)));
+        assertTrue(history.structureRevision()>version);
+        version=history.structureRevision();assertTrue(history.transfer(1,Map.of(9L,1.0)));assertTrue(history.structureRevision()>version);
+        var restored=new RoomHistory();restored.restore(history.checkpoint(),history.cumulative(),history.recent());
+        assertEquals(history.entries(),restored.entries());
+    }
     @Test @SuppressWarnings("unchecked") void cachedListsMatchCanonicalOrderAcrossAllMutations() throws Exception {
         var tailField=RoomHistory.class.getDeclaredField("recent");tailField.setAccessible(true);
         var totalsField=RoomHistory.class.getDeclaredField("cumulative");totalsField.setAccessible(true);

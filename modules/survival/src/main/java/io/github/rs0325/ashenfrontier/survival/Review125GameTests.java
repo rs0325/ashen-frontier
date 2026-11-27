@@ -42,7 +42,10 @@ public final class Review125GameTests {
                 h.assertTrue(rooms.retentionUsage().owners()==baseline+3,"食品の保持が3件存在");
                 var data=FoodStorageData.get(fixture.level);var failures=new java.util.concurrent.atomic.AtomicInteger();
                 java.util.function.Consumer<io.github.rs0325.ashenfrontier.core.environment.EnvironmentQuery> missing=query->{
-                    if(query.level()==fixture.level&&query.position().equals(a.player.blockPosition())&&query.startTick()<query.endTick()&&query.values().isEmpty()) {
+                    if(query.level()==fixture.level&&query.position().equals(a.player.blockPosition())&&query.startTick()<query.endTick()) {
+                        try {
+                            var samples=query.getClass().getDeclaredField("samples");samples.setAccessible(true);samples.set(query,java.util.Optional.empty());
+                        } catch(ReflectiveOperationException failure) { throw new IllegalStateException(failure); }
                         query.pending("environment.ashen_frontier_climate.history_missing");failures.incrementAndGet();
                     }
                 };

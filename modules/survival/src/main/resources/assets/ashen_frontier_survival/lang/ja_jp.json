@@ -30,5 +30,17 @@
   "survival.ashen_frontier.remedy.10": "安全な寝床で眠る",
   "survival.ashen_frontier.remedy.11": "住環境を整えて休む",
   "survival.ashen_frontier.remedy.12": "安全を確保して傷を手当てする",
-  "survival.ashen_frontier.corrupted": "生理データが破損しているため評価を停止しています。管理者に確認してください"
+  "survival.ashen_frontier.corrupted": "生理データが破損しているため評価を停止しています。管理者に確認してください",
+  "survival.ashen_frontier.exposure.danger": "強いめまい・息苦しさ。火を止め、換気して屋外へ避難してください。",
+  "survival.ashen_frontier.exposure.unassessed": "未評価の曝露があります。症状がないことは安全の証明ではありません。",
+  "survival.ashen_frontier.exposure.approximate": "周辺の代表的な条件で評価しています。",
+  "survival.ashen_frontier.symptom.13": "頭が重い（%s）",
+  "survival.ashen_frontier.remedy.13": "火を止め、換気して屋外へ。",
+  "survival.ashen_frontier.symptom.14": "息が上がる（%s）",
+  "survival.ashen_frontier.remedy.14": "屋外や標高の低い場所で休息を。",
+  "survival.ashen_frontier.symptom.15": "咳が出る（%s）",
+  "survival.ashen_frontier.remedy.15": "粉じんの発生を止め、清浄な場所へ。",
+  "survival.ashen_frontier.symptom.16": "だるい（%s）",
+  "survival.ashen_frontier.remedy.16": "清浄な飲食と休息を。測定・表示で汚染域を避けてください。",
+  "intake.ashen_frontier.trace_contamination": "微量汚染あり。継続する負担には基準ゼロ確認の飲食へ切り替えてください。"
 }

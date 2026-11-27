@@ -17,14 +17,19 @@ final class RoomHistory {
     private final Map<Key, Entry> cumulative = new HashMap<>();
     private long checkpoint = -1;
     private int maximum;
-    private long revision;
+    private long revision,structureRevision;
     private List<Entry> entries,totals;
     private Map<Long,int[]> positions;
     private RoomPhysics.Amount archivedInput = new RoomPhysics.Amount(0, 0, 0, 0);
 
     long checkpoint() { return checkpoint; }
     long revision() { return revision; }
-    private void changed() { revision++;entries=null;totals=null;positions=null; }
+    long structureRevision() { return structureRevision; }
+    private void changed() { changed(true); }
+    private void changed(boolean structure) {
+        revision++;if(structure)structureRevision++;
+        entries=null;positions=null;if(structure)totals=null;
+    }
     int retainedCount() { return recent.size(); }
     int cumulativeCount() { return cumulative.size(); }
     int maximumRetainedCount() { return maximum; }
@@ -39,7 +44,7 @@ final class RoomHistory {
     /** 呼出側が観測済みcheckpointを確定してから履歴を圧縮できるよう、追加を分ける。 */
     boolean append(Entry entry) {
         var index=positions;
-        changed();
+        changed(checkpoint>=0&&entry.from<checkpoint);
         boolean reconstructed = false;
         if (checkpoint >= 0 && entry.from < checkpoint) {
             if (entry.to <= checkpoint) {
@@ -126,8 +131,8 @@ final class RoomHistory {
     List<Entry> cumulative() { if(totals==null)totals=List.copyOf(cumulative.values());return totals; }
     /** 位置の照合回数を通知数から発生位置数へ減らし、加算は元のentries順を保持する。 */
     List<Entry> matching(java.util.function.LongPredicate predicate) {
-        var all=entries();
         if(positions==null) {
+            var all=entries();
             var counts=new HashMap<Long,Integer>();
             for(var entry:all)counts.merge(entry.position,1,Integer::sum);
             positions=new HashMap<>();counts.forEach((position,count)->positions.put(position,new int[count+1]));
@@ -141,14 +146,17 @@ final class RoomHistory {
         }
         if(selected.size()==1) {
             var group=selected.getFirst();var result=new ArrayList<Entry>(count);
-            for(int n=1;n<=group[0];n++)result.add(all.get(group[n]));
+            for(int n=1;n<=group[0];n++)result.add(indexedEntry(group[n]));
             return List.copyOf(result);
         }
         var indices=new int[count];int offset=0;
         for(var group:selected){System.arraycopy(group,1,indices,offset,group[0]);offset+=group[0];}
         if(selected.size()>1)java.util.Arrays.sort(indices);
-        var result=new ArrayList<Entry>(count);for(int index:indices)result.add(all.get(index));
+        var result=new ArrayList<Entry>(count);for(int index:indices)result.add(indexedEntry(index));
         return List.copyOf(result);
+    }
+    private Entry indexedEntry(int index) {
+        return index<cumulative.size()?cumulative().get(index):recent.get(index-cumulative.size());
     }
     List<Entry> recent() { return List.copyOf(recent); }
 
