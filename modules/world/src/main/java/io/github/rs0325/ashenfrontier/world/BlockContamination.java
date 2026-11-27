@@ -60,6 +60,12 @@ public final class BlockContamination {
         }
     }
 
+    /** 正本の連続値を明示変更した後の通知。量の生成や減衰を代行しない。 */
+    public static final class Changed extends net.neoforged.bus.api.Event {
+        public final ServerLevel level;
+        public final BlockPos position;
+        Changed(ServerLevel level,BlockPos position) { this.level=level;this.position=position.immutable(); }
+    }
     private BlockContamination() {}
 
     static void register(IEventBus bus) {
@@ -97,15 +103,15 @@ public final class BlockContamination {
     private static void record(ServerLevel level, BlockPos pos, SoilContamination value) {
         var chunk = level.getChunkAt(pos);
         chunk.getData(CHANGES).put(pos.asLong(), value);
-        chunk.setUnsaved(true);
+        chunk.setUnsaved(true);NeoForge.EVENT_BUS.post(new Changed(level,pos));
     }
 
     /** 空いた位置の上書き記録を除去する。未改変チャンクには添付を作らない。 */
     public static void clear(ServerLevel level, BlockPos pos) {
         var chunk = level.getChunkAt(pos);
         if (chunk.hasData(CHANGES) && chunk.getData(CHANGES).remove(pos.asLong()) != null) {
-            if (chunk.getData(CHANGES).isEmpty()) chunk.removeData(CHANGES);
-            chunk.setUnsaved(true);
+                if (chunk.getData(CHANGES).isEmpty()) chunk.removeData(CHANGES);
+            chunk.setUnsaved(true);NeoForge.EVENT_BUS.post(new Changed(level,pos));
         }
     }
 

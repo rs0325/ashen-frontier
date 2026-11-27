@@ -109,6 +109,8 @@ public final class EnvironmentPerformanceGameTests {
             };
             NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.LOWEST,emissions);
             long processingTicks=0,ignitionTicks=0,overlapTicks=0,playerOperations=0;
+            double[] processedBefore=new double[40];
+            long[] measuredIgnitionStarts=new long[4];
             var work=actors.getFirst().getClass().getDeclaredMethod("scheduledWork");work.setAccessible(true);
             long[] elapsed=new long[2000],cpuTimes=new long[2000];long[][] stages=new long[5][2000];int firstActor=0;
             com.mojang.logging.LogUtils.getLogger().info("M3-135 workload start test={}",measurement);
@@ -130,6 +132,22 @@ public final class EnvironmentPerformanceGameTests {
                     long afterWeather=System.nanoTime();
                     NeoForge.EVENT_BUS.post(new LevelTickEvent.Post(()->true,f.level));
                     long afterRooms=System.nanoTime();
+                    if(tick>=701) {
+                        int n=(tick-701)%4;var actor=actors.get(n);var player=players.get(n);
+                        if(measuredIgnitionStarts[n]==0&&!igniting.getBoolean(actor)) {
+                            player.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);player.setShiftKeyDown(true);
+                            actor.getClass().getMethod("interact",net.minecraft.server.level.ServerPlayer.class,InteractionHand.class,Direction.class)
+                                    .invoke(actor,player,InteractionHand.MAIN_HAND,Direction.DOWN);
+                            player.setShiftKeyDown(false);playerOperations++;
+                            if(!actor.getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT)) {
+                                player.setItemInHand(InteractionHand.MAIN_HAND,drills.get(n));
+                                actor.getClass().getMethod("interact",net.minecraft.server.level.ServerPlayer.class,InteractionHand.class,Direction.class)
+                                        .invoke(actor,player,InteractionHand.MAIN_HAND,Direction.UP);
+                                playerOperations++;
+                            }
+                            if(igniting.getBoolean(actor))measuredIgnitionStarts[n]=tick;
+                        }
+                    }
                     for(int n=0;n<actors.size();n++)work.invoke(actors.get((firstActor+n)%actors.size()));
                     if(tick%5==0) {
                         int n=(tick/5)%4;var actor=actors.get(n);var player=players.get(n);
@@ -138,10 +156,13 @@ public final class EnvironmentPerformanceGameTests {
                             actor.getClass().getMethod("interact",net.minecraft.server.level.ServerPlayer.class,InteractionHand.class,Direction.class)
                                     .invoke(actor,player,InteractionHand.MAIN_HAND,Direction.DOWN);
                             player.setShiftKeyDown(false);playerOperations++;
-                            player.setItemInHand(InteractionHand.MAIN_HAND,drills.get(n));
-                            actor.getClass().getMethod("interact",net.minecraft.server.level.ServerPlayer.class,InteractionHand.class,Direction.class)
-                                    .invoke(actor,player,InteractionHand.MAIN_HAND,Direction.UP);
-                            playerOperations++;
+                            if(!actor.getBlockState().getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT)) {
+                                player.setItemInHand(InteractionHand.MAIN_HAND,drills.get(n));
+                                actor.getClass().getMethod("interact",net.minecraft.server.level.ServerPlayer.class,InteractionHand.class,Direction.class)
+                                        .invoke(actor,player,InteractionHand.MAIN_HAND,Direction.UP);
+                                playerOperations++;
+                            }
+                            if(tick>500&&measuredIgnitionStarts[n]==0&&igniting.getBoolean(actor))measuredIgnitionStarts[n]=tick;
                         }
                     }
                     if(tick>500) {
@@ -154,6 +175,7 @@ public final class EnvironmentPerformanceGameTests {
                     long afterStations=System.nanoTime();
                     firstActor=(firstActor+1)%actors.size();
                     NeoForge.EVENT_BUS.post(new ServerTickEvent.Post(()->true,f.level.getServer()));
+                    if(tick==500)for(int n=4;n<40;n++)processedBefore[n]=processedSeconds(stations.get(n),f.level,n);
                     if(tick>500) {
                         int index=tick-501;long end=System.nanoTime();elapsed[index]=end-start;cpuTimes[index]=cpu.now()-cpuStart;
                         stages[0][index]=afterPre-start;stages[1][index]=afterWeather-afterPre;
@@ -193,9 +215,18 @@ public final class EnvironmentPerformanceGameTests {
                             "加工フラグだけでなく、設備ごとの実加工量を確認: "+n+" seconds="+seconds);
                 }
                 double wear=drills.stream().mapToDouble(d->d.get(ItemProperties.WEAR).value()).sum();
+                double firingSeconds=0,dryingSeconds=0;
+                for(int n=4;n<40;n++) {
+                    double amount=processedSeconds(stations.get(n),f.level,n)-processedBefore[n];
+                    if(n<24)firingSeconds+=amount;else dryingSeconds+=amount;
+                }
+                com.mojang.logging.LogUtils.getLogger().info(
+                        "M3-135 measured test={} firing_REAL_seconds={} drying_GAME_seconds={}",measurement,firingSeconds,dryingSeconds);
                 com.mojang.logging.LogUtils.getLogger().info(
                         "M3-135 active processing_station_ticks={} ignition_station_ticks={} overlap_ticks={} player_operations={} drill_wear={} burn_notices={} chemical_J={}",
                         processingTicks,ignitionTicks,overlapTicks,playerOperations,wear,combustion[0],chemical[0]);
+                com.mojang.logging.LogUtils.getLogger().info("M3-135 measured ignition_starts={}",Arrays.toString(measuredIgnitionStarts));
+                for(long tick:measuredIgnitionStarts)h.assertTrue(tick>=501&&tick<=1900,"測定窓内に4人が実操作で再着火する: "+tick);
                 h.assertTrue(processingTicks>=32000&&ignitionTicks>=500&&overlapTicks>=100
                         &&wear>=4&&combustion[0]>=100&&chemical[0]>1000000,"加工/4人の着火完了/燃焼が実行された負荷を測定");
                 h.assertTrue(minThrough>=1900,"40設備すべてが継続前進し、末尾との差を気象1周期600 tick以内に保つ: "+minThrough);
@@ -205,6 +236,10 @@ public final class EnvironmentPerformanceGameTests {
                 NeoForge.EVENT_BUS.unregister(emissions);players.forEach(net.minecraft.server.level.ServerPlayer::discard);
             }
         }
+    }
+    private static double processedSeconds(io.github.rs0325.ashenfrontier.core.recipe.ProcessingStation station,
+            net.minecraft.server.level.ServerLevel level,int index) {
+        return station.output(0).isEmpty()?station.save(level.registryAccess()).getDouble("seconds"):(index<24?120:86400);
     }
     private static long usedHeap() {
         var runtime=Runtime.getRuntime();return runtime.totalMemory()-runtime.freeMemory();

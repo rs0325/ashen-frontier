@@ -36,15 +36,18 @@ public final class EnvironmentProvider {
     private final java.util.Set<Job> pendingJobs=new java.util.LinkedHashSet<>();
     private final java.util.TreeMap<Long,WeatherFrame> checkpoints=new java.util.TreeMap<>();
     private long clockRevision=-1,settingsTick=-1;
+    private WeatherTimeline frameTimeline;
+    private WeatherTime frameTime;
     private String reason="environment.ashen_frontier_climate.replaying";
     private record Range(long from,long to) {}
     private record OutdoorRow(long from,long to,long day,double gameFrom,double reference,
                               RoomPhysics.Air air,double humidity,double rain,double snow,
-                              double transmission,boolean contaminated) {}
+                              double transmission,boolean contaminated,double dust,double pollution) {}
     private record WeatherPoint(BlockPos position,long tick) {}
     private final LinkedHashMap<WeatherPoint,OutdoorRow> observations=new LinkedHashMap<>(16,.75f,true);
     private record BoundaryKey(BlockPos position,long from,long to) {}
-    private final Map<BoundaryKey,List<RoomAir.Boundary>> boundaries=new HashMap<>();
+    private final Map<BoundaryKey,List<OutdoorRow>> frameRows=new LinkedHashMap<>(16,.75f,true);
+    private final Map<BoundaryKey,List<RoomAir.Boundary>> boundaries=new LinkedHashMap<>(16,.75f,true);
     private long boundaryTick=-1,boundaryCacheRevision=-1;
 
     private final class Job {
@@ -63,6 +66,7 @@ public final class EnvironmentProvider {
             terminal=false;done=false;
             pendingJobs.add(this);
             cursor=WeatherQuery.begin(level,pos,range.from,range.to).orElseThrow();
+            frameTimeline=cursor.timeline;frameTime=cursor.time;
             var cached=checkpoints.floorEntry(range.from);
             if(cached!=null&&cached.getKey()>cursor.frame.tick())
                 cursor=new WeatherReplay(cursor.model,cursor.timeline,cursor.time,cursor.graceEnd,cached.getValue(),
@@ -110,7 +114,7 @@ public final class EnvironmentProvider {
         NeoForge.EVENT_BUS.addListener((EnvironmentQuery query)->{
             if(ClimateQuery.mapVersion(query.level()).isEmpty()||!MapCoordinates.contains(query.position().getX(),query.position().getZ()))return;
             var provider=get(query.level());
-            provider.environment(query.position(),query.startTick(),query.endTick()).ifPresent(query::provide);
+            provider.environment(query.position(),query.startTick(),query.endTick(),query.firstOnly()).ifPresent(query::provide);
             if(query.values().isEmpty())query.pending(provider.reason);
         });
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Pre event)->{
@@ -146,7 +150,6 @@ public final class EnvironmentProvider {
             if(!job.done)continue;
             if(level.getGameTime()-job.touched<=200)break;
             oldest.remove();
-            boundaryRevision++;
             for(var pos:job.rows.keySet()) {
                 var local=byPosition.get(pos);local.remove(job);if(local.isEmpty())byPosition.remove(pos);
             }
@@ -161,24 +164,27 @@ public final class EnvironmentProvider {
     }
 
     private OutdoorRow row(WeatherReplay cursor,BlockPos pos,long from,long to) {
-        var key=new WeatherPoint(pos.immutable(),cursor.frame.tick());
+        return row(cursor.frame,cursor.timeline,cursor.time,pos,from,to);
+    }
+    private OutdoorRow row(WeatherFrame frame,WeatherTimeline timeline,WeatherTime time,BlockPos pos,long from,long to) {
+        var key=new WeatherPoint(pos.immutable(),frame.tick());
         var cached=observations.get(key);
-        if(cached!=null)return new OutdoorRow(from,to,cursor.time.dayLength(from),cursor.time.seconds(from),cached.reference,
-                cached.air,cached.humidity,cached.rain,cached.snow,cached.transmission,cached.contaminated);
-        var state=WeatherReplay.spatial(cursor.frame,pos.getX(),pos.getZ());
-        var settings=cursor.timeline.at(cursor.frame.tick());
+        if(cached!=null)return new OutdoorRow(from,to,time.dayLength(from),time.seconds(from),cached.reference,
+                cached.air,cached.humidity,cached.rain,cached.snow,cached.transmission,cached.contaminated,cached.dust,cached.pollution);
+        var state=WeatherReplay.spatial(frame,pos.getX(),pos.getZ());
+        var settings=timeline.at(frame.tick());
         var base=FixedClimate.require(ClimateQuery.mapVersion(level).orElseThrow())
-                .sample(pos.getX(),pos.getY(),pos.getZ(),cursor.time.seconds(cursor.frame.tick()));
+                .sample(pos.getX(),pos.getY(),pos.getZ(),time.seconds(frame.tick()));
         double temperature=base.temperatureK()+state.temperatureAnomalyK();
         double pressure=Math.max(1,base.pressurePa()+state.pressureAnomalyPa());
         // 地球の背景組成。代表汚染を未定義の化学種からCOへ換算しない。
         var air=new RoomPhysics.Air(temperature,pressure,0.1e-6,420e-6,0.2095,Math.hypot(state.windXMps(),state.windZMps()));
-        double reference=cursor.time.seconds(cursor.frame.tick())
-                +settings.intervalTicks()*43200.0/cursor.time.dayLength(cursor.frame.tick());
-        var result=new OutdoorRow(from,to,cursor.time.dayLength(from),cursor.time.seconds(from),reference,air,
+        double reference=time.seconds(frame.tick())
+                +settings.intervalTicks()*43200.0/time.dayLength(frame.tick());
+        var result=new OutdoorRow(from,to,time.dayLength(from),time.seconds(from),reference,air,
                 Math.clamp(state.vaporKgM2()/WeatherModel.capacity(temperature),0,1),
                 state.rainKgM2GameSecond(),state.snowKgM2GameSecond(),
-                (1-0.75*state.cloudFraction())*Math.exp(-3e6*state.dustKgM3()),state.contaminatedRain());
+                (1-0.75*state.cloudFraction())*Math.exp(-3e6*state.dustKgM3()),state.contaminatedRain(),state.dustKgM3(),state.pollutionKgM3());
         observations.put(key,result);
         if(observations.size()>512)observations.remove(observations.keySet().iterator().next());
         return result;
@@ -192,13 +198,20 @@ public final class EnvironmentProvider {
             if(revision!=clockRevision)boundary=Math.min(boundary,ClimateClock.get(level).history().changes().getLast().tick());
             if(setting!=settingsTick)boundary=Math.min(boundary,setting);
             checkpoints.tailMap(boundary,true).clear();
-            jobs.clear();byPosition.clear();observations.clear();activeJobs.clear();pendingJobs.clear();boundaryRevision++;clockRevision=revision;settingsTick=setting;
+            jobs.clear();byPosition.clear();observations.clear();frameRows.clear();activeJobs.clear();pendingJobs.clear();frameTimeline=null;frameTime=null;boundaryRevision++;clockRevision=revision;settingsTick=setting;
         }
     }
     private Optional<List<OutdoorRow>> data(BlockPos pos,long from,long to) { return data(pos,from,to,false); }
     private Optional<List<OutdoorRow>> data(BlockPos pos,long from,long to,boolean prepareHorizon) {
         if(from<0||to<from||to>level.getGameTime())throw new IllegalArgumentException("環境要求の時刻が不正です");
         refreshVersions();
+        var key=new BoundaryKey(pos.immutable(),from,to);
+        var cached=frameRows.get(key);if(cached!=null)return Optional.of(cached);
+        var completed=fromFrames(pos,from,to);
+        if(completed.isPresent()) {
+            if(frameRows.size()>=512)frameRows.remove(frameRows.keySet().iterator().next());
+            frameRows.put(key,completed.get());return completed;
+        }
         var exact=access(new Range(from-Math.floorMod(from,600),prepareHorizon?level.getGameTime():to));
         if(exact!=null) {
             var values=exact.rows.get(pos);
@@ -238,6 +251,20 @@ public final class EnvironmentProvider {
         }
         return Optional.empty();
     }
+    /** 計算済みの全域フレームが要求全域を覆うときだけ、同じ一定係数の区間を直接組み立てる。 */
+    private Optional<List<OutdoorRow>> fromFrames(BlockPos pos,long from,long to) {
+        if(frameTime==null)return Optional.empty();
+        var result=new ArrayList<OutdoorRow>();long start=from;
+        do {
+            var cached=checkpoints.floorEntry(start);if(cached==null)return Optional.empty();
+            long boundary=frameTimeline.next(cached.getKey(),frameTime);if(boundary<=start)return Optional.empty();
+            long end=Math.min(to,boundary);
+            result.add(row(cached.getValue(),frameTimeline,frameTime,pos,start,end));
+            if(end==to)return Optional.of(List.copyOf(result));
+            start=end;
+        } while(start<to);
+        return Optional.empty();
+    }
     private static boolean covers(Job job,List<OutdoorRow> values,long from,long to) {
         return values!=null&&!values.isEmpty()&&job.range.from<=from
                 &&(job.done&&job.range.to>=to||values.getLast().to>to
@@ -253,7 +280,7 @@ public final class EnvironmentProvider {
     }
     private Optional<List<RoomAir.Boundary>> outside(ServerLevel requested,BlockPos pos,long from,long to) {
         refreshVersions();
-        if(boundaryTick!=level.getGameTime()||boundaryCacheRevision!=boundaryRevision) {
+        if(boundaryCacheRevision!=boundaryRevision) {
             boundaries.clear();boundaryTick=level.getGameTime();boundaryCacheRevision=boundaryRevision;
         }
         var key=new BoundaryKey(pos.immutable(),from,to);
@@ -268,40 +295,50 @@ public final class EnvironmentProvider {
                 if(b>a)result.add(new RoomAir.Boundary(a,b,row.air));
             }
             var answer=List.copyOf(result);
-            if(boundaries.size()>=512)boundaries.clear();
+            if(boundaries.size()>=512)boundaries.remove(boundaries.keySet().iterator().next());
             boundaries.put(key,answer);
             return answer;
         });
     }
     /** C01の同じ確定区間に対する生理入力。酸素は分圧Pa。風は屋内0.1 m/sの承認済み近似。 */
-    public record Exposure(EnvironmentSample sample,double windMps,double oxygenPa,RoomAir.Accuracy accuracy) {}
+    public record Exposure(EnvironmentSample sample,double windMps,double oxygenPa,double co,double co2,double dustKgM3,boolean indoor,boolean untypedPollution,RoomAir.Accuracy accuracy) {}
     /** 未計算/未観測なら空。最初の区間を確定した後、次の末尾から再照会する。 */
     public Optional<Exposure> exposure(BlockPos station,long from,long to) {
-        return resolve(station,from,to).map(value->{
+        return resolve(station,from,to,true).map(value->{
             var sample=value.samples.getFirst();var local=value.first;
             return new Exposure(sample,local.status()==RoomAir.Status.INDOOR?.1:value.outdoor.air.windMS(),
-                    local.state().orElseThrow().oxygen()*sample.pressurePa(),local.accuracy());
+                    local.state().orElseThrow().oxygen()*sample.pressurePa(),local.state().orElseThrow().co(),
+                    local.state().orElseThrow().co2(),value.outdoor.dust,local.status()==RoomAir.Status.INDOOR,value.outdoor.pollution>0,local.accuracy());
         });
     }
     private record Resolved(List<EnvironmentSample> samples,RoomAir.Sample first,OutdoorRow outdoor) {}
-    private Optional<List<EnvironmentSample>> environment(BlockPos station,long from,long to) {
-        return resolve(station,from,to).map(Resolved::samples);
+    private Optional<List<EnvironmentSample>> environment(BlockPos station,long from,long to,boolean firstOnly) {
+        return resolve(station,from,to,firstOnly).map(Resolved::samples);
     }
-    private Optional<Resolved> resolve(BlockPos station,long from,long to) {
+    private Optional<Resolved> resolve(BlockPos station,long from,long to,boolean firstOnly) {
+        if(from<0||to<from||to>level.getGameTime())throw new IllegalArgumentException("環境要求の時刻が不正です");
         var pos=station.above();
         var observed=rooms.sample(pos,from);
         if(!observed.confirmed()&&observed.status()!=RoomAir.Status.MISSING_BOUNDARY) {
             reason="room_status.ashen_frontier_climate."+observed.status().name().toLowerCase(java.util.Locale.ROOT);
             return Optional.empty();
         }
-        var outdoor=data(pos,from,to);
+        long through=to;
+        if(firstOnly) {
+            refreshVersions();var frame=checkpoints.floorEntry(from);
+            if(frameTime!=null&&frame!=null) {
+                long boundary=frameTimeline.next(frame.getKey(),frameTime);
+                if(boundary>from)through=Math.min(through,boundary);
+            }
+        }
+        var outdoor=data(pos,from,through);
         if(outdoor.isEmpty()) { reason="environment.ashen_frontier_climate.replaying";return Optional.empty(); }
-        var cuts=new TreeSet<Long>(rooms.boundaries(pos,from,to));cuts.add(from);cuts.add(to);
+        var cuts=new TreeSet<Long>(rooms.boundaries(pos,from,through,firstOnly));cuts.add(from);cuts.add(through);
         for(int n=index(outdoor.get(),from);n<outdoor.get().size();n++) {
-            var row=outdoor.get().get(n);if(row.to>=to)break;if(row.to>from)cuts.add(row.to);
+            var row=outdoor.get().get(n);if(row.to>=through)break;if(row.to>from)cuts.add(row.to);
         }
         var initialCuts=new ArrayList<>(cuts);
-        for(int n=0;n+1<initialCuts.size();n++) {
+        for(int n=0;n+1<initialCuts.size()&&(!firstOnly||n==0);n++) {
             long a=initialCuts.get(n),b=initialCuts.get(n+1);
             if(b-a<=1)continue;
             var first=a==from&&observed.confirmed()?observed:rooms.sample(pos,a);var last=rooms.sample(pos,b-1);
@@ -320,7 +357,7 @@ public final class EnvironmentProvider {
         }
         var points=new ArrayList<>(cuts);var result=new ArrayList<EnvironmentSample>();
         RoomAir.Sample first=null;
-        for(int i=0;i<Math.max(1,points.size()-1);i++) {
+        for(int i=0;i<(firstOnly?1:Math.max(1,points.size()-1));i++) {
             long a=points.get(i),b=from==to?a:points.get(i+1);
             var local=a==from&&observed.confirmed()?observed:rooms.sample(pos,a);
             if(!local.confirmed()||local.state().isEmpty()) {

@@ -1,0 +1,9 @@
+{
+  "ashen_frontier:cs137": {
+    "half_life_game_seconds": 948305880.0,
+    "ingestion_sv_bq": 1.3e-08,
+    "inhalation_sv_bq": 6.7e-09,
+    "source": "半減期30.05年（365.25日/年）。ICRP Publication 119 Table A.1、成人労働者type F、吸入AMAD 5 µm。IAEA EPR Pocket Guide Table 11（Ba-137mを含む）。設計14のR8・R9。 ガンマ定数はhを3600 sへ換算して登録。",
+    "gamma_sv_m2_second_bq": 2.575e-17
+  }
+}
