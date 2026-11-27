@@ -52,6 +52,7 @@ public final class AshenFrontierSurvival {
     static boolean APPLYING_DAMAGE;
 
     public AshenFrontierSurvival(IEventBus bus,ModContainer container) {
+        Nuclides.install();ExposureSources.install();
         ATTACHMENTS.register(bus);container.registerConfig(ModConfig.Type.SERVER,SPEC);
         bus.addListener(PhysiologyUpdate::register);
         NeoForge.EVENT_BUS.addListener(IntakeService::use);
@@ -102,7 +103,7 @@ public final class AshenFrontierSurvival {
         NeoForge.EVENT_BUS.addListener(AshenFrontierSurvival::sleep);
         NeoForge.EVENT_BUS.addListener(AshenFrontierSurvival::continueSleep);
         NeoForge.EVENT_BUS.addListener(AshenFrontierSurvival::breakSpeed);
-        NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event)->{ACTIVE.clear();DUE.clear();SurvivalRuntime.INPUTS.clear();IntakeService.clear();FoodStorageService.clear();});
+        NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event)->{ACTIVE.clear();DUE.clear();SurvivalRuntime.INPUTS.clear();IntakeService.clear();FoodStorageService.clear();ExposureSources.clear();});
     }
     public static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath(MOD_ID,path); }
 
@@ -110,7 +111,7 @@ public final class AshenFrontierSurvival {
         if(event.getEntity() instanceof ServerPlayer player) {
             var previous=ACTIVE.remove(player);if(previous!=null)unschedule(previous);
             if(player.getData(DATA).blocked()) {
-                PhysiologyUpdate.send(player,new PhysiologyUpdate(0,true,EFFECTS.get(),false,true));return;
+                PhysiologyUpdate.send(player,new PhysiologyUpdate(0,true,EFFECTS.get(),false,true,0,1));return;
             }
             var runtime=new SurvivalRuntime(player);ACTIVE.put(player,runtime);runtime.login();
         }
@@ -196,7 +197,17 @@ public final class AshenFrontierSurvival {
         var runtime=ACTIVE.get(player);
         if(runtime!=null) {
             runtime.heavy();
-            if(EFFECTS.get())event.setNewSpeed((float)(event.getNewSpeed()*runtime.data.body.workFactor()));
+            if(EFFECTS.get())event.setNewSpeed((float)(event.getNewSpeed()*runtime.workFactor()));
         }
     }
+    /** 採掘除去フックが使う粉じん対象。段階値を連続濃度へ変換しない。 */
+    public static boolean miningTarget(net.minecraft.server.level.ServerLevel level,net.minecraft.core.BlockPos pos,
+                                       net.minecraft.world.level.block.state.BlockState state) {
+        return io.github.rs0325.ashenfrontier.world.BlockContamination.isTarget(state)||RadiationField.mineral(level,pos,state);
+    }
+    /** サーバーの除去成功後にだけ呼ぶ。soilは除去前の連続値、鉱物で値がなければnull。 */
+    public static void mined(ServerPlayer player,io.github.rs0325.ashenfrontier.core.SoilContamination soil) {
+        var runtime=ACTIVE.get(player);if(runtime!=null)runtime.mining(soil);
+    }
+
 }

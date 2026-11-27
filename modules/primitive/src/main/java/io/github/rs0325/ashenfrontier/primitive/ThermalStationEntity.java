@@ -40,6 +40,8 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.Comparator;
+import java.util.NavigableSet;
+import java.util.TreeSet;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.WeakHashMap;
@@ -53,6 +55,42 @@ import java.util.UUID;
 /** 加工の所有は共通基盤、着火操作と燃料・余熱だけを炉が保持する。M3入力なしでは停止する。 */
 public final class ThermalStationEntity extends BlockEntity implements WaterTankOwner {
     private static final Map<MinecraftServer, Map<UUID, WeakReference<ThermalStationEntity>>> SOURCES = new WeakHashMap<>();
+    private static final Map<ServerLevel, WorkQueue> WORK = new WeakHashMap<>();
+    private static final class WorkRequest {
+        final WeakReference<ThermalStationEntity> station;
+        long through,order;
+        boolean queued;
+        WorkRequest(ThermalStationEntity station) { this.station=new WeakReference<>(station); }
+    }
+    private static final class WorkQueue {
+        final NavigableSet<WorkRequest> ready=new TreeSet<>(
+                Comparator.comparingLong((WorkRequest r)->r.through).thenComparingLong(r->r.order));
+        final NavigableSet<WorkRequest> waiting=new TreeSet<>(Comparator.comparingLong(r->r.order));
+        // 未処理末尾と待機順を交互に選び、細分化された仕事と新しい待機の両方を進める。
+        boolean oldestFrontier=true;
+        long order;
+        void offer(ThermalStationEntity station) {
+            if(station.workRequest==null)station.workRequest=new WorkRequest(station);
+            var request=station.workRequest;
+            if(request.queued)return;
+            request.through=station.frontier();request.order=++order;request.queued=true;ready.add(request);waiting.add(request);
+        }
+        void remove(ThermalStationEntity station) {
+            var request=station.workRequest;
+            if(request!=null&&request.queued)removeRequest(request);
+        }
+        ThermalStationEntity next(ServerLevel level,long deadline) {
+            while(!ready.isEmpty()&&System.nanoTime()<deadline) {
+                var request=(oldestFrontier?ready:waiting).first();
+                var station=request.station.get();
+                if(station==null||station.isRemoved()||station.level!=level||!level.hasChunkAt(station.worldPosition)){removeRequest(request);continue;}
+                if(request.through!=station.frontier()){removeRequest(request);offer(station);continue;}
+                return station;
+            }
+            return null;
+        }
+        private void removeRequest(WorkRequest request) { ready.remove(request);waiting.remove(request);request.queued=false; }
+    }
     private ProcessingStation station;
     private final HearthHeat heat = new HearthHeat();
     private final BoilingHeat boilingHeat = new BoilingHeat();
@@ -67,6 +105,7 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
     private long workTick;
     private long lastTick = -1;
     private long coolingTarget=-1,workTarget=-1;
+    private WorkRequest workRequest;
     private long leaseGeneration,leaseFrom,handoffTick=-1;
     private BlockPos heatReference;
     private double frictionSeconds;
@@ -98,7 +137,7 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
             player.sendSystemMessage(Component.translatable("primitive.ashen_frontier.busy"));
             return;
         }
-        scheduledWork();
+        workBudgeted();
         var held = player.getItemInHand(hand);
         if(hearth()&&lastTick<level.getGameTime()) {
             if(held.isEmpty()&&!player.isShiftKeyDown()&&(!station.output(0).isEmpty()||!station.output(1).isEmpty())) {
@@ -203,6 +242,7 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
 
     private void releaseSource() {
         if (level != null && !level.isClientSide && level.getServer().isSameThread()) {
+            var queue=WORK.get((ServerLevel)level);if(queue!=null)queue.remove(this);
             var sources = SOURCES.get(level.getServer());
             if (sources != null) {
                 var reference = sources.get(sourceId);
@@ -341,11 +381,35 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
     }
 
     public void work() { work(System.nanoTime()+300_000); }
+    private long frontier() { return worker==null?lastTick:hearth()?Math.min(lastTick,workTick):workTick; }
     void scheduledWork() {
         if(!(level instanceof ServerLevel server))return;
+        long available=EnvironmentBudget.remaining(server);
+        if(available==Long.MAX_VALUE){workBudgeted();return;}
+        if(available<=0&&workRequest!=null&&workRequest.queued) {
+            if(frontier()<level.getGameTime())level.scheduleTick(worldPosition,getBlockState().getBlock(),1);
+            return;
+        }
+        long start=System.nanoTime(),now=level.getGameTime();
+        var queue=WORK.computeIfAbsent(server,l->new WorkQueue());
+        queue.offer(this);
+        long remaining=EnvironmentBudget.remaining(server);
+        var next=remaining>0?queue.next(server,start+remaining):null;
+        EnvironmentBudget.charge(server,System.nanoTime()-start);
+        long before=next==null?now:next.frontier();
+        if(next!=null&&next.workBudgeted()) {
+            start=System.nanoTime();queue.oldestFrontier=!queue.oldestFrontier;
+            if(!next.isRemoved()&&next.frontier()>before&&next.frontier()<now)queue.offer(next);
+            EnvironmentBudget.charge(server,System.nanoTime()-start);
+        }
+        if(next!=this&&frontier()<now)level.scheduleTick(worldPosition,getBlockState().getBlock(),1);
+    }
+    private boolean workBudgeted() {
+        if(!(level instanceof ServerLevel server))return false;
         long start=System.nanoTime(),remaining=EnvironmentBudget.remaining(server);
-        if(remaining<=0) { level.scheduleTick(worldPosition,getBlockState().getBlock(),1);return; }
-        try { work(start+Math.min(300_000,remaining)); }
+        if(remaining<=0) { level.scheduleTick(worldPosition,getBlockState().getBlock(),1);return false; }
+        var queue=WORK.get(server);if(queue!=null)queue.remove(this);
+        try { work(start+Math.min(300_000,remaining));return true; }
         finally { EnvironmentBudget.charge(server,System.nanoTime()-start); }
     }
     private void work(long deadline) {
@@ -366,7 +430,7 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
         long now = level.getGameTime();
         long from = workTick;
         if(workTarget<0)workTarget=now;
-        var request=coolTo(serverLevel,from)?EnvironmentQuery.query(serverLevel,worldPosition,from,workTarget):null;
+        var request=coolTo(serverLevel,from)?EnvironmentQuery.queryFirst(serverLevel,worldPosition,from,workTarget):null;
         var environment=request==null?Optional.<List<EnvironmentSample>>empty():request.values();
         if (environment.isEmpty()) {
             serverPlayer.sendSystemMessage(Component.translatable(request==null?"primitive.ashen_frontier.environment_missing":
@@ -488,7 +552,7 @@ public final class ThermalStationEntity extends BlockEntity implements WaterTank
         if (now <= lastTick) return true;
         long end=handoffTick>=0?Math.min(now,handoffTick):now;
         if(coolingTarget<0)coolingTarget=Math.min(end,lastTick+600);
-        var environment=EnvironmentQuery.samples(serverLevel,reference(),lastTick,coolingTarget);
+        var environment=EnvironmentQuery.queryFirst(serverLevel,reference(),lastTick,coolingTarget).values();
         if(environment.isEmpty())return false;
         // 放熱の通知を受けた室の次区間は、通知後に再照会する。
         for (var sample : environment.get().subList(0,1)) {

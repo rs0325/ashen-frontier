@@ -30,6 +30,57 @@ import java.util.List;
 @GameTestHolder(AshenFrontierClimate.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class EnvironmentConnectionGameTests {
+    @GameTest(template="empty",templateNamespace=AshenFrontierClimate.MOD_ID,timeoutTicks=400,batch="exposure_frames126")
+    @SuppressWarnings("unchecked")
+    public static void computedWeatherFramesMatchOriginalJobRows(GameTestHelper h) throws Exception {
+        try(var f=new Fixture(h)) {
+            f.ready(h,0,0);f.clock.setGameTime(1800);f.ready(h,0,1800);
+            var provider=EnvironmentProvider.get(f.level);
+            var field=EnvironmentProvider.class.getDeclaredField("checkpoints");field.setAccessible(true);
+            var frames=(java.util.TreeMap<Long,WeatherFrame>)field.get(provider);var saved=new java.util.TreeMap<>(frames);
+            var observations=EnvironmentProvider.class.getDeclaredField("observations");observations.setAccessible(true);
+            var boundaries=EnvironmentProvider.class.getDeclaredField("boundaries");boundaries.setAccessible(true);
+            var frameRows=EnvironmentProvider.class.getDeclaredField("frameRows");frameRows.setAccessible(true);
+            int compared=0;
+            for(int n=0;n<64;n++) {
+                long from=n*37L%1200,to=from+1+(n*53L%600);frames.putAll(saved);
+                var warm=provider.exposure(f.pos,from,to).orElseThrow();
+                frames.clear();((java.util.Map<?,?>)observations.get(provider)).clear();((java.util.Map<?,?>)boundaries.get(provider)).clear();
+                ((java.util.Map<?,?>)frameRows.get(provider)).clear();
+                var cold=provider.exposure(f.pos,from,to).orElseThrow();
+                h.assertTrue(warm.equals(cold),"計算済み全域フレームの組立てと既存ジョブの区間列が同じ case="+n);compared++;
+            }
+            h.assertTrue(compared==64,"一般経路との比較を実際に実行");
+        }
+        h.succeed();
+    }
+    @GameTest(template="empty",templateNamespace=AshenFrontierClimate.MOD_ID,timeoutTicks=400,batch="exposure_frames126")
+    public static void completedOutdoorRowsReuseAndInvalidateOnDayLengthChange(GameTestHelper h) throws Exception {
+        try(var f=new Fixture(h)) {
+            f.ready(h,0,0);f.clock.setGameTime(20);f.ready(h,0,20);
+            var provider=EnvironmentProvider.get(f.level);
+            var data=EnvironmentProvider.class.getDeclaredMethod("data",BlockPos.class,long.class,long.class);data.setAccessible(true);
+            var field=EnvironmentProvider.class.getDeclaredField("frameRows");field.setAccessible(true);
+            var cache=(java.util.Map<?,?>)field.get(provider);
+            var before=(java.util.Optional<?>)data.invoke(provider,f.pos.above(),20L,20L);
+            var again=(java.util.Optional<?>)data.invoke(provider,f.pos.above(),20L,20L);
+            h.assertTrue(before.orElseThrow()==again.orElseThrow(),"同じ確定屋外列を再構築しない");
+            cache.clear();
+            h.assertTrue(before.equals(data.invoke(provider,f.pos.above(),20L,20L)),"再利用しない屋外列と完全一致");
+            h.assertTrue(ClimateClock.get(f.level).changeDayLength(20,12000),"同tickで日長を変更");
+            var clock=ClimateClock.get(f.level);WeatherStore.get(f.level).clock(clock.history(),clock.revision(),20);
+            f.ready(h,20,20);
+            var changed=data.invoke(provider,f.pos.above(),20L,20L);
+            h.assertTrue(!before.equals(changed),"変更前の時計の列を再利用しない");
+            cache.clear();
+            h.assertTrue(changed.equals(data.invoke(provider,f.pos.above(),20L,20L)),"変更後も非再利用の列と完全一致");
+            boolean rejected=false;
+            try {data.invoke(provider,f.pos.above(),21L,21L);}
+            catch(java.lang.reflect.InvocationTargetException e) {rejected=e.getCause() instanceof IllegalArgumentException;}
+            h.assertTrue(rejected,"未来の要求をキャッシュで受理しない");
+        }
+        h.succeed();
+    }
     @GameTest(template="empty",templateNamespace=AshenFrontierClimate.MOD_ID,timeoutTicks=400)
     public static void addingPositionKeepsCompletedOutdoorRows(GameTestHelper h) throws Exception {
         try(var f=new Fixture(h)) {
@@ -172,7 +223,8 @@ public final class EnvironmentConnectionGameTests {
                 var local=rooms.sample(f.pos.above(),row.startTick());
                 h.assertTrue(value.sample().equals(row),"C01と生理へ同じ確定区間を渡す");
                 h.assertTrue(value.oxygenPa()==local.state().orElseThrow().oxygen()*row.pressurePa()
-                        &&value.accuracy()==local.accuracy()&&value.windMps()==.1,"同じ始点の空気と近似区分");
+                        &&value.accuracy()==local.accuracy()&&value.windMps()==.1
+                        &&value.co()==local.state().orElseThrow().co()&&value.co2()==local.state().orElseThrow().co2(),"同じ始点の空気と近似区分");
             }
             double before=provider.exposure(f.pos,1200,1200).orElseThrow().sample().temperatureK();
             rooms.receive(new io.github.rs0325.ashenfrontier.core.environment.CombustionEvent(f.level,f.pos,
@@ -189,12 +241,22 @@ public final class EnvironmentConnectionGameTests {
         final Fixture fixture;
         double expected,before;
         long sequence;
-        int notices,intervals;
+        int notices,intervals,headComparisons;
         boolean enabled;
         CoolingOracle(Fixture fixture) { this.fixture=fixture; }
         void input(EnvironmentQuery query) {
             if(!enabled||query.level()!=fixture.level||!query.position().equals(fixture.pos)||query.startTick()==query.endTick()||query.values().isEmpty())return;
             var sample=query.values().get().getFirst();
+            if(query.firstOnly()) {
+                enabled=false;
+                try {
+                    var full=EnvironmentQuery.samples(fixture.level,query.position(),query.startTick(),query.endTick());
+                    if(full.isPresent()) {
+                        if(!sample.equals(full.get().getFirst()))throw new IllegalStateException("実設備の先頭が全区間と一致しません");
+                        headComparisons++;
+                    }
+                } finally { enabled=true; }
+            }
             before=expected;
             double g=(sample.endTick()-sample.startTick())*86400.0/sample.ticksPerDay();
             expected=sample.temperatureK()+(expected-sample.temperatureK())*Math.exp(-g/7200);
@@ -265,9 +327,9 @@ public final class EnvironmentConnectionGameTests {
                         h.assertTrue(count==oracle.notices,"同時刻の操作で二重放熱しない");sameTime++;
                     }
                 }
-                h.assertTrue(longRestores>=32&&sameTime>=64&&changes>=32,"実効回数の下限");
-                com.mojang.logging.LogUtils.getLogger().info("M3-135 real cooling seed=13520261126 long_restore={} same_time={} day_changes={} intervals={} notices={} ms={}",
-                        longRestores,sameTime,changes,oracle.intervals,oracle.notices,(System.nanoTime()-started)/1e6);
+                h.assertTrue(longRestores>=32&&sameTime>=64&&changes>=32&&oracle.headComparisons>=32,"実効回数の下限");
+                com.mojang.logging.LogUtils.getLogger().info("M3-135 real cooling seed=13520261126 long_restore={} same_time={} day_changes={} intervals={} notices={} head_comparisons={} ms={}",
+                        longRestores,sameTime,changes,oracle.intervals,oracle.notices,oracle.headComparisons,(System.nanoTime()-started)/1e6);
             } finally {
                 net.neoforged.neoforge.common.NeoForge.EVENT_BUS.unregister(queries);
                 net.neoforged.neoforge.common.NeoForge.EVENT_BUS.unregister(emissions);
@@ -289,6 +351,7 @@ public final class EnvironmentConnectionGameTests {
             var sample=RoomAir.get(f.level).sample(f.pos.above(),0);
             h.assertTrue(sample.confirmed()&&sample.accuracy()==RoomAir.Accuracy.APPROXIMATE,"64件超を未知と混同しない");
             h.assertTrue(!f.ready(h,0,1).isEmpty(),"近似の過去もC01へ供給して計算を続ける");
+            EnvironmentHeadGameTests.compare(h,f,0,1);
         }
         h.succeed();
     }

@@ -15,12 +15,17 @@ public final class Physiology {
     private Physiology() {}
     private static double sat(double c) { return Math.exp(18.6686-4030.183/(c+235)); }
     /** 1評価の最大刻みは1 REAL秒。長い呼出しをサーバーの同期処理で繰り返さない。 */
+    public record Respiration(double oxygenMol,double co2Mol,double heatJ) {}
     public static void advance(Body b,Air air,Activity activity,double real,double game) {
+        evaluate(b,air,activity,real,game);
+    }
+    /** 既存の熱流を積算し、C06へ渡す呼吸と乾性・呼吸顕熱を返す。潜熱は含まない。 */
+    public static Respiration evaluate(Body b,Air air,Activity activity,double real,double game) {
         if(!Double.isFinite(real)||!Double.isFinite(game)||real<0||game<0)
             throw new IllegalArgumentException("生理区間が不正です");
         if(real==0&&game!=0)throw new IllegalArgumentException("睡眠返済を架空の経過にしないでください");
-        if(real==0)return;
-        double remaining=real;
+        if(real==0)return new Respiration(0,0,0);
+        double remaining=real,metabolicJ=0,dryJ=0;
         while(remaining>1e-9) {
             double dt=Math.min(1,remaining);
             var flux=integrate(b,air,activity,dt,real);
@@ -37,6 +42,7 @@ public final class Physiology {
                 dt=lo;flux=integrate(b,air,activity,dt,real);
                 cost=waterCost(flux,dt,game/real);
             }
+            metabolicJ+=flux[4];dryJ+=flux[5];
             double dg=game*(dt/real);
             b.wet=wetAt(b.wet,air,dt,real);
             b.core+=flux[0];b.skin+=flux[1];
@@ -73,6 +79,8 @@ public final class Physiology {
             remaining-=dt;
         }
         refresh(b);
+        double oxygen=metabolicJ/20422.5224/22.414;
+        return new Respiration(oxygen,.85*oxygen,dryJ);
     }
     private static double wetAt(double wet,Air air,double dt,double real) {
         return air.submerged?1:Math.clamp(wet+(!air.covered?air.rainKgM2*dt/real:0)
@@ -85,7 +93,8 @@ public final class Physiology {
         var d=rates(b.core+c[0]*dt/2,b.skin+c[1]*dt/2,wet,air,activity,water);
         var e=rates(b.core+d[0]*dt,b.skin+d[1]*dt,wet,air,activity,water);
         return new double[]{(a[0]+2*c[0]+2*d[0]+e[0])*dt/6,(a[1]+2*c[1]+2*d[1]+e[1])*dt/6,
-                (a[2]+2*c[2]+2*d[2]+e[2])*dt/6,(a[3]+2*c[3]+2*d[3]+e[3])*dt/6};
+                (a[2]+2*c[2]+2*d[2]+e[2])*dt/6,(a[3]+2*c[3]+2*d[3]+e[3])*dt/6,
+                (a[4]+2*c[4]+2*d[4]+e[4])*dt/6,(a[5]+2*c[5]+2*d[5]+e[5])*dt/6};
     }
     private static double waterCost(double[] flux,double dt,double gameRate) {
         double budget=3*gameRate*dt/86400+Math.max(0,flux[2]-.007826326*dt/3600)
@@ -111,7 +120,7 @@ public final class Physiology {
         double diffusion=water?.06*maximum:0,evap=Math.min(LATENT_HEAT*sweat,.64*maximum)+diffusion;
         double solar=air.covered?0:1.8*.25*.7*air.solarWattsM2;
         return new double[]{(1.8*m-transfer-resp-sensible)/CORE_CAPACITY,
-                (transfer-dry-evap+solar)/SKIN_CAPACITY,sweat,(resp+diffusion)/LATENT_HEAT};
+                (transfer-dry-evap+solar)/SKIN_CAPACITY,sweat,(resp+diffusion)/LATENT_HEAT,1.8*m,dry+sensible};
     }
     /** intakeは確定済みの実kg/Jだけ。transaction/食品安全性の判定は所有側が行う。 */
     public static void ingest(Body b,double water,double joules,double protein,double fat,boolean c,boolean soluble) {

@@ -30,5 +30,17 @@
   "survival.ashen_frontier.remedy.10": "Sleep in a safe bed",
   "survival.ashen_frontier.remedy.11": "Improve shelter and rest",
   "survival.ashen_frontier.remedy.12": "Get to safety and treat the injury",
-  "survival.ashen_frontier.corrupted": "Physiology data is corrupted; evaluation stopped. Contact an administrator."
+  "survival.ashen_frontier.corrupted": "Physiology data is corrupted; evaluation stopped. Contact an administrator.",
+  "survival.ashen_frontier.exposure.danger": "Severe dizziness or breathlessness. Extinguish fires, ventilate and move outdoors.",
+  "survival.ashen_frontier.exposure.unassessed": "Some exposure is unassessed. No symptoms does not establish safety.",
+  "survival.ashen_frontier.exposure.approximate": "Assessment uses representative local conditions.",
+  "survival.ashen_frontier.symptom.13": "Heavy-headed (%s)",
+  "survival.ashen_frontier.remedy.13": "Stop fires, ventilate and move outdoors.",
+  "survival.ashen_frontier.symptom.14": "Breathlessness (%s)",
+  "survival.ashen_frontier.remedy.14": "Rest outdoors or at lower altitude.",
+  "survival.ashen_frontier.symptom.15": "Cough (%s)",
+  "survival.ashen_frontier.remedy.15": "Stop the dust source and move to clean air.",
+  "survival.ashen_frontier.symptom.16": "Malaise (%s)",
+  "survival.ashen_frontier.remedy.16": "Use clean food and water, rest, and avoid areas identified as contaminated.",
+  "intake.ashen_frontier.trace_contamination": "Trace contamination is present. Use food and water verified at zero baseline to reduce continuing exposure."
 }

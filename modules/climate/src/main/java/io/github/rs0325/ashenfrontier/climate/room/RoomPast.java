@@ -184,6 +184,58 @@ final class RoomPast {
     }
     Optional<Map<Long, Delta>> response(long source, long from, long to, long end,
                                        RoomPhysics.Amount input, int context, Boundaries outside) {
+        if(end<from)return Optional.of(Map.of());
+        var model=at(source,from);
+        if(model!=null&&!model.outdoor&&model.until>=end&&(context<0||context==model.id)
+                &&stable(model,from,end))return stableResponse(model,from,to,end,input,outside);
+        return responseGeneral(source,from,to,end,input,context,outside);
+    }
+    private boolean stable(Model model,long from,long end) {
+        for(long cell:model.cells) {
+            var rows=rows(cell);if(rows==null)return false;
+            var first=at(cell,from);if(first==null||!model.sameGeometry(first)||first.until<end)return false;
+            for(var candidate:rows.values())if(candidate.published&&candidate.from<=end&&candidate.until>=from
+                    &&!model.sameGeometry(candidate))return false;
+        }
+        return true;
+    }
+    private static RoomPhysics.Amount roundTrip(RoomPhysics.Amount amount,int members) {
+        var part=RoomHistory.scale(amount,1.0/members);var sum=ZERO;
+        for(int n=0;n<members;n++)sum=RoomHistory.plus(sum,part);
+        return sum;
+    }
+    private Optional<Map<Long,Delta>> stableResponse(Model model,long from,long to,long end,RoomPhysics.Amount input,Boundaries outside) {
+        var amount=from==to?input:ZERO;var exchange=ZERO;
+        if(end>from) {
+            if(model.openings>0&&!Double.isFinite(model.temperature))return Optional.empty();
+            if(from==to)amount=roundTrip(amount,model.cells.length);
+            long a=from;
+            while(a<end) {
+                long b=a<to?Math.min(to,end):end;
+                var rows=outside.get(BlockPos.of(model.cells[0]),a,b);if(rows.isEmpty())return Optional.empty();
+                var rate=from!=to&&a<to?input.rate(20.0/(to-from)):RoomPhysics.Rate.ZERO;
+                for(var row:rows.get()) {
+                    double seconds=(row.to()-row.from())/20.0;
+                    double volume=model.cells.length,capacity=RoomPhysics.capacity(volume,model.walls);
+                    double q=model.openings==0?0:RoomPhysics.flow(model.openings,model.height,model.temperature,row.air());
+                    double heat=(q*RoomPhysics.capacity(volume,0)/volume+model.walls)/capacity,gas=q/volume;
+                    var after=new RoomPhysics.Amount(RoomPhysics.evolve(amount.heatJ(),0,rate.heatW(),heat,seconds),
+                            RoomPhysics.evolve(amount.coMol(),0,rate.coMolS(),gas,seconds),
+                            RoomPhysics.evolve(amount.co2Mol(),0,rate.co2MolS(),gas,seconds),
+                            RoomPhysics.evolve(amount.oxygenMol(),0,rate.oxygenMolS(),gas,seconds));
+                    var added=new RoomPhysics.Amount(rate.heatW()*seconds,rate.coMolS()*seconds,rate.co2MolS()*seconds,rate.oxygenMolS()*seconds);
+                    exchange=RoomHistory.plus(exchange,RoomHistory.plus(added,RoomHistory.plus(amount,RoomHistory.scale(after,-1))));
+                    amount=after;
+                }
+                a=b;
+                if(a<end){amount=roundTrip(amount,model.cells.length);exchange=roundTrip(exchange,model.cells.length);}
+            }
+        }
+        var result=new HashMap<Long,Delta>();var value=new Delta(RoomHistory.scale(amount,1.0/model.cells.length),RoomHistory.scale(exchange,1.0/model.cells.length));
+        for(long cell:model.cells)result.put(cell,value);return Optional.of(result);
+    }
+    Optional<Map<Long, Delta>> responseGeneral(long source, long from, long to, long end,
+                                       RoomPhysics.Amount input, int context, Boundaries outside) {
         if (end < from) return Optional.of(Map.of());
         if (at(source, from) == null) return Optional.empty();
         var reachable = new HashSet<Long>();
