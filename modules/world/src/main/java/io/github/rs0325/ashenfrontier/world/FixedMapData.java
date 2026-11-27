@@ -50,6 +50,7 @@ public final class FixedMapData {
     private final JsonObject geology;
     private final long seed;
     private final TerrainBasis basis;
+    private final TerrainDetails details;
     private final HydrologyTerrain hydrology;
     private final FixedMapData background;
 
@@ -66,7 +67,8 @@ public final class FixedMapData {
             basis = new TerrainBasis(version);
             var previous = require(basis.background);
             background = previous;
-            hydrology = new HydrologyTerrain(version,previous);
+            details = new TerrainDetails(version,previous.seed);
+            hydrology = new HydrologyTerrain(version,previous,details);
             heights = previous.heights;
             categories = previous.categories;
             waterSurface = previous.waterSurface;
@@ -100,6 +102,7 @@ public final class FixedMapData {
             return;
         }
         basis = null;
+        details = null;
         hydrology = null;
         background = null;
         heights = new short[SIZE * SIZE];
@@ -635,6 +638,7 @@ public final class FixedMapData {
     JsonObject geology() { return geology.deepCopy(); }
 
     TerrainBasis basis() { return basis; }
+    TerrainDetails details() { return details; }
     FixedMapData background() { return background; }
 
     /** 物理的な地形区分。旧版・海・他大陸は0。31～40はD1では予約分類だけ。 */

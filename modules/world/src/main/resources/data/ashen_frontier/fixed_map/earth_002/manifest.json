@@ -10,45 +10,48 @@
   "raster_depth": 2048,
   "catalog_version": "profiles_001",
   "inputs": {
-    "hydrology.json": "5d9d683ba8e4490fda8c90693095da2e3af018bdfacb42d7a7aeef97cdb13ece",
-    "landform.json": "5f6519877b8c55c3c2ae509f69c3bf2b17df584eafa71743130cf3c7eb2db50f",
+    "hydrology.json": "0a9c80fefe6be17dd096a96e67d5f27d46da9dac0ad933c94a0241c1fea2e7e6",
+    "landform.json": "0fe24feb3fda491115c3c97b3162ba6921c202b84c4b8a83218dc5e970dc0dc6",
     "layout.json": "fdcb3789a91ffdd7bfa130cf3ff3f4780e110a8ce4bff9c3055bab7826599c8a"
   },
   "geology_profile_version": "geology_002",
   "tool": {
-    "version": "2.0.0-D2",
+    "version": "2.0.0-D3",
     "files": {
-      "tools/fixed-map/generate_basis.py": "f5d4588435c6d789550088d922b7803d132d6a7f6aba321197c5b94510c5e9da",
+      "tools/fixed-map/generate_basis.py": "e2bfbb6cc1dbc8fb81bdaa1b5174985a27c640bd1e93866f40d184bcc501469b",
+      "tools/fixed-map/detail_relief.py": "7d4da7d0ae7045642a73955a0bbf322e8d40b389e1e18fb409b9894e88312576",
       "tools/fixed-map/generate_hydrology.py": "2d811e4e7e696b0545b1e057038fb6f42cfae095218c22440c41c91fb84a306f",
       "tools/fixed-map/generate.py": "ed823b35cf507931e3d31bbcf238c6e8b92ac2285e669d6ffde68a3e833e1485",
       "tools/fixed-map/layout_contract.py": "b7e1051f5544b425d11f31841f5d15483a23397494f780fb2cfab7acfea0a4de",
-      "modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/TerrainBasis.java": "e9a1bf84cbba3d8ddd06cf12378e9a570ae6573851279c534e0303d7218367ab",
-      "modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/HydrologyTerrain.java": "b314dea53fec1a453a9767ee5bdbb8909ce7dbee61bec4cce00e84f2e2df9adb",
+      "modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/TerrainBasis.java": "b43e00dcc9b5237b2c1269dc0a3b4b4bd2be6784b54bd02f4d9afbf84dde760b",
+      "modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/HydrologyTerrain.java": "dcff35661e7418e9cb0614763738eb66d92aa61721cf07759ce6db8b2b043dea",
       "modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/HydrologyNoise.java": "7c11c6e46fbc8f89a11ac0ac590de470a14338685a66e0a332103ff53d8d512d",
-      "modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/FixedTerrain.java": "8129b97f89019006366410c4b79fbfa24c2adb717e1aa6ac01f06e340848271c"
+      "modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/FixedTerrain.java": "bdc89e1d2007f2a9b88cda6056ff4b91376eff24afca564ce96049ce422770e9",
+      "modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/TerrainDetails.java": "96296c4d113837f70381b4ff57cef8c85fce746a64e548fa51fb23abbd28bf69",
+      "modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/FixedMapData.java": "e23bd12839aaa3f8c0ad4bdd1268cfc327d017fe78632c6c1c07e84a303859b2"
     }
   },
   "files": {
-    "height.png": "b2b6714b7297b9aa3ecdf27aba3fedd1cb288c44fd5f91cce40db7a0870758c1",
+    "height.png": "5cffba26c32d62d42b92a6c46af94051b8f302c46170e7b3a2de56b342cb6f19",
     "region.png": "75229ebee95357b161cc08886066ad1fa704a08ba05f01c4b93ee2ec173d7f97",
-    "water.png": "1134b932ffd81b01b23e9320362a5330388264c520bddfd384825f5a58dfad76",
+    "water.png": "0d98c33956f8ee084046d6acc8408e06a45f714bd49ac735f4c3c62b2c9163c9",
     "soil.png": "47409785b30cc38f1ec62f219ce1c46f885427442416c0768dc470497ef784cb",
     "geology.png": "86e03aebf3f21537223523bcee9cabf7a677008dc99368f9a58155019de5caf0",
-    "coast_river.png": "9c3132c698ed8ffb114bf3fc97e5d9bfc64f444dbb37f170f78dbe9897f5b16d",
-    "index.json": "77007bdf36264a1a16897c96ffa01078dfc5d3b95e99faed044a3560cae6828c",
+    "coast_river.png": "a8e6050f15fb8478e02cf7b28f2dcdc4dbc6f7a597f0444bd1926d6102f6ca5a",
+    "index.json": "47016a8ff39b366f038848d56648c6f0845e0ed543b1db1c601e314a303f446c",
     "geology_profiles.json": "0c9902bf551d3c8cb71ff207e9f5f16110d2c8c8caea75e4b132992ef2e9405d",
     "underground.json": "8558ed803ca8296623f4a074afd272be9947a266d10f8cfaa4fca5b6a0c800b3",
     "landform.png": "dc6cea011c987f843543c5a4ff91aa2309135ff89c3e7059d1987f2cfefe1d05",
-    "landform.json": "5f6519877b8c55c3c2ae509f69c3bf2b17df584eafa71743130cf3c7eb2db50f",
-    "hydrology.json": "5d9d683ba8e4490fda8c90693095da2e3af018bdfacb42d7a7aeef97cdb13ece",
-    "hydrology_owner.png": "c062785e0e6a4b265c536acd24c0d73edf72c2fa0773ddb509cd708e41599ae5",
-    "hydrology_surface.png": "cbe9f7205a9637452aa2681011b80eb9b0bf265765c3ac3c5cb866050842c3ca",
-    "hydrology_bed.png": "0f20f0fbe3ee12e5177eed2190528cad41eb5a2d04b1b5cc1ec479db2cb77a37"
+    "landform.json": "0fe24feb3fda491115c3c97b3162ba6921c202b84c4b8a83218dc5e970dc0dc6",
+    "hydrology.json": "0a9c80fefe6be17dd096a96e67d5f27d46da9dac0ad933c94a0241c1fea2e7e6",
+    "hydrology_owner.png": "b70cce213d101c475c6922abf55f3da8d2e2a51e75a316fc5982d081c5303c03",
+    "hydrology_surface.png": "aca6b4b8422c32cc2e11ef91aa1e6b5bddf75858e09910a7ddfadff0ed648000",
+    "hydrology_bed.png": "2106b1c4370385184011192f1d10e8579b08c1e2af1c2f33f3d6a185474e88de"
   },
   "landform_schema_version": 1,
   "hydrology_schema_version": 1,
   "terrain_basis_schema_version": 1,
   "runtime_relief_version": 1,
-  "stage": "D2",
+  "stage": "D3",
   "background_manifest_sha256": "e0323c7aa41ada44a0eab9b07ddd98aa2bbd8b31c65d9a485f47f92b844b43a6"
 }

@@ -25,6 +25,7 @@ public final class FixedTerrain {
                            double gx, double gz, List<Fault> faults) {}
     private final FixedMapData map;
     private final Profile basisProfile;
+    private final TerrainDetails details;
     private final FixedTerrain backgroundTerrain;
     private final Profile[] profiles = new Profile[6];
     private final BlockState[] soils = new BlockState[4];
@@ -43,6 +44,7 @@ public final class FixedTerrain {
 
     public FixedTerrain(MapVersion version) {
         map = FixedMapData.require(version);
+        details=map.details();
         basisProfile = map.basis() == null ? null : new Profile(List.of(), Blocks.STONE.defaultBlockState(),0,null,0,0,0,0,List.of());
         backgroundTerrain = map.basis() == null ? null : new FixedTerrain(map.basis().background);
         contamination = new FixedContamination(map);
@@ -368,11 +370,28 @@ public final class FixedTerrain {
                 int next=map.waterSurface(x+direction.getStepX(),z+direction.getStepZ());
                 if(next!=Integer.MIN_VALUE)spill=Math.max(spill,next);
             }
-            // D3の雪氷制作までは新しい淡水を液面で示す。既存の海氷は引き継ぐ。
-            BlockState frozen=map.coastDistance(x,z)<0?backgroundTerrain.column(x,z).frozenWater:null;
-            return new Column(SoilContamination.CLEAN,ground,water,water==Integer.MIN_VALUE?null:riverGravel,
-                    waters[quality],new int[0],basisProfile,0,0,x,z,null,water==Integer.MIN_VALUE?0:2,null,
-                    575,false,null,0,0,0,1,frozen,575,false,spill);
+            double coast=map.coastDistance(x,z);
+            BlockState frozen=coast<0?backgroundTerrain.column(x,z).frozenWater:null;
+            var cover=details.cover(map,x,z,ground,water!=Integer.MIN_VALUE,coast);
+            BlockState cap=cover.layers()==0 || cover.powder()?null:Blocks.SNOW.defaultBlockState().setValue(SnowLayerBlock.LAYERS,cover.layers());
+            double patches=TerrainMath.noise(map.seed(),"d3_surface",x,z,48);
+            int landform=map.landformId(x+(int)((patches-.5)*48),z+(int)((.5-patches)*32));
+            BlockState material=cover.ice()>0?null:water!=Integer.MIN_VALUE?riverGravel:switch(landform) {
+                case 31,34,38 -> patches>.55?loess:silt;
+                case 32,40 -> Blocks.BASALT.defaultBlockState();
+                case 33 -> patches>.55?silt:riverGravel;
+                case 35,36 -> patches>.64?organicMud:silt;
+                case 37 -> patches>.65?talus:null;
+                case 39 -> patches>.7?talus:null;
+                default -> null;
+            };
+            if(cover.ice()==0 && water==Integer.MIN_VALUE && ground<245) {
+                if(details.outwash(x,z))material=riverGravel;
+                if(details.moraine(x,z))material=till;
+            }
+            return new Column(SoilContamination.CLEAN,ground,water,material,
+                    waters[quality],new int[0],basisProfile,cover.ice(),cover.snow(),x,z,null,material==null?0:2,cap,
+                    ground+1,cover.powder(),null,0,0,0,1,frozen,575,false,spill);
         }
         if (backgroundTerrain != null) return backgroundTerrain.column(x,z);
         var relief = sampleSurface(map, x, z);

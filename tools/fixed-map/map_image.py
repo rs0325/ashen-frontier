@@ -195,7 +195,7 @@ def render(output, request, job, font_path, pale):
         for point, text in labels:
             if inside(*point):
                 label(xy(*point), text, 26, (100, 58, 39))
-        if request.get("stage")=="D2" and "hydrology" in request:
+        if request.get("stage") in ("D2","D3") and "hydrology" in request:
             for node in request["hydrology"]["nodes"]:
                 if inside(*node["xz"]) and (x1-x0<5000 or node["kind"] in ("source","ocean_outlet")):
                     label(xy(*node["xz"]), node["id"]+" Y"+str(node["water_y"]), 22, (20,83,128))
@@ -239,6 +239,8 @@ def render(output, request, job, font_path, pale):
                  "範囲・格子は詳細版と同一", "河川は実際の水面の標本", "細い流れは標本間で省略され得る"]
     if request.get("stage")=="D2":
         notes = ["D2：固定の河道・湖・河床を実生成", "水面・落水は実際のColumnの標本", "雪・氷河・鉱床・施設は後続Issue", "峡谷は不規則な斜面と岩棚", "旧earth_001は既定のまま維持"]
+    if request.get("stage")=="D3":
+        notes = ["D3：細地形・静的な雪と氷河", "水面・表層材・雪氷は実際のColumn", "氷河は限定したG01のみ", "資源・施設は後続Issue", "旧earth_001は既定のまま維持"]
     for text in notes:
         draw.text((side, sy), text, font=font(22), fill=(59, 77, 83))
         sy += 48
