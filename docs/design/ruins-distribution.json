@@ -1,0 +1,164 @@
+{
+  "status": "確定（ユーザー承認 2026-11-27）。候補窓の指定。棟の1B施工・安全確認は未実施。",
+  "base_commit": "9998d5cdf63087ff80adedb8010ca5f778eca312",
+  "d5_controls_sha256": "ea6bf411ea67d2baf5c0d03887e05d3d5d641d8f74411aa87fcdee428e7f31b4",
+  "d4_manifest_sha256": "81933276417000b85c00b7494eab3120829ca2983a16898f7198faed2d5dd3c4",
+  "bounds_convention": "[x0,z0,x1,z1]・上限非包含",
+  "zones": [
+    {
+      "id": "U1",
+      "region": 1,
+      "bounds": [
+        -7300,
+        -8550,
+        -6600,
+        -7900
+      ],
+      "max_buildings": 28
+    },
+    {
+      "id": "U2",
+      "region": 1,
+      "bounds": [
+        -7900,
+        -8300,
+        -7350,
+        -7750
+      ],
+      "max_buildings": 20
+    },
+    {
+      "id": "A1",
+      "region": 2,
+      "bounds": [
+        -5900,
+        -8920,
+        -5200,
+        -8550
+      ],
+      "max_buildings": 16
+    },
+    {
+      "id": "A2",
+      "region": 2,
+      "bounds": [
+        -5700,
+        -8040,
+        -5000,
+        -7700
+      ],
+      "max_buildings": 12
+    },
+    {
+      "id": "M1",
+      "region": 3,
+      "bounds": [
+        -8450,
+        -9750,
+        -7950,
+        -9400
+      ],
+      "max_buildings": 14
+    },
+    {
+      "id": "M2",
+      "region": 3,
+      "bounds": [
+        -11900,
+        -11400,
+        -11300,
+        -10900
+      ],
+      "max_buildings": 10
+    },
+    {
+      "id": "D1",
+      "region": 4,
+      "bounds": [
+        -8700,
+        -6100,
+        -8000,
+        -5700
+      ],
+      "max_buildings": 7
+    },
+    {
+      "id": "D2",
+      "region": 4,
+      "bounds": [
+        -8900,
+        -7200,
+        -8300,
+        -6650
+      ],
+      "max_buildings": 5
+    },
+    {
+      "id": "I1",
+      "region": 5,
+      "bounds": [
+        -6100,
+        -6550,
+        -5650,
+        -6150
+      ],
+      "max_buildings": 18
+    },
+    {
+      "id": "I2",
+      "region": 5,
+      "bounds": [
+        -5750,
+        -7100,
+        -5250,
+        -6700
+      ],
+      "max_buildings": 14
+    },
+    {
+      "id": "P1",
+      "region": 6,
+      "bounds": [
+        -4550,
+        -5350,
+        -4100,
+        -5050
+      ],
+      "max_buildings": 14
+    },
+    {
+      "id": "P2",
+      "region": 6,
+      "bounds": [
+        -4500,
+        -5900,
+        -4000,
+        -5500
+      ],
+      "max_buildings": 10
+    },
+    {
+      "id": "N1",
+      "region": 7,
+      "bounds": [
+        -7250,
+        -14050,
+        -6700,
+        -13550
+      ],
+      "max_buildings": 5
+    },
+    {
+      "id": "N2",
+      "region": 7,
+      "bounds": [
+        -6100,
+        -13550,
+        -5650,
+        -13150
+      ],
+      "max_buildings": 3
+    }
+  ],
+  "total_max_buildings": 176
+}

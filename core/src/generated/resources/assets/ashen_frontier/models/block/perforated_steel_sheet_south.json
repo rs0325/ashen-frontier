@@ -1,0 +1,200 @@
+{
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        0,
+        0,
+        7
+      ],
+      "to": [
+        16,
+        3,
+        9
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        13,
+        3,
+        7
+      ],
+      "to": [
+        16,
+        16,
+        9
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        0,
+        3,
+        7
+      ],
+      "to": [
+        3,
+        13,
+        9
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        0,
+        13,
+        7
+      ],
+      "to": [
+        13,
+        16,
+        9
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        8,
+        7,
+        7
+      ],
+      "to": [
+        13,
+        10,
+        9
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        3,
+        3,
+        7
+      ],
+      "to": [
+        6,
+        8,
+        9
+      ]
+    }
+  ],
+  "textures": {
+    "all": "ashen_frontier:block/pitted_steel_beam",
+    "particle": "ashen_frontier:block/pitted_steel_beam"
+  }
+}

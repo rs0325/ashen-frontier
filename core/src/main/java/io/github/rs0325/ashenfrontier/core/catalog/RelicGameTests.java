@@ -13,6 +13,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.DoorBlock;
@@ -126,7 +127,9 @@ public final class RelicGameTests {
             if (!entry.block()) continue;
             var block = RelicContent.block(entry.id());
             var state = block.defaultBlockState();
-            var tool = new ItemStack(RelicContent.item("simple_wrench"));
+            var tool = entry.shape() == null ? new ItemStack(RelicContent.item("simple_wrench"))
+                    : new ItemStack(entry.material().equals("wood") ? Items.IRON_AXE
+                            : Items.IRON_PICKAXE);
             var drops = Block.getDrops(state, helper.getLevel(), BlockPos.ZERO, null, null, tool);
             helper.assertTrue(drops.size() == 1 && drops.getFirst().is(RelicContent.item(entry.recovery()))
                     && drops.getFirst().getCount() == 1 && !RemovedItems.isRemoved(drops.getFirst()), "回収lootが不一致: " + entry.id());

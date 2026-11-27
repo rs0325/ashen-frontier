@@ -1,0 +1,65 @@
+{
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "texture": "#all",
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        },
+        "east": {
+          "texture": "#all",
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all",
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        },
+        "west": {
+          "texture": "#all",
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "from": [
+        0,
+        0,
+        7
+      ],
+      "to": [
+        16,
+        16,
+        9
+      ]
+    }
+  ],
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "all": "ashen_frontier:block/cracked_glass_window",
+    "particle": "ashen_frontier:block/cracked_glass_window"
+  }
+}

@@ -101,6 +101,12 @@ public final class MiningGameTests {
                             RelicContent.item(entry.recovery()), false);
                 }
             }
+            for (var entry : RelicCatalog.entries()) {
+                if (entry.shape() == null) continue;
+                boolean wood = entry.material().equals("wood");
+                mining.check(RelicContent.block(entry.id()), wood ? Items.IRON_AXE : Items.DIAMOND_PICKAXE,
+                        wood ? Items.IRON_PICKAXE : Items.IRON_AXE, RelicContent.item(entry.id()), false);
+            }
             AshenFrontierCore.LOGGER.info("採掘経路検証: {}通り成功", mining.checks);
         }
         helper.succeed();

@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        },
+        {
+          "condition": "minecraft:match_tool",
+          "predicate": {
+            "items": "#ashen_frontier:rock_tools"
+          }
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "ashen_frontier:weathered_brickwork"
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

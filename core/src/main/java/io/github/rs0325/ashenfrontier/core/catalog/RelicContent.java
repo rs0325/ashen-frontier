@@ -20,6 +20,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Locale;
 
 /** 遺物のID所有者。機能Modなしで登録・配置・回収できる。 */
 public final class RelicContent {
@@ -77,6 +78,12 @@ public final class RelicContent {
         if (id.endsWith("_slab")) return new SlabBlock(properties);
         if (id.endsWith("_fence")) return new FenceBlock(properties);
         if (id.endsWith("_door")) return new DoorBlock(BlockSetType.OAK, properties.noOcclusion());
+        if (entry.shape() != null && !entry.shape().equals("cube")
+                && !entry.shape().equals("stairs") && !entry.shape().equals("slab")) {
+            var geometry = RuinGeometry.valueOf(entry.shape().toUpperCase(Locale.ROOT));
+            return entry.shape().endsWith("beam") ? new RuinBeamBlock(geometry, properties.noOcclusion())
+                    : new RuinBlock(geometry, properties.noOcclusion());
+        }
         if (id.endsWith("_window")) return new IronBarsBlock(properties.noOcclusion());
         if (id.endsWith("_casing")) return new RelicCasingBlock(properties.noOcclusion());
         return new Block(properties);

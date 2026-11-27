@@ -55,10 +55,12 @@ public final class NatureDataProvider implements DataProvider {
             shapes.forEach((shape, values) -> {
                 if (id.endsWith("_" + shape)) values.add("ashen_frontier:" + id);
             });
-            (entry.kind().equals("equipment") ? simple : pickaxe).add("ashen_frontier:" + id);
+            (entry.kind().equals("equipment") ? simple : entry.material().equals("wood") ? axe : pickaxe).add("ashen_frontier:" + id);
             String recovery = "ashen_frontier:" + entry.recovery();
             String condition = entry.kind().equals("equipment")
                     ? ",{\"condition\":\"minecraft:match_tool\",\"predicate\":{\"items\":\"#ashen_frontier:simple_tools\"}}" : "";
+            if (entry.shape() != null) condition += ",{\"condition\":\"minecraft:match_tool\",\"predicate\":{\"items\":\"#ashen_frontier:"
+                    + (entry.material().equals("wood") ? "wood_tools" : "rock_tools") + "\"}}";
             if (id.endsWith("_door")) condition += ",{\"condition\":\"minecraft:block_state_property\",\"block\":\"ashen_frontier:"
                     + id + "\",\"properties\":{\"half\":\"lower\"}}";
             String functions = id.endsWith("_slab")

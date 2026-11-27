@@ -54,11 +54,11 @@ public final class NatureCatalog {
 
     public record FuelProfile(Map<String, Double> values, String source) {}
 
-    /** hardnessはゲーム内の採掘時間係数。Paやモース硬度ではない。hostのない行ではnull。 */
+    /** hardnessは採掘時間係数。hostのない行はnull。shapeは新規廃墟材の固定形状名で、既存行はnull。 */
     public record Entry(String id, String en, String ja, String kind, String material, float hardness,
                         String recovery, String behavior, String domain, @SerializedName("mass_kg") double massKg,
                         String host, String source, String color, Integer sprite, boolean surface, String quality,
-                        String fuel, Map<String, Double> physical) {
+                        String fuel, Map<String, Double> physical, String shape) {
         public boolean fluid() {
             return kind.equals("water") || kind.equals("oil");
         }

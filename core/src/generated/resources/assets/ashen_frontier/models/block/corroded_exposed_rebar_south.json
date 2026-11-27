@@ -1,0 +1,168 @@
+{
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        11,
+        0,
+        7
+      ],
+      "to": [
+        13,
+        9,
+        9
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        11,
+        12,
+        7
+      ],
+      "to": [
+        13,
+        16,
+        9
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        2,
+        0,
+        7
+      ],
+      "to": [
+        5,
+        14,
+        9
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        3,
+        3,
+        6
+      ],
+      "to": [
+        16,
+        5,
+        8
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        0,
+        11,
+        6
+      ],
+      "to": [
+        11,
+        13,
+        8
+      ]
+    }
+  ],
+  "textures": {
+    "all": "ashen_frontier:block/corroded_exposed_rebar",
+    "particle": "ashen_frontier:block/corroded_exposed_rebar"
+  }
+}

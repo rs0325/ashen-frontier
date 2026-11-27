@@ -1,0 +1,104 @@
+{
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        8,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        2,
+        8,
+        8
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        9,
+        8,
+        3
+      ],
+      "to": [
+        16,
+        13,
+        8
+      ]
+    }
+  ],
+  "textures": {
+    "all": "ashen_frontier:block/rotten_timber",
+    "particle": "ashen_frontier:block/rotten_timber"
+  }
+}

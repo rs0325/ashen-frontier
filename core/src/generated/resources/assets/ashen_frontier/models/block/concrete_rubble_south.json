@@ -1,0 +1,136 @@
+{
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        7,
+        0,
+        4
+      ],
+      "to": [
+        16,
+        4,
+        14
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        0,
+        1,
+        0
+      ],
+      "to": [
+        8,
+        6,
+        11
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        8,
+        4,
+        3
+      ],
+      "to": [
+        14,
+        8,
+        10
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        3,
+        1,
+        11
+      ],
+      "to": [
+        12,
+        3,
+        16
+      ]
+    }
+  ],
+  "textures": {
+    "all": "ashen_frontier:block/concrete_rubble",
+    "particle": "ashen_frontier:block/concrete_rubble"
+  }
+}

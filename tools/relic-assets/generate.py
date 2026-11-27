@@ -5,6 +5,7 @@ import math
 import random
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageOps
+from ruins import ruin_tile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -78,11 +79,17 @@ def main():
     draw = ImageDraw.Draw(sheet)
     equipment_sheet = Image.new("RGB", (8*184, 4*190), "#282828")
     equipment_draw = ImageDraw.Draw(equipment_sheet)
+    ruins = Image.open(HERE / "ruins-source-atlas.png").convert("RGBA")
+    ruins_sheet = Image.new("RGB", (8*184, 8*140), "#282828")
+    ruins_draw = ImageDraw.Draw(ruins_sheet)
+    ruin_index = 0
     hashes = {}
     equipment_index = 0
     for i, entry in enumerate(ENTRIES):
         id, kind = entry["id"], entry["kind"]
-        if kind == "item":
+        if entry.get("shape") is not None:
+            image = ruin_tile(entry, ruins)
+        elif kind == "item":
             image = item_sprite(cell(items, entry["sprite"], 8, 8))
             digest = hashlib.sha256(image.tobytes()).hexdigest()
             if digest in hashes:
@@ -108,6 +115,19 @@ def main():
                 frame = ImageDraw.Draw(image)
                 frame.rectangle((3, 3, 12, 10 if id.endswith("_door") else 12), fill=(0, 0, 0, 0))
                 frame.line((7, 3, 7, 12), fill=(85, 83, 77, 255), width=1)
+        if entry.get("shape") is not None:
+            rx, ry = ruin_index % 8 * 184, ruin_index // 8 * 140
+            ruins_sheet.paste(image.convert("RGB"), (rx, ry))
+            enlarged = checker((64,64))
+            enlarged.alpha_composite(image.resize((64,64),Image.Resampling.NEAREST))
+            ruins_sheet.paste(enlarged.convert("RGB"), (rx+22,ry))
+            for ty in range(2):
+                for tx in range(2):
+                    ruins_sheet.paste(image.convert("RGB"),(rx+94+tx*16,ry+ty*16))
+            ruins_draw.text((rx,ry+72),id[:29],fill="white")
+            ruins_draw.text((rx,ry+87),id[29:],fill="white")
+            ruins_draw.text((rx,ry+105),"16px / 4x / tiling",fill="#bbbbbb")
+            ruin_index += 1
         target = OUT / ("item" if kind == "item" else "block") / f"{id}.png"
         target.parent.mkdir(parents=True, exist_ok=True)
         image.save(target)
@@ -117,8 +137,21 @@ def main():
         sheet.paste(preview.convert("RGB"), (px+60, py))
         draw.text((px+2, py+68), id[:29], fill="white")
         draw.text((px+2, py+82), id[29:], fill="white")
+    rows = ["# 劣化建材の登録・画像・回収対応表", "",
+            "確定（ユーザー承認 2026-11-27、#156）。relics.jsonからgenerate.pyで再生成する。既存IDは変更せず、以下64件を追加する。外観38分類と既存品の再利用は[設計16](design/16-m2-ruins.md)を参照。", "",
+            "| ID（ashen_frontier:） | 日本語名 | shape | 原稿セル | 回収先（同名前空間） | 工具 | 画像 |",
+            "|---|---|---|---:|---|---|---|"]
+    for entry in ENTRIES:
+        if entry.get("shape") is None:
+            continue
+        id = entry["id"]
+        tool = "axe" if entry["material"] == "wood" else "pickaxe"
+        rows.append(f'| {id} | {entry["ja"]} | {entry["shape"]} | {entry["sprite"]} | {entry["recovery"]} | {tool} | [16px](../core/src/main/resources/assets/ashen_frontier/textures/block/{id}.png) |')
+    rows += ["", "全件が硬さ2.0・暫定素材会計1 kg、Blockと同名BlockItem、初回は自身を一回回収。二重ハーフは2個。損傷は静的、専用修理・scrapへの変換なし。"]
+    (ROOT / "docs/ruin-materials.md").write_text("\n".join(rows)+"\n", encoding="utf-8")
     sheet.save(HERE / "preview.png")
     equipment_sheet.save(HERE / "equipment-preview.png")
+    ruins_sheet.save(HERE / "ruins-preview.png")
     print(f"素材{len(ENTRIES)}件、個別アイテム{len(hashes)}件、設備3面{equipment_index}件を生成")
 
 

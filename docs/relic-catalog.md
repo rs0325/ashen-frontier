@@ -1,6 +1,6 @@
 # 遺物の登録と後続契約
 
-Issue #56の正本入力は`core/src/main/resources/catalog/relics.json`。`nature.json`のID・列は変更せず、同じ`NatureCatalog.Entry`形式で分けている。登録・datagen・素材生成が同じ入力を読む。構成物50ブロック、旧設備32ブロック、単独Item50（容器3・資料1・簡易工具2を含む）、BlockItem82、計132 Item。
+Issue #56の正本入力は`core/src/main/resources/catalog/relics.json`。`nature.json`のID・列は変更せず、同じ`NatureCatalog.Entry`形式で分けている。登録・datagen・素材生成が同じ入力を読む。構成物114ブロック（既存50＋#156の64）、旧設備32ブロック、単独Item50（容器3・資料1・簡易工具2を含む）、BlockItem146、計196 Item。
 
 分類は`structure`・`equipment`・`item`。既存列の`behavior`で装飾、非稼働設備、保管・分解材、生活物資、食料、容器、資料、簡易工具を区別する。日用品の着用・医療・飲用効果はM3/M4、食料2品は通常の食事動作のみ。Tier 0〜10の代表群を登録し、Tier 11〜12の完成遺物は含めない。配置先の地域は決定しない。
 
@@ -11,6 +11,10 @@ Issue #56の正本入力は`core/src/main/resources/catalog/relics.json`。`natu
 全Itemの`MaterialData`はBと同じ暫定会計単位1 kg。内容物のkg量と容器自身の会計質量は別であり、実体積から求めた質量ではない。未調査の硬度・密度・比熱等は設定しない。新しい現実の物性値の採用はなく、追加のドメイン知識・出典はない。
 
 ## 回収と配置
+
+64追加ID・形状・原稿セル・画像・回収・工具の[全件対応表](ruin-materials.md)はカタログから再生成する。
+
+**劣化建材追加は確定（ユーザー承認 2026-11-27、#156）。** 64追加行はshapeで標準/固定部分形状を選び、木はaxe・他はpickaxe、lootにも同じ工具条件を付けて自身を一回回収する。既存行の適性/回収は不変。全件表・38外観分類・保存契約は[設計16](design/16-m2-ruins.md)。既存行のshape未指定は従来形状を表す。
 
 - `RelicCatalog.entries()` / `require(String)`で分類・回収先・担当ドメイン・用途を読む。未知IDは制作エラー。
 - `RelicContent.block(String)` / `item(String)`は登録後に呼ぶ。共有名前空間は`ashen_frontier`。
@@ -33,8 +37,12 @@ Issue #56の正本入力は`core/src/main/resources/catalog/relics.json`。`natu
 
 ## G2・H・I・Jへの引継ぎ
 
+#157は#156と#102のmerge後に、relics.jsonの最終ID/shape/spriteと登録APIを参照して一般外殻を変換する。新材は非BE・静的で、初回loot/新設備を持たない。D5に新材を差し込まない。
+
 G2はカタログの`behavior`と上記容器・資料factoryを使って有限lootを組む。生活消耗品倍率は資料・初期配布保証と分離して設計する。Hは構成物の形状ID、Iは設備本体と`recovery`・`domain`を参照してテンプレートを作り、BE付き設備と生きたEntityを混同しない。Jは簡易工具2品と品質・kg量・資料IDを明示した初期物資を配る。新しいID一覧を別に増やさず、カタログから照合する。
 
 ## 素材
+
+#156の原稿40面・プロンプト・指定画素の手調整・16px再生成はtools/relic-assets/ruins-source-atlas.png、ruins-prompt.txt、ruins.pyとgenerate.py。建材の形状間で同じ材質図柄を共有し、全196件のpreview.pngで確認する。
 
 組込みGPT imageの原本・プロンプト・Pillow変換・市松背景の確認シートは`tools/relic-assets/`。Itemは50品それぞれ異なる図柄で、縮小前に原本のマゼンタ背景を除去する。構成物の材質は形状間で共有する。基本16px、設備は全面を筐体で埋めた32pxの前面・側面・上面を持つ。設備の各面は`equipment-preview.png`でも確認できる。外部素材の転載なし。登録・形状モデル・翻訳・loot・材料データは`:core:1.21.1:runData`で生成し、`.cache/`を除いてGit管理する。
