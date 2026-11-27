@@ -4,8 +4,11 @@ import io.github.rs0325.ashenfrontier.core.ItemProperties;
 import io.github.rs0325.ashenfrontier.core.ItemPropertyMath;
 import io.github.rs0325.ashenfrontier.core.MaterialData;
 import io.github.rs0325.ashenfrontier.core.catalog.NatureProperties;
+import io.github.rs0325.ashenfrontier.core.catalog.RelicProperties;
 import io.github.rs0325.ashenfrontier.core.environment.EnvironmentSample;
 import io.github.rs0325.ashenfrontier.core.food.FoodProperties;
+import io.github.rs0325.ashenfrontier.core.food.NutritionData;
+import io.github.rs0325.ashenfrontier.core.food.FoodInheritance;
 import io.github.rs0325.ashenfrontier.core.research.ResearchManager;
 import io.github.rs0325.ashenfrontier.core.time.GameTime;
 import net.minecraft.core.HolderLookup;
@@ -191,7 +194,11 @@ public final class ProcessingStation {
         var slots = recipe.ingredientSlots(recipeInput()).orElseThrow();
         var products = recipe.outputs().stream().map(ItemStack::copy).toList();
         for (var inheritance : recipe.processing().inheritance()) {
+            if(recipe.processing().input(inheritance.ingredient()).retained()
+                    &&NutritionData.get(inputs.get(slots[inheritance.ingredient()])).isPresent())return false;
             inheritProperties(inputs.get(slots[inheritance.ingredient()]), products.get(inheritance.output()));
+            FoodInheritance.apply(inputs.get(slots[inheritance.ingredient()]),
+                    recipe.processing().input(inheritance.ingredient()).count(),products.get(inheritance.output()),recipeId.orElseThrow().toString());
         }
         double moistureKg = 0;
         for (int ingredient = 0; ingredient < slots.length; ingredient++) {
@@ -209,7 +216,7 @@ public final class ProcessingStation {
         ItemStack wornTool = tool.copy();
         if (recipe.processing().toolWear() > 0) {
             var wear = wornTool.get(ItemProperties.WEAR);
-            wornTool.set(ItemProperties.WEAR, ItemProperties.Wear.of(wear.value() + recipe.processing().toolWear(), wear.maximum()));
+            wornTool.set(ItemProperties.WEAR, ItemProperties.Wear.of(wear.value() + io.github.rs0325.ashenfrontier.core.ToolWearEvent.committed(player,recipe.processing().toolWear()), wear.maximum()));
         }
         for (int ingredient = 0; ingredient < slots.length; ingredient++) {
             var rule = recipe.processing().input(ingredient);
@@ -258,7 +265,15 @@ public final class ProcessingStation {
     }
 
     private boolean available(CommonRecipe recipe) {
-        if (recipe.ingredientSlots(recipeInput()).isEmpty()) return false;
+        var slots = recipe.ingredientSlots(recipeInput());
+        if (slots.isEmpty()) return false;
+        var sources = new java.util.HashSet<Integer>();
+        for (var entry : recipe.processing().inheritance()) {
+            var source = inputs.get(slots.get()[entry.ingredient()]);
+            if (!sources.add(entry.ingredient()) && (NutritionData.get(source).isPresent()
+                    || source.has(ItemProperties.CONTAMINATION) || source.has(ItemProperties.RADIOACTIVITY)
+                    || source.has(FoodProperties.ACTIVITY_UNCERTAINTY) || source.has(RelicProperties.CONTENT_MASS))) return false;
+        }
         if (recipe.processing().water().filter(v -> !water.contains(v.quality(), v.massKg())).isPresent()) return false;
         if (recipe.conditions().catalyst().filter(v -> !DataComponentIngredient.of(false, v).test(tool)
                 || tool.getCount() < v.getCount()).isPresent()) return false;
@@ -336,6 +351,7 @@ public final class ProcessingStation {
      */
     public static void inherit(ItemStack source, ItemStack target) {
         inheritProperties(source, target);
+        FoodInheritance.apply(source,1,target,"assembly");
         inheritMoisture(source.getOrDefault(NatureProperties.MOISTURE.get(), 0.0), List.of(target));
     }
 

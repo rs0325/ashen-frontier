@@ -52,6 +52,32 @@ import java.util.UUID;
 @GameTestHolder(AshenFrontierCore.MOD_ID)
 @PrefixGameTestTemplate(false)
 public class ProcessingGameTests {
+    @GameTest(template="empty",templateNamespace=AshenFrontierCore.MOD_ID)
+    public static void onlyAmountBearingInputsRejectRepeatedInheritance(GameTestHelper helper) {
+        var duplicated=new ProcessingData(List.of(new ProcessingData.Input(0,2,false)),Optional.empty(),0,0,
+                List.of(new ProcessingData.Inheritance(0,0),new ProcessingData.Inheritance(0,1)),false);
+        duplicated.validate(1,2);
+        var player=player(helper);
+        var food=new ItemStack(RelicContent.item("canned_food"),2);
+        var candidates=new ArrayList<ItemStack>();candidates.add(food);
+        var chemicals=new ItemStack(Items.STICK,2);chemicals.set(ItemProperties.CONTAMINATION,new ItemProperties.Contamination(Map.of("lead",.00001)));candidates.add(chemicals);
+        var radiation=new ItemStack(Items.STICK,2);radiation.set(ItemProperties.RADIOACTIVITY,new ItemProperties.Radioactivity("ashen_frontier:cs137",2,0));candidates.add(radiation);
+        var water=new ItemStack(Items.STICK,2);water.set(RelicProperties.CONTENT_MASS,1.0);candidates.add(water);
+        for(var source:candidates) {
+            var recipe=new CommonRecipe(TYPE,List.of(Ingredient.of(source.getItem())),List.of(new ItemStack(Items.STRING),new ItemStack(Items.STRING)),NO_CONDITIONS,duplicated);
+            var station=new ProcessingStation(1,2,1);station.setInput(player,0,source);
+            check(!station.start(player,install(helper,recipe),FACILITY,Optional.empty()),"量を持つ実原料の重複継承だけを拒否");
+            check(station.input(0).getCount()==2&&station.output(0).isEmpty()&&station.output(1).isEmpty(),"拒否時に消費・量の複製をしない");
+        }
+        var plainRecipe=new CommonRecipe(TYPE,List.of(Ingredient.of(Items.STICK)),List.of(new ItemStack(Items.STRING),new ItemStack(Items.FEATHER)),NO_CONDITIONS,duplicated);
+        var station=new ProcessingStation(1,2,1);var plain=new ItemStack(Items.STICK,2);
+        plain.set(ItemProperties.ROT,new ItemProperties.Rot(0,0,1200));station.setInput(player,0,plain);
+        check(station.start(player,install(helper,plainRecipe),FACILITY,Optional.empty())&&station.finish(player,FACILITY,Optional.empty()),"量でない属性の複数出力継承は維持");
+        check(station.output(0).get(ItemProperties.ROT).equals(plain.get(ItemProperties.ROT))&&station.output(1).get(ItemProperties.ROT).equals(plain.get(ItemProperties.ROT)),"両出力へ同じ属性を継承");
+        new ProcessingData(List.of(),Optional.empty(),0,0,
+                List.of(new ProcessingData.Inheritance(0,0),new ProcessingData.Inheritance(1,1)),false).validate(2,2);
+        helper.succeed();
+    }
     private static final ResourceLocation TYPE = AshenFrontierCore.id("game_test_processing");
     private static final ResourceLocation FACILITY = AshenFrontierCore.id("test_processing_surface");
     private static final ResourceLocation RAW = AshenFrontierCore.id("raw_water");
@@ -171,7 +197,7 @@ public class ProcessingGameTests {
         check(station.input(1).getCount() == 1 && station.tool().get(ItemProperties.WEAR).value() == 1, "保持素材と工具摩耗");
         check(station.output(0).getCount() == 64 && station.output(1).getCount() == 1, "複数出力");
         check(station.output(1).get(ItemProperties.ROT).referenceSeconds() == 1200, "腐敗非初期化");
-        check(FoodIntake.from(station.output(1)).orElseThrow().nutrition().energyJoules() == 100, "栄養継承");
+        check(FoodIntake.from(station.output(1)).orElseThrow().nutrition().energyJoules() == 200, "消費2個分の栄養継承");
         check(station.output(1).has(ItemProperties.CONTAMINATION) && station.output(1).has(ItemProperties.RADIOACTIVITY), "汚染保持");
         station.setInput(player, 0, seed("barley", 2));
         check(station.start(player, id, FACILITY, environment(player)), "次バッチ");
@@ -260,7 +286,7 @@ public class ProcessingGameTests {
             throw new AssertionError("NaNを受理");
         } catch (IllegalArgumentException expected) { }
         check(NutritionData.get(new ItemStack(Items.STONE)).isEmpty(), "未定義品へ栄養を補わない");
-        check(NutritionData.get(new ItemStack(RelicContent.item("preserved_rations"))).orElseThrow().energyJoules() == 200,
+        check(NutritionData.get(new ItemStack(RelicContent.item("preserved_rations"))).orElseThrow().energyJoules() == 4500000,
                 "固定栄養データマップ");
         check(new ProcessingData(List.of(), Optional.empty(), 0, 0.1, List.of(), false).toolWear() == 1,
                 "刻み未満の摩耗を切り捨てて無料にしない");

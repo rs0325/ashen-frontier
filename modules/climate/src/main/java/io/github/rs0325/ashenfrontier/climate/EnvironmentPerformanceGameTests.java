@@ -27,7 +27,17 @@ import java.util.Arrays;
 public final class EnvironmentPerformanceGameTests {
     @GameTest(template="empty",templateNamespace=AshenFrontierClimate.MOD_ID,batch="performance_135",timeoutTicks=400)
     public static void combinedWeatherRoomsAndFortyStations(GameTestHelper h) throws Exception {
-        var cpu=new ThreadCpuClock();boolean useCpu=cpu.useCpu("weather_rooms_stations",1_000_000);
+        runWorkload(h,(level,players)->{});h.succeed();
+    }
+    /** #124も同じ実加工/着火の仕事と共通時計の判定を再利用する。 */
+    public static void runWorkload(GameTestHelper h,java.util.function.BiConsumer<net.minecraft.server.level.ServerLevel,
+            java.util.List<net.minecraft.server.level.ServerPlayer>> hook) throws Exception {
+        runWorkload(h,hook,"weather_rooms_stations");
+    }
+    public static void runWorkload(GameTestHelper h,java.util.function.BiConsumer<net.minecraft.server.level.ServerLevel,
+            java.util.List<net.minecraft.server.level.ServerPlayer>> hook,String measurement) throws Exception {
+        var cpu=new ThreadCpuClock();boolean useCpu=cpu.useCpu(measurement,1_000_000);
+
         try(var f=new EnvironmentConnectionGameTests.Fixture(h)) {
             var rooms=RoomAir.get(f.level);
             var actors=new ArrayList<net.minecraft.world.level.block.entity.BlockEntity>();
@@ -101,7 +111,7 @@ public final class EnvironmentPerformanceGameTests {
             long processingTicks=0,ignitionTicks=0,overlapTicks=0,playerOperations=0;
             var work=actors.getFirst().getClass().getDeclaredMethod("scheduledWork");work.setAccessible(true);
             long[] elapsed=new long[2000],cpuTimes=new long[2000];long[][] stages=new long[5][2000];int firstActor=0;
-            com.mojang.logging.LogUtils.getLogger().info("M3-135 workload start");
+            com.mojang.logging.LogUtils.getLogger().info("M3-135 workload start test={}",measurement);
             long heapBefore=usedHeap(),gcBefore=gcMillis(),wall=System.nanoTime();
             h.assertTrue(EnvironmentBudget.remaining(f.level)!=Long.MAX_VALUE,"実providerの共有予算が有効");
             var recording=new jdk.jfr.Recording();
@@ -112,6 +122,8 @@ public final class EnvironmentPerformanceGameTests {
                     f.clock.setGameTime(tick);
                     EnvironmentBudget.beginTick(f.level.getServer());
                     long cpuStart=cpu.now(),start=System.nanoTime();
+                    hook.accept(f.level,players);
+
                     NeoForge.EVENT_BUS.post(new ServerTickEvent.Pre(()->true,f.level.getServer()));
                     long afterPre=System.nanoTime();
                     WeatherService.work(f.level);
@@ -172,8 +184,8 @@ public final class EnvironmentPerformanceGameTests {
                 com.mojang.logging.LogUtils.getLogger().info("M3-135 progress stations=40 through_min={} through_max={} current=2500",minThrough,maxThrough);
 
                 com.mojang.logging.LogUtils.getLogger().info(
-                        "M3-135 combined ticks=2000 warmup=500 rooms=64 stations=40 fake_players=4 p95_ms={} p99_ms={} max_ms={} wall_ms={} heap_delta={} gc_ms={} cpu_p95_ms={} cpu_p99_ms={} cpu_max_ms={}",
-                        elapsed[1899]/1e6,elapsed[1979]/1e6,elapsed[1999]/1e6,(System.nanoTime()-wall)/1e6,usedHeap()-heapBefore,gcMillis()-gcBefore,cpuTimes[1899]/1e6,cpuTimes[1979]/1e6,cpuTimes[1999]/1e6);
+                        "M3-135 combined test={} selected={} ticks=2000 warmup=500 rooms=64 stations=40 fake_players=4 p95_ms={} p99_ms={} max_ms={} wall_ms={} heap_delta={} gc_ms={} cpu_p95_ms={} cpu_p99_ms={} cpu_max_ms={}",
+                        measurement,useCpu?"cpu":"wall",elapsed[1899]/1e6,elapsed[1979]/1e6,elapsed[1999]/1e6,(System.nanoTime()-wall)/1e6,usedHeap()-heapBefore,gcMillis()-gcBefore,cpuTimes[1899]/1e6,cpuTimes[1979]/1e6,cpuTimes[1999]/1e6);
                 for(int n=4;n<40;n++) {
                     var station=stations.get(n);
                     double seconds=station.save(f.level.registryAccess()).getDouble("seconds");
@@ -193,7 +205,6 @@ public final class EnvironmentPerformanceGameTests {
                 NeoForge.EVENT_BUS.unregister(emissions);players.forEach(net.minecraft.server.level.ServerPlayer::discard);
             }
         }
-        h.succeed();
     }
     private static long usedHeap() {
         var runtime=Runtime.getRuntime();return runtime.totalMemory()-runtime.freeMemory();
