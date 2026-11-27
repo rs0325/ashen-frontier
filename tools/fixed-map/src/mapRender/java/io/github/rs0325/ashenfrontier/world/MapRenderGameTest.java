@@ -34,6 +34,8 @@ public final class MapRenderGameTest {
         final int x0, z0, step, width, height;
         final boolean basisOnly;
         final DataOutputStream stream;
+        final DataOutputStream volume;
+        final int lowY, highY;
         final Map<Block, Integer> ids = new HashMap<>();
         final List<String> palette = new ArrayList<>();
         int row;
@@ -55,6 +57,13 @@ public final class MapRenderGameTest {
             stream.writeInt(step);
             stream.writeInt(width);
             stream.writeInt(height);
+            lowY = job.has("vertical_bounds") ? job.getAsJsonArray("vertical_bounds").get(0).getAsInt() : 0;
+            highY = job.has("vertical_bounds") ? job.getAsJsonArray("vertical_bounds").get(1).getAsInt() : 0;
+            volume = highY > lowY ? new DataOutputStream(new BufferedOutputStream(
+                    Files.newOutputStream(out.resolve(name + ".vox")), 1 << 20)) : null;
+            if (volume != null) {
+                for (int value : new int[]{0x564f5831,x0,z0,step,width,height,lowY,highY}) volume.writeInt(value);
+            }
         }
 
         int id(Block block) {
@@ -83,6 +92,9 @@ public final class MapRenderGameTest {
                     continue;
                 }
                 var column = terrain.column(x, z);
+                if (volume != null) {
+                    for (int y = lowY; y < highY; y++) volume.writeShort(id(column.state(y).getBlock()));
+                }
                 int ground = column.surfaceY(), top = column.topY();
                 var surface = column.state(ground);
                 var cap = column.state(top);
@@ -108,6 +120,7 @@ public final class MapRenderGameTest {
         @Override
         public void close() throws IOException {
             stream.close();
+            if (volume != null) volume.close();
         }
     }
 

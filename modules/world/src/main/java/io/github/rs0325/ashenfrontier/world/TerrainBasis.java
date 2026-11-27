@@ -13,11 +13,12 @@ import javax.imageio.ImageIO;
 final class TerrainBasis {
     private static final double[] COS={1,Math.sqrt(.5),0,-Math.sqrt(.5)};
     private static final double[] SIN={0,Math.sqrt(.5),1,Math.sqrt(.5)};
-    private record Pin(int x,int z,double correction,double cos,double sin) {}
+    private record Pin(int x,int z,double correction,double cos,double sin,double along,double across) {}
     private final int x0, z0, width, height;
     private final short[] ground;
     private final byte[] classes;
     private final float[][] grain;
+    private final float[] limits;
     private final Map<Long,List<Pin>> pins=new HashMap<>();
     private final long seed;
     final MapVersion background;
@@ -28,7 +29,7 @@ final class TerrainBasis {
              var metadata = TerrainBasis.class.getResourceAsStream(root + "manifest.json")) {
             var manifest = JsonParser.parseString(new String(metadata.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
             if (LayoutJson.integer(manifest,"terrain_basis_schema_version") != 1
-                    || !manifest.get("stage").getAsString().equals("D2")
+                    || !List.of("D3", "D4").contains(manifest.get("stage").getAsString())
                     || !manifest.getAsJsonObject("files").has("landform.png"))
                 throw new IllegalStateException("骨格のmanifest・分類資産が不正です");
             if (LayoutJson.integer(manifest,"runtime_relief_version") != 1)
@@ -63,6 +64,28 @@ final class TerrainBasis {
             }
             grain=new float[4][ground.length];
             var layout=BundledMaps.landform(version);
+            limits=new float[ground.length];java.util.Arrays.fill(limits,575);
+            for(int id:new int[]{31,33,34,35,36,38,40}) {
+                var unit=layout.units().get(id);var boundary=unit.boundary();double ceiling=unit.peakY();
+                int left=Math.max(0,(boundary.stream().mapToInt(p->p.x()).min().orElseThrow()-192-x0)/16);
+                int right=Math.min(width-1,(boundary.stream().mapToInt(p->p.x()).max().orElseThrow()+192-x0)/16+1);
+                int top=Math.max(0,(boundary.stream().mapToInt(p->p.z()).min().orElseThrow()-192-z0)/16);
+                int bottom=Math.min(height-1,(boundary.stream().mapToInt(p->p.z()).max().orElseThrow()+192-z0)/16+1);
+                for(int row=top;row<=bottom;row++)for(int col=left;col<=right;col++) {
+                    double x=x0+col*16,z=z0+row*16,nearest=Double.POSITIVE_INFINITY;boolean inside=false;
+                    for(int n=0;n<boundary.size();n++) {
+                        var a=boundary.get(n);var b=boundary.get((n+1)%boundary.size());
+                        double dx=b.x()-a.x(),dz=b.z()-a.z();
+                        double t=Math.clamp(((x-a.x())*dx+(z-a.z())*dz)/(dx*dx+dz*dz),0,1);
+                        nearest=Math.min(nearest,Math.hypot(x-a.x()-t*dx,z-a.z()-t*dz));
+                        if((a.z()>z)!=(b.z()>z) && x<(b.x()-a.x())*(z-a.z())/(b.z()-a.z())+a.x())inside=!inside;
+                    }
+                    for(int dz=-1;dz<=1;dz++)for(int dx=-1;dx<=1;dx++)
+                        if(Byte.toUnsignedInt(classes[Math.clamp(row+dz,0,height-1)*width+Math.clamp(col+dx,0,width-1)])==id)inside=true;
+                    double blend=inside?0:id==38?TerrainMath.smooth(nearest/64):TerrainMath.smooth((nearest-48)/144);
+                    limits[row*width+col]=Math.min(limits[row*width+col],(float)(ceiling+(575-ceiling)*blend));
+                }
+            }
             var axes=new HashMap<Integer,double[]>();
             for (var unit:layout.units().values()) {
                 double xx=0,zz=0,xz=0;
@@ -89,7 +112,48 @@ final class TerrainBasis {
                     case "plateau" -> 5;case "basin","lowland" -> 2.6;
                     default -> 1.8+18*TerrainMath.smooth((ground[at]-110)/200.0);
                 };
+                if(unit.kind().equals("detail")) {
+                    int gx=at%width,gz=at/width;
+                    double sx=(ground[gz*width+Math.min(width-1,gx+1)]-ground[gz*width+Math.max(0,gx-1)])/32.;
+                    double sz=(ground[Math.min(height-1,gz+1)*width+gx]-ground[Math.max(0,gz-1)*width+gx])/32.;
+                    double steep=TerrainMath.smooth((Math.hypot(sx,sz)-.08)/.45);
+                    amplitude=switch(unit.id()) {
+                        case 31,32,34 -> 2.6+6*steep;
+                        case 37,40 -> 3+15*steep;
+                        case 39 -> 1.2+10*steep;
+                        case 35,36 -> 1.8;
+                        case 38 -> 3.3;
+                        default -> 2.6;
+                    };
+                }
                 for(int i=0;i<4;i++)grain[i][at]=(float)(amplitude*axes.get(unit.id())[i]);
+            }
+            float[] dry=new float[ground.length];
+            for(var value:index.getAsJsonArray("detail_dry_routes")) {
+                var points=value.getAsJsonObject().getAsJsonArray("points");
+                for(int n=1;n<points.size();n++) {
+                    var a=points.get(n-1).getAsJsonArray();var b=points.get(n).getAsJsonArray();
+                    double ax=a.get(0).getAsDouble(),az=a.get(1).getAsDouble(),bx=b.get(0).getAsDouble(),bz=b.get(1).getAsDouble();
+                    double dx=bx-ax,dz=bz-az,length=dx*dx+dz*dz;
+                    int left=Math.max(0,(int)Math.floor((Math.min(ax,bx)-96-x0)/16));
+                    int right=Math.min(width-1,(int)Math.ceil((Math.max(ax,bx)+96-x0)/16));
+                    int top=Math.max(0,(int)Math.floor((Math.min(az,bz)-96-z0)/16));
+                    int bottom=Math.min(height-1,(int)Math.ceil((Math.max(az,bz)+96-z0)/16));
+                    for(int row=top;row<=bottom;row++)for(int column=left;column<=right;column++) {
+                        double worldX=x0+column*16,worldZ=z0+row*16;
+                        double t=Math.clamp(((worldX-ax)*dx+(worldZ-az)*dz)/length,0,1);
+                        double distance=Math.hypot(worldX-ax-t*dx,worldZ-az-t*dz);
+                        int at=row*width+column;
+                        dry[at]=Math.max(dry[at],(float)(1-TerrainMath.smooth((distance-48)/48)));
+                    }
+                }
+            }
+            for(int at=0;at<ground.length;at++)if(dry[at]>0) {
+                double total=grain[0][at]+grain[1][at]+grain[2][at]+grain[3][at];
+                double cap=Byte.toUnsignedInt(classes[at])==38?3.3:1.8;
+                if(total<=cap)continue;
+                double factor=(total+(cap-total)*dry[at])/total;
+                for(int i=0;i<4;i++)grain[i][at]*=(float)factor;
             }
             for(int i=0;i<4;i++)grain[i]=smoothGrain(grain[i]);
             for(var unit:layout.units().values()) if(!unit.kind().equals("detail")) for(var p:unit.controls()) {
@@ -97,9 +161,15 @@ final class TerrainBasis {
                 if(unit.controls().size()>1) {
                     var a=unit.controls().getFirst();var b=unit.controls().getLast();angle=Math.atan2(b.z()-a.z(),b.x()-a.x());
                 }
-                var pin=new Pin(p.x(),p.z(),roughHeight(p.x(),p.z())-baseHeight(p.x(),p.z()),Math.cos(angle),Math.sin(angle));
+                var pin=new Pin(p.x(),p.z(),roughHeight(p.x(),p.z())-baseHeight(p.x(),p.z()),Math.cos(angle),Math.sin(angle),96,48);
                 for(int z=(p.z()-96)>>7;z<=(p.z()+96)>>7;z++)for(int x=(p.x()-96)>>7;x<=(p.x()+96)>>7;x++)
                     pins.computeIfAbsent(key(x,z),ignored -> new ArrayList<>()).add(pin);
+            }
+            for(var value:index.getAsJsonArray("detail_controls")) {
+                var point=value.getAsJsonArray();int x=point.get(0).getAsInt(),z=point.get(1).getAsInt();
+                var pin=new Pin(x,z,roughHeight(x,z)-baseHeight(x,z),.45,-.89302855,32,16);
+                for(int cz=(z-32)>>7;cz<=(z+32)>>7;cz++)for(int cx=(x-32)>>7;cx<=(x+32)>>7;cx++)
+                    pins.computeIfAbsent(key(cx,cz),ignored -> new ArrayList<>()).add(pin);
             }
         } catch (IOException | RuntimeException e) {
             throw new IllegalStateException("固定マップ版 earth_002: 骨格を読めません", e);
@@ -123,10 +193,17 @@ final class TerrainBasis {
         double value=roughHeight(x,z);
         for(var p:pins.getOrDefault(key(((int)Math.floor(x))>>7,((int)Math.floor(z))>>7),List.of())) {
             double dx=x-p.x,dz=z-p.z;
-            double along=(dx*p.cos+dz*p.sin)/96,across=(-dx*p.sin+dz*p.cos)/48;
+            double along=(dx*p.cos+dz*p.sin)/p.along,across=(-dx*p.sin+dz*p.cos)/p.across;
             value-=p.correction*(1-TerrainMath.smooth(Math.hypot(along,across)));
         }
-        return value;
+        return Math.min(value,heightLimit(x,z));
+    }
+
+    private double heightLimit(double x,double z) {
+        double px=Math.clamp((x-x0)/16,0,width-1),pz=Math.clamp((z-z0)/16,0,height-1);
+        int ix=(int)px,iz=(int)pz,a=iz*width+ix,b=Math.min(height-1,iz+1)*width+ix;
+        int dx=Math.min(width-1,ix+1)-ix;
+        return TerrainMath.bilinear(limits[a],limits[a+dx],limits[b],limits[b+dx],px-ix,pz-iz);
     }
 
     private double roughHeight(double x,double z) {
@@ -165,7 +242,7 @@ final class TerrainBasis {
         result+=total*(TerrainMath.noise(seed,"basis_grit",.8*x+.6*z,-.6*x+.8*z,8)-.5)*.12;
         double strength=(.65+.35*TerrainMath.smooth(slope/.7))*(1+.35*TerrainMath.smooth((base-180)/200));
         strength*=TerrainMath.smooth((base-63)/24);
-        if(result>0)strength*=Math.clamp((520-base)/32,0,1);
+        if(result>0)strength*=Math.clamp((Math.min(520,heightLimit(x,z))-base)/32,0,1);
         return base+result*strength;
     }
 

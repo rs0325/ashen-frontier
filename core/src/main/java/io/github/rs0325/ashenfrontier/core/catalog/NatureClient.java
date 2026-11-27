@@ -22,42 +22,46 @@ public final class NatureClient {
             Map.entry("ultrapure_water", 0xeb_b6_de_f0), Map.entry("pure_water", 0xeb_91_c5_e5),
             Map.entry("clean_water", 0xeb_43_8c_c6), Map.entry("raw_water", 0xeb_54_7f_96),
             Map.entry("turbid_water", 0xeb_83_77_59), Map.entry("contaminated_water", 0xeb_6b_7a_67),
-            Map.entry("toxic_water", 0xeb_68_75_48), Map.entry("polluted_seawater", 0xeb_43_67_60),
-            Map.entry("light_low_sulfur_crude_oil", 0xff_32_2b_23), Map.entry("light_high_sulfur_crude_oil", 0xff_33_2c_24),
-            Map.entry("heavy_low_sulfur_crude_oil", 0xff_34_2d_25), Map.entry("heavy_high_sulfur_crude_oil", 0xff_34_2d_25));
+            Map.entry("toxic_water", 0xeb_68_75_48), Map.entry("polluted_seawater", 0xeb_43_67_60));
 
     private NatureClient() {}
 
     @SubscribeEvent
     public static void extensions(RegisterClientExtensionsEvent event) {
-        NatureContent.fluids().forEach((id, fluid) -> event.registerFluidType(new IClientFluidTypeExtensions() {
-            @Override
-            public ResourceLocation getStillTexture() {
-                return WATER_STILL;
-            }
+        NatureContent.fluids().forEach((id, fluid) -> {
+            boolean oil = NatureCatalog.require(id).kind().equals("oil");
+            event.registerFluidType(new IClientFluidTypeExtensions() {
+                @Override
+                public ResourceLocation getStillTexture() {
+                    return oil
+                            ? ResourceLocation.fromNamespaceAndPath(AshenFrontierCore.NAMESPACE, "block/" + id + "_still") : WATER_STILL;
+                }
 
-            @Override
-            public ResourceLocation getFlowingTexture() {
-                return WATER_FLOW;
-            }
+                @Override
+                public ResourceLocation getFlowingTexture() {
+                    return oil
+                            ? ResourceLocation.fromNamespaceAndPath(AshenFrontierCore.NAMESPACE, "block/" + id + "_flow") : WATER_FLOW;
+                }
 
-            @Override
-            public ResourceLocation getOverlayTexture() {
-                return WATER_OVERLAY;
-            }
+                @Override
+                public ResourceLocation getOverlayTexture() {
+                    return oil ? null : WATER_OVERLAY;
+                }
 
-            @Override
-            public int getTintColor() {
-                return TINTS.get(id);
-            }
-        }, fluid.type().get()));
+                @Override
+                public int getTintColor() {
+                    return oil ? 0xffffffff : TINTS.get(id);
+                }
+            }, fluid.type().get());
+        });
     }
 
     @SubscribeEvent
     public static void setup(FMLClientSetupEvent event) {
-        event.enqueueWork(() -> NatureContent.fluids().values().forEach(fluid -> {
-            ItemBlockRenderTypes.setRenderLayer(fluid.source().get(), RenderType.translucent());
-            ItemBlockRenderTypes.setRenderLayer(fluid.flowing().get(), RenderType.translucent());
+        event.enqueueWork(() -> NatureContent.fluids().forEach((id, fluid) -> {
+            var layer = NatureCatalog.require(id).kind().equals("oil") ? RenderType.solid() : RenderType.translucent();
+            ItemBlockRenderTypes.setRenderLayer(fluid.source().get(), layer);
+            ItemBlockRenderTypes.setRenderLayer(fluid.flowing().get(), layer);
         }));
     }
 }

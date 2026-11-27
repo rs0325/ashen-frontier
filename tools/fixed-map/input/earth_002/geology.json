@@ -1,0 +1,4722 @@
+{
+  "schema_version": 1,
+  "approved_on": "2026-11-27",
+  "map_version": "earth_002",
+  "fixed_seed": 520026,
+  "source_terrain_manifest": "de293f6ad46fb93aef1a497e89197efb9e70b6712143e4981fad11e81bf59289",
+  "profiles": [
+    {
+      "id": "G01",
+      "name": "付加体・褶曲堆積岩",
+      "physical_units": [
+        2,
+        21,
+        51
+      ],
+      "anchor_xz": [
+        -12600,
+        -11000
+      ],
+      "reference_y": 340,
+      "layers": [
+        [
+          "shale",
+          14,
+          30
+        ],
+        [
+          "slate",
+          20,
+          44
+        ],
+        [
+          "quartzite",
+          12,
+          26
+        ]
+      ],
+      "basement": "gneiss",
+      "dip_xz": [
+        0.012,
+        0.006
+      ],
+      "rationale": "沈み込みで付加・褶曲し、古い変成帯を含む。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    },
+    {
+      "id": "G02",
+      "name": "付加体内の超苦鉄質岩スライス",
+      "physical_units": [],
+      "anchor_xz": [
+        -12320,
+        -10880
+      ],
+      "reference_y": 260,
+      "layers": [
+        [
+          "peridotite",
+          24,
+          60
+        ]
+      ],
+      "basement": "peridotite",
+      "dip_xz": [
+        0.018,
+        -0.009
+      ],
+      "rationale": "古い海洋岩石の断片。現火山からNi/Crが一様にできるとはしない。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    },
+    {
+      "id": "G03",
+      "name": "古い変成基盤",
+      "physical_units": [
+        23,
+        24,
+        37
+      ],
+      "anchor_xz": [
+        -6300,
+        -12300
+      ],
+      "reference_y": 420,
+      "layers": [
+        [
+          "gneiss",
+          24,
+          56
+        ],
+        [
+          "quartzite",
+          12,
+          32
+        ],
+        [
+          "slate",
+          10,
+          24
+        ]
+      ],
+      "basement": "gneiss",
+      "dip_xz": [
+        -0.008,
+        0.011
+      ],
+      "rationale": "若い造山前からある基盤が隆起・再露出。鉄・Coは古い層準。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    },
+    {
+      "id": "G04",
+      "name": "火山弧の噴出岩被覆",
+      "physical_units": [
+        1,
+        22,
+        32,
+        40
+      ],
+      "anchor_xz": [
+        -9900,
+        -11400
+      ],
+      "reference_y": 470,
+      "layers": [
+        [
+          "minecraft:andesite",
+          18,
+          44
+        ],
+        [
+          "minecraft:tuff",
+          8,
+          26
+        ],
+        [
+          "minecraft:basalt",
+          8,
+          22
+        ]
+      ],
+      "basement": "minecraft:diorite",
+      "dip_xz": [
+        0.006,
+        0.009
+      ],
+      "rationale": "火山体・溶岩流面。地下の貫入岩と露出窓を別に置く。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    },
+    {
+      "id": "G05",
+      "name": "花崗岩質貫入・変質域",
+      "physical_units": [],
+      "anchor_xz": [
+        -8550,
+        -10060
+      ],
+      "reference_y": 300,
+      "layers": [
+        [
+          "minecraft:granite",
+          32,
+          80
+        ]
+      ],
+      "basement": "minecraft:granite",
+      "dip_xz": [
+        0.009,
+        -0.007
+      ],
+      "rationale": "複数時期の貫入。CuとSn/Liを同じ一斉生成事件へまとめない。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    },
+    {
+      "id": "G06",
+      "name": "古い炭酸塩岩・接触帯",
+      "physical_units": [
+        61
+      ],
+      "anchor_xz": [
+        -7100,
+        -8860
+      ],
+      "reference_y": 220,
+      "layers": [
+        [
+          "limestone",
+          28,
+          64
+        ],
+        [
+          "shale",
+          8,
+          22
+        ],
+        [
+          "limestone",
+          20,
+          40
+        ]
+      ],
+      "basement": "minecraft:granite",
+      "dip_xz": [
+        -0.011,
+        0.005
+      ],
+      "rationale": "台地の古い石灰岩層・褶曲前縁とスカルン接触帯。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    },
+    {
+      "id": "G07",
+      "name": "含炭砕屑岩盆地",
+      "physical_units": [
+        4
+      ],
+      "anchor_xz": [
+        -6520,
+        -9420
+      ],
+      "reference_y": 240,
+      "layers": [
+        [
+          "shale",
+          14,
+          28
+        ],
+        [
+          "minecraft:sandstone",
+          12,
+          32
+        ],
+        [
+          "shale",
+          20,
+          44
+        ]
+      ],
+      "basement": "minecraft:stone",
+      "dip_xz": [
+        0.006,
+        0.004
+      ],
+      "rationale": "埋没後に隆起した旧湿地・デルタ層。炭種は旧品質を保持。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    },
+    {
+      "id": "G08",
+      "name": "背弧の内陸堆積層",
+      "physical_units": [
+        3,
+        52,
+        54,
+        63,
+        91,
+        11,
+        12
+      ],
+      "anchor_xz": [
+        -4624,
+        -8112
+      ],
+      "reference_y": 160,
+      "layers": [
+        [
+          "clay_sediment",
+          3,
+          9
+        ],
+        [
+          "minecraft:sandstone",
+          12,
+          30
+        ],
+        [
+          "shale",
+          16,
+          36
+        ],
+        [
+          "limestone",
+          12,
+          28
+        ]
+      ],
+      "basement": "gneiss",
+      "dip_xz": [
+        0.002,
+        0.003
+      ],
+      "rationale": "河川・湖成堆積の重なり。油層の砂岩と頁岩の封止を含む。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    },
+    {
+      "id": "G09",
+      "name": "海成・河口・古海岸堆積層",
+      "physical_units": [
+        31,
+        33,
+        34,
+        35,
+        36,
+        90
+      ],
+      "anchor_xz": [
+        -4100,
+        -4700
+      ],
+      "reference_y": 112,
+      "layers": [
+        [
+          "clay_sediment",
+          3,
+          8
+        ],
+        [
+          "minecraft:sandstone",
+          18,
+          36
+        ],
+        [
+          "shale",
+          16,
+          32
+        ]
+      ],
+      "basement": "minecraft:granite",
+      "dip_xz": [
+        0.001,
+        -0.002
+      ],
+      "rationale": "現在の三角州と古い固結海岸層を区別。珪砂・古い重鉱物砂。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    },
+    {
+      "id": "G10",
+      "name": "乾燥した古湖成・蒸発岩層",
+      "physical_units": [
+        38,
+        62
+      ],
+      "anchor_xz": [
+        -8190,
+        -5510
+      ],
+      "reference_y": 155,
+      "layers": [
+        [
+          "clay_sediment",
+          4,
+          9
+        ],
+        [
+          "gypsum",
+          4,
+          12
+        ],
+        [
+          "rock_salt",
+          5,
+          14
+        ],
+        [
+          "shale",
+          10,
+          24
+        ]
+      ],
+      "basement": "minecraft:stone",
+      "dip_xz": [
+        0.002,
+        -0.001
+      ],
+      "rationale": "雨陰側の古湖成粘土へ浅い硝酸塩集積。恒常湖は追加しない。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    },
+    {
+      "id": "G11",
+      "name": "氷河性被覆と古い堆積基盤",
+      "physical_units": [
+        39,
+        53,
+        92
+      ],
+      "anchor_xz": [
+        -4200,
+        -13800
+      ],
+      "reference_y": 150,
+      "layers": [
+        [
+          "clay_sediment",
+          3,
+          8
+        ],
+        [
+          "shale",
+          12,
+          26
+        ],
+        [
+          "minecraft:sandstone",
+          10,
+          24
+        ]
+      ],
+      "basement": "gneiss",
+      "dip_xz": [
+        0.001,
+        0.002
+      ],
+      "rationale": "G01の氷・モレーン・排水はD3を維持。北部の埋没泥炭を小レンズ化。",
+      "fold_amplitude_B": [
+        8,
+        28
+      ],
+      "fold_scale_B": [
+        500,
+        1400
+      ]
+    }
+  ],
+  "overrides": [
+    {
+      "id": "U-Ni",
+      "profile": "G02",
+      "polygon": [
+        [
+          -12440,
+          -11070
+        ],
+        [
+          -12350,
+          -11110
+        ],
+        [
+          -12270,
+          -10960
+        ],
+        [
+          -12230,
+          -10900
+        ],
+        [
+          -12195,
+          -10760
+        ],
+        [
+          -12260,
+          -10670
+        ],
+        [
+          -12350,
+          -10720
+        ],
+        [
+          -12370,
+          -10820
+        ]
+      ]
+    },
+    {
+      "id": "U-Cr",
+      "profile": "G02",
+      "polygon": [
+        [
+          -12120,
+          -11110
+        ],
+        [
+          -12050,
+          -11160
+        ],
+        [
+          -11960,
+          -11020
+        ],
+        [
+          -11920,
+          -10930
+        ],
+        [
+          -11960,
+          -10770
+        ],
+        [
+          -12030,
+          -10810
+        ],
+        [
+          -12070,
+          -10930
+        ]
+      ]
+    },
+    {
+      "id": "M-Fe-Co",
+      "profile": "G03",
+      "polygon": [
+        [
+          -8160,
+          -9600
+        ],
+        [
+          -7730,
+          -9700
+        ],
+        [
+          -7220,
+          -9510
+        ],
+        [
+          -7060,
+          -9220
+        ],
+        [
+          -7320,
+          -9040
+        ],
+        [
+          -7570,
+          -9060
+        ],
+        [
+          -7900,
+          -9000
+        ],
+        [
+          -8080,
+          -9250
+        ]
+      ]
+    },
+    {
+      "id": "P-east",
+      "profile": "G05",
+      "polygon": [
+        [
+          -9130,
+          -10320
+        ],
+        [
+          -8830,
+          -10430
+        ],
+        [
+          -8700,
+          -10260
+        ],
+        [
+          -8430,
+          -10220
+        ],
+        [
+          -8050,
+          -10000
+        ],
+        [
+          -8090,
+          -9750
+        ],
+        [
+          -8350,
+          -9680
+        ],
+        [
+          -8590,
+          -9910
+        ],
+        [
+          -8920,
+          -9940
+        ],
+        [
+          -9090,
+          -10130
+        ]
+      ]
+    },
+    {
+      "id": "P-north",
+      "profile": "G05",
+      "polygon": [
+        [
+          -11110,
+          -11280
+        ],
+        [
+          -10780,
+          -11520
+        ],
+        [
+          -10300,
+          -11700
+        ],
+        [
+          -9820,
+          -11670
+        ],
+        [
+          -9450,
+          -11560
+        ],
+        [
+          -9400,
+          -11290
+        ],
+        [
+          -9750,
+          -11120
+        ],
+        [
+          -10250,
+          -11320
+        ],
+        [
+          -10730,
+          -11010
+        ],
+        [
+          -11040,
+          -11070
+        ]
+      ]
+    },
+    {
+      "id": "P-ne",
+      "profile": "G05",
+      "polygon": [
+        [
+          -6390,
+          -12110
+        ],
+        [
+          -6040,
+          -12370
+        ],
+        [
+          -5630,
+          -12070
+        ],
+        [
+          -5360,
+          -11880
+        ],
+        [
+          -5490,
+          -11490
+        ],
+        [
+          -5530,
+          -10980
+        ],
+        [
+          -5770,
+          -10970
+        ],
+        [
+          -5880,
+          -11220
+        ],
+        [
+          -6230,
+          -11340
+        ],
+        [
+          -6310,
+          -11750
+        ]
+      ]
+    },
+    {
+      "id": "C-contact",
+      "profile": "G06",
+      "polygon": [
+        [
+          -8840,
+          -9850
+        ],
+        [
+          -8520,
+          -9900
+        ],
+        [
+          -8290,
+          -9630
+        ],
+        [
+          -7990,
+          -9360
+        ],
+        [
+          -8010,
+          -9100
+        ],
+        [
+          -8340,
+          -8990
+        ],
+        [
+          -8470,
+          -9240
+        ],
+        [
+          -8720,
+          -9430
+        ]
+      ]
+    },
+    {
+      "id": "C-platform",
+      "profile": "G06",
+      "polygon": [
+        [
+          -7670,
+          -9270
+        ],
+        [
+          -7330,
+          -9300
+        ],
+        [
+          -7100,
+          -9140
+        ],
+        [
+          -6850,
+          -8890
+        ],
+        [
+          -6950,
+          -8560
+        ],
+        [
+          -7310,
+          -8540
+        ],
+        [
+          -7510,
+          -8720
+        ],
+        [
+          -7760,
+          -8910
+        ]
+      ]
+    },
+    {
+      "id": "C-Pb-Zn",
+      "profile": "G06",
+      "polygon": [
+        [
+          -7440,
+          -10030
+        ],
+        [
+          -7180,
+          -10110
+        ],
+        [
+          -6970,
+          -9980
+        ],
+        [
+          -6630,
+          -10210
+        ],
+        [
+          -6410,
+          -10070
+        ],
+        [
+          -6410,
+          -9780
+        ],
+        [
+          -6750,
+          -9750
+        ],
+        [
+          -6970,
+          -9510
+        ],
+        [
+          -7220,
+          -9520
+        ]
+      ]
+    },
+    {
+      "id": "S-coal",
+      "profile": "G07",
+      "polygon": [
+        [
+          -6840,
+          -9680
+        ],
+        [
+          -6530,
+          -9710
+        ],
+        [
+          -6210,
+          -9490
+        ],
+        [
+          -5900,
+          -9460
+        ],
+        [
+          -5830,
+          -9210
+        ],
+        [
+          -6020,
+          -8940
+        ],
+        [
+          -6310,
+          -9000
+        ],
+        [
+          -6500,
+          -9200
+        ],
+        [
+          -6770,
+          -9180
+        ]
+      ]
+    },
+    {
+      "id": "V6-granite",
+      "profile": "G05",
+      "polygon": [
+        [
+          -11810,
+          -10700
+        ],
+        [
+          -11690,
+          -10740
+        ],
+        [
+          -11610,
+          -10620
+        ],
+        [
+          -11650,
+          -10480
+        ],
+        [
+          -11740,
+          -10460
+        ],
+        [
+          -11830,
+          -10580
+        ]
+      ]
+    },
+    {
+      "id": "V4-granite",
+      "profile": "G05",
+      "polygon": [
+        [
+          -9140,
+          -7740
+        ],
+        [
+          -9030,
+          -7810
+        ],
+        [
+          -8880,
+          -7690
+        ],
+        [
+          -8910,
+          -7490
+        ],
+        [
+          -9050,
+          -7480
+        ],
+        [
+          -9170,
+          -7600
+        ]
+      ]
+    },
+    {
+      "id": "V7-granite",
+      "profile": "G05",
+      "polygon": [
+        [
+          -8890,
+          -7260
+        ],
+        [
+          -8760,
+          -7290
+        ],
+        [
+          -8610,
+          -7170
+        ],
+        [
+          -8630,
+          -6980
+        ],
+        [
+          -8750,
+          -6950
+        ],
+        [
+          -8890,
+          -7090
+        ]
+      ]
+    },
+    {
+      "id": "C-cave",
+      "profile": "G06",
+      "polygon": [
+        [
+          -8380,
+          -8850
+        ],
+        [
+          -8210,
+          -8970
+        ],
+        [
+          -7970,
+          -8880
+        ],
+        [
+          -7860,
+          -8680
+        ],
+        [
+          -8080,
+          -8530
+        ],
+        [
+          -8310,
+          -8650
+        ]
+      ]
+    },
+    {
+      "id": "S-paleoshore",
+      "profile": "G09",
+      "polygon": [
+        [
+          -4530,
+          -5390
+        ],
+        [
+          -4330,
+          -5390
+        ],
+        [
+          -4250,
+          -5160
+        ],
+        [
+          -3980,
+          -4920
+        ],
+        [
+          -3910,
+          -4680
+        ],
+        [
+          -3500,
+          -4480
+        ],
+        [
+          -3390,
+          -4220
+        ],
+        [
+          -3630,
+          -4230
+        ],
+        [
+          -3840,
+          -4420
+        ],
+        [
+          -4200,
+          -4540
+        ],
+        [
+          -4280,
+          -4890
+        ],
+        [
+          -4510,
+          -5140
+        ]
+      ]
+    }
+  ],
+  "deposits": [
+    {
+      "id": "mining_iron",
+      "block": "quartzite_hematite_ore",
+      "host": "quartzite",
+      "xz": [
+        -7900,
+        -9200
+      ],
+      "radii": [
+        18,
+        5,
+        12
+      ],
+      "required": true,
+      "vanilla": null,
+      "center_y": 209,
+      "target_blocks": 1600,
+      "profile": "G03",
+      "rationale": "古い変成鉄鉱層が高原西縁に露出。若い火山でBIFが生成したとは扱わない。",
+      "outcrop_xz": [
+        -7920,
+        -9212
+      ],
+      "outcrop_ground_y": 232,
+      "exposure_budget_blocks": 48,
+      "number": 1,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -7948,
+        -9248,
+        -7852,
+        -9152
+      ],
+      "historic_extracted_ore_equivalent": 14400,
+      "mine_id": "M01"
+    },
+    {
+      "id": "mining_copper",
+      "block": "granite_chalcopyrite_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -8420,
+        -10020
+      ],
+      "radii": [
+        16,
+        5,
+        10
+      ],
+      "required": true,
+      "vanilla": null,
+      "center_y": 212,
+      "target_blocks": 2157,
+      "profile": "G05",
+      "rationale": "火山弧東側で侵食された古い花崗岩質貫入・熱水脈。",
+      "outcrop_xz": [
+        -8404,
+        -10038
+      ],
+      "outcrop_ground_y": 212,
+      "exposure_budget_blocks": 48,
+      "number": 2,
+      "deposit_type": "鉱染型",
+      "shape_rule": "脈網を伴う連続した鉱化域へ既存鉱石ブロックをまとめる。等間隔の粒や独立点を散布しない。",
+      "surface_clue": "花崗岩の変色露頭と少数の接続した黄銅鉱の細脈",
+      "sample_bounds": [
+        -8468,
+        -10068,
+        -8372,
+        -9972
+      ],
+      "historic_extracted_ore_equivalent": 19413,
+      "mine_id": "M02"
+    },
+    {
+      "id": "mining_coal",
+      "block": "bituminous_coal",
+      "host": "shale",
+      "xz": [
+        -6520,
+        -9420
+      ],
+      "radii": [
+        22,
+        3,
+        14
+      ],
+      "required": true,
+      "vanilla": null,
+      "center_y": 202,
+      "target_blocks": 6598,
+      "profile": "G07",
+      "rationale": "背弧高原の旧堆積盆地の頁岩中の屈曲した炭層。",
+      "outcrop_xz": [
+        -6536,
+        -9400
+      ],
+      "outcrop_ground_y": 215,
+      "exposure_budget_blocks": 48,
+      "number": 3,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -6568,
+        -9468,
+        -6472,
+        -9372
+      ],
+      "historic_extracted_ore_equivalent": 125362,
+      "mine_id": "M03"
+    },
+    {
+      "id": "mining_tin",
+      "block": "granite_cassiterite_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -8860,
+        -10180
+      ],
+      "radii": [
+        16,
+        4,
+        6
+      ],
+      "required": true,
+      "vanilla": null,
+      "center_y": 212,
+      "target_blocks": 2004,
+      "profile": "G05",
+      "rationale": "32の残存岩脊付近の分化した花崗岩とグライゼン脈。",
+      "outcrop_xz": [
+        -8842,
+        -10168
+      ],
+      "outcrop_ground_y": 199,
+      "exposure_budget_blocks": 48,
+      "number": 4,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -8908,
+        -10228,
+        -8812,
+        -10132
+      ],
+      "historic_extracted_ore_equivalent": 18036,
+      "mine_id": "M04"
+    },
+    {
+      "id": "mining_limestone",
+      "block": "limestone",
+      "host": "limestone",
+      "xz": [
+        -7100,
+        -8860
+      ],
+      "radii": [
+        18,
+        5,
+        12
+      ],
+      "required": true,
+      "vanilla": null,
+      "center_y": 153,
+      "target_blocks": 7194,
+      "profile": "G06",
+      "rationale": "高原東南縁の古い炭酸塩岩の侵食窓。",
+      "outcrop_xz": [
+        -7124,
+        -8852
+      ],
+      "outcrop_ground_y": 158,
+      "exposure_budget_blocks": 48,
+      "number": 5,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -7148,
+        -8908,
+        -7052,
+        -8812
+      ],
+      "historic_extracted_ore_equivalent": 64746,
+      "mine_id": "M05"
+    },
+    {
+      "id": "agriculture_clay",
+      "block": "clay_sediment",
+      "host": "clay_sediment",
+      "xz": [
+        -5360,
+        -8360
+      ],
+      "radii": [
+        18,
+        2,
+        14
+      ],
+      "required": true,
+      "vanilla": null,
+      "center_y": 112,
+      "target_blocks": 3267,
+      "profile": "G09",
+      "rationale": "河岸段丘34の旧氾濫原堆積。現河床は掘らない。",
+      "outcrop_xz": [
+        -5346,
+        -8346
+      ],
+      "outcrop_ground_y": 115,
+      "exposure_budget_blocks": 48,
+      "number": 6,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -5408,
+        -8408,
+        -5312,
+        -8312
+      ],
+      "historic_extracted_ore_equivalent": 13068,
+      "mine_id": "M06"
+    },
+    {
+      "id": "arid_nitrate",
+      "block": "clay_sediment_nitrate_ore",
+      "host": "clay_sediment",
+      "xz": [
+        -8190,
+        -5510
+      ],
+      "radii": [
+        20,
+        2,
+        14
+      ],
+      "required": true,
+      "vanilla": null,
+      "center_y": 138,
+      "target_blocks": 3628,
+      "profile": "G10",
+      "rationale": "乾燥盆地38の旧湖成粘土・浅いカリーチェ。出口と常時流路を避ける。",
+      "outcrop_xz": [
+        -8204,
+        -5520
+      ],
+      "outcrop_ground_y": 145,
+      "exposure_budget_blocks": 48,
+      "number": 7,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -8238,
+        -5558,
+        -8142,
+        -5462
+      ],
+      "historic_extracted_ore_equivalent": 14512,
+      "mine_id": "M07"
+    },
+    {
+      "id": "coastal_silica",
+      "block": "sandstone_quartz_ore",
+      "host": "minecraft:sandstone",
+      "xz": [
+        -4100,
+        -4700
+      ],
+      "radii": [
+        18,
+        4,
+        12
+      ],
+      "required": true,
+      "vanilla": null,
+      "center_y": 81,
+      "target_blocks": 5638,
+      "profile": "G09",
+      "rationale": "海成低地90に露出した古い石英質砂岩。",
+      "outcrop_xz": [
+        -4084,
+        -4712
+      ],
+      "outcrop_ground_y": 89,
+      "exposure_budget_blocks": 48,
+      "number": 8,
+      "deposit_type": "砂鉱床型（固結した古漂砂）",
+      "shape_rule": "旧堆積方向へ偏った屈曲砂層。現河床・黒色砂へ新しい資源を散布しない。",
+      "surface_clue": "固結砂岩の露出面の濃集帯。普通の黒色砂だけでは鉱床と断定できない",
+      "sample_bounds": [
+        -4148,
+        -4748,
+        -4052,
+        -4652
+      ],
+      "historic_extracted_ore_equivalent": 50742,
+      "mine_id": "M08"
+    },
+    {
+      "id": "sulfur_fumarole",
+      "block": "andesite_sulfur_ore",
+      "host": "minecraft:andesite",
+      "xz": [
+        -8992,
+        -8648
+      ],
+      "radii": [
+        5,
+        2,
+        5
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 157,
+      "target_blocks": 189,
+      "profile": "G04",
+      "rationale": "V3東麓の安山岩中の化石噴気変質鉱化。活動する地熱地域ではない。",
+      "outcrop_xz": [
+        -9010,
+        -8636
+      ],
+      "outcrop_ground_y": 172,
+      "exposure_budget_blocks": 24,
+      "number": 9,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -9040,
+        -8696,
+        -8944,
+        -8600
+      ],
+      "historic_extracted_ore_equivalent": 756,
+      "mine_id": "M09"
+    },
+    {
+      "id": "sulfur_pyrite",
+      "block": "granite_pyrite_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -8260,
+        -9860
+      ],
+      "radii": [
+        5,
+        3,
+        5
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 227,
+      "target_blocks": 283,
+      "profile": "G05",
+      "rationale": "古い花崗岩質貫入に伴う黄鉄鉱脈。焙焼だけで単体硫黄を得るとはしない。",
+      "outcrop_xz": [
+        -8240,
+        -9876
+      ],
+      "outcrop_ground_y": 235,
+      "exposure_budget_blocks": 0,
+      "number": 10,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -8308,
+        -9908,
+        -8212,
+        -9812
+      ],
+      "historic_extracted_ore_equivalent": 2547,
+      "mine_id": "M10"
+    },
+    {
+      "id": "magnetite",
+      "block": "limestone_magnetite_ore",
+      "host": "limestone",
+      "xz": [
+        -8600,
+        -9630
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 200,
+      "target_blocks": 893,
+      "profile": "G06",
+      "rationale": "貫入岩と石灰岩の接触交代帯。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 11,
+      "deposit_type": "塊状型",
+      "shape_rule": "地質接触に従う不均一なレンズ。球・楕円体にせず枝と入り込みを持つ。",
+      "surface_clue": "局所的な金属鉱化の露頭と周囲母岩の接触",
+      "sample_bounds": [
+        -8648,
+        -9678,
+        -8552,
+        -9582
+      ],
+      "historic_extracted_ore_equivalent": 8037,
+      "mine_id": "M11"
+    },
+    {
+      "id": "lead",
+      "block": "limestone_galena_ore",
+      "host": "limestone",
+      "xz": [
+        -7040,
+        -9660
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 198,
+      "target_blocks": 896,
+      "profile": "G06",
+      "rationale": "湖L10より南側の古い炭酸塩岩中の置換鉱床。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 12,
+      "deposit_type": "塊状型",
+      "shape_rule": "地質接触に従う不均一なレンズ。球・楕円体にせず枝と入り込みを持つ。",
+      "surface_clue": "局所的な金属鉱化の露頭と周囲母岩の接触",
+      "sample_bounds": [
+        -7088,
+        -9708,
+        -6992,
+        -9612
+      ],
+      "historic_extracted_ore_equivalent": 8064,
+      "mine_id": "M12"
+    },
+    {
+      "id": "zinc",
+      "block": "limestone_sphalerite_ore",
+      "host": "limestone",
+      "xz": [
+        -6590,
+        -10010
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 177,
+      "target_blocks": 902,
+      "profile": "G06",
+      "rationale": "Pbと同じ古い炭酸塩岩帯の別の割れ目系。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 13,
+      "deposit_type": "塊状型",
+      "shape_rule": "地質接触に従う不均一なレンズ。球・楕円体にせず枝と入り込みを持つ。",
+      "surface_clue": "局所的な金属鉱化の露頭と周囲母岩の接触",
+      "sample_bounds": [
+        -6638,
+        -10058,
+        -6542,
+        -9962
+      ],
+      "historic_extracted_ore_equivalent": 8118,
+      "mine_id": "M13"
+    },
+    {
+      "id": "nickel",
+      "block": "peridotite_pentlandite_ore",
+      "host": "peridotite",
+      "xz": [
+        -12320,
+        -10880
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 162,
+      "target_blocks": 905,
+      "profile": "G02",
+      "rationale": "付加体中に取り込まれた超苦鉄質岩断片の硫化鉱。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 14,
+      "deposit_type": "塊状型",
+      "shape_rule": "地質接触に従う不均一なレンズ。球・楕円体にせず枝と入り込みを持つ。",
+      "surface_clue": "局所的な金属鉱化の露頭と周囲母岩の接触",
+      "sample_bounds": [
+        -12368,
+        -10928,
+        -12272,
+        -10832
+      ],
+      "historic_extracted_ore_equivalent": 8145,
+      "mine_id": "M14"
+    },
+    {
+      "id": "aluminium",
+      "block": "limestone_bauxite_ore",
+      "host": "limestone",
+      "xz": [
+        -3620,
+        -9310
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 94,
+      "target_blocks": 878,
+      "profile": "G06",
+      "rationale": "過去の温暖湿潤期のカルスト性風化残留鉱。現在の気候で生成中とはしない。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 15,
+      "deposit_type": "風化残留型",
+      "shape_rule": "石灰岩の古い侵食窪地の残留物。丸い帽子や水平な固定床にしない。",
+      "surface_clue": "石灰岩に接する風化残留の採取面",
+      "sample_bounds": [
+        -3668,
+        -9358,
+        -3572,
+        -9262
+      ],
+      "historic_extracted_ore_equivalent": 7902,
+      "mine_id": "M15"
+    },
+    {
+      "id": "titanium",
+      "block": "sandstone_rutile_ore",
+      "host": "minecraft:sandstone",
+      "xz": [
+        -4370,
+        -5200
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 89,
+      "target_blocks": 896,
+      "profile": "G09",
+      "rationale": "古い海岸砂の固結層。現在の黒色砂を資源化しない。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 16,
+      "deposit_type": "砂鉱床型（固結した古漂砂）",
+      "shape_rule": "旧堆積方向へ偏った屈曲砂層。現河床・黒色砂へ新しい資源を散布しない。",
+      "surface_clue": "固結砂岩の露出面の濃集帯。普通の黒色砂だけでは鉱床と断定できない",
+      "sample_bounds": [
+        -4418,
+        -5248,
+        -4322,
+        -5152
+      ],
+      "historic_extracted_ore_equivalent": 8064,
+      "mine_id": "M16"
+    },
+    {
+      "id": "chromium",
+      "block": "peridotite_chromite_ore",
+      "host": "peridotite",
+      "xz": [
+        -12000,
+        -10940
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 12,
+      "target_blocks": 902,
+      "profile": "G02",
+      "rationale": "別のかんらん岩スライスのクロム鉄鉱レンズ。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 17,
+      "deposit_type": "塊状型",
+      "shape_rule": "地質接触に従う不均一なレンズ。球・楕円体にせず枝と入り込みを持つ。",
+      "surface_clue": "局所的な金属鉱化の露頭と周囲母岩の接触",
+      "sample_bounds": [
+        -12048,
+        -10988,
+        -11952,
+        -10892
+      ],
+      "historic_extracted_ore_equivalent": 8118,
+      "mine_id": "M17"
+    },
+    {
+      "id": "manganese",
+      "block": "limestone_pyrolusite_ore",
+      "host": "limestone",
+      "xz": [
+        -2940,
+        -8880
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 112,
+      "target_blocks": 884,
+      "profile": "G06",
+      "rationale": "古い炭酸塩岩の風化・酸化を受けた鉱化部。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 18,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -2988,
+        -8928,
+        -2892,
+        -8832
+      ],
+      "historic_extracted_ore_equivalent": 7956,
+      "mine_id": "M18"
+    },
+    {
+      "id": "molybdenum",
+      "block": "granite_molybdenite_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -10850,
+        -11180
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 259,
+      "target_blocks": 643,
+      "profile": "G05",
+      "rationale": "北部の露出した貫入岩の石英細脈系。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 19,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -10898,
+        -11228,
+        -10802,
+        -11132
+      ],
+      "historic_extracted_ore_equivalent": 5787,
+      "mine_id": "M19"
+    },
+    {
+      "id": "tungsten",
+      "block": "limestone_scheelite_ore",
+      "host": "limestone",
+      "xz": [
+        -8240,
+        -9160
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 298,
+      "target_blocks": 878,
+      "profile": "G06",
+      "rationale": "花崗岩と石灰岩の接触帯。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 20,
+      "deposit_type": "塊状型",
+      "shape_rule": "地質接触に従う不均一なレンズ。球・楕円体にせず枝と入り込みを持つ。",
+      "surface_clue": "局所的な金属鉱化の露頭と周囲母岩の接触",
+      "sample_bounds": [
+        -8288,
+        -9208,
+        -8192,
+        -9112
+      ],
+      "historic_extracted_ore_equivalent": 7902,
+      "mine_id": "M20"
+    },
+    {
+      "id": "uranium",
+      "block": "granite_uraninite_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -5920,
+        -12020
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 309,
+      "target_blocks": 905,
+      "profile": "G05",
+      "rationale": "北東隆起山地の古い花崗岩・ペグマタイト。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 21,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -5968,
+        -12068,
+        -5872,
+        -11972
+      ],
+      "historic_extracted_ore_equivalent": 8145,
+      "mine_id": "M21"
+    },
+    {
+      "id": "phosphate",
+      "block": "limestone_apatite_ore",
+      "host": "limestone",
+      "xz": [
+        -1970,
+        -10080
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 118,
+      "target_blocks": 896,
+      "profile": "G06",
+      "rationale": "古い海成堆積層の燐灰石濃集層。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 22,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -2018,
+        -10128,
+        -1922,
+        -10032
+      ],
+      "historic_extracted_ore_equivalent": 8064,
+      "mine_id": "M22"
+    },
+    {
+      "id": "graphite",
+      "block": "gneiss_graphite_ore",
+      "host": "gneiss",
+      "xz": [
+        -8240,
+        -6690
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 154,
+      "target_blocks": 896,
+      "profile": "G03",
+      "rationale": "炭質堆積岩の変成に由来する片麻岩帯。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 23,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -8288,
+        -6738,
+        -8192,
+        -6642
+      ],
+      "historic_extracted_ore_equivalent": 8064,
+      "mine_id": "M23"
+    },
+    {
+      "id": "lithium",
+      "block": "granite_spodumene_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -9660,
+        -11420
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 245,
+      "target_blocks": 801,
+      "profile": "G05",
+      "rationale": "分化した花崗岩のペグマタイト。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 24,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -9708,
+        -11468,
+        -9612,
+        -11372
+      ],
+      "historic_extracted_ore_equivalent": 7209,
+      "mine_id": "M24"
+    },
+    {
+      "id": "cobalt",
+      "block": "quartzite_cobaltite_ore",
+      "host": "quartzite",
+      "xz": [
+        -7310,
+        -9380
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 136,
+      "target_blocks": 896,
+      "profile": "G03",
+      "rationale": "古い変成基盤中の鉱化層・変形脈。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 25,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -7358,
+        -9428,
+        -7262,
+        -9332
+      ],
+      "historic_extracted_ore_equivalent": 8064,
+      "mine_id": "M25"
+    },
+    {
+      "id": "rare_earth",
+      "block": "sandstone_monazite_ore",
+      "host": "minecraft:sandstone",
+      "xz": [
+        -3530,
+        -4340
+      ],
+      "radii": [
+        8,
+        3,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 56,
+      "target_blocks": 878,
+      "profile": "G09",
+      "rationale": "古い海岸堆積層の固結した重鉱物砂。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 26,
+      "deposit_type": "砂鉱床型（固結した古漂砂）",
+      "shape_rule": "旧堆積方向へ偏った屈曲砂層。現河床・黒色砂へ新しい資源を散布しない。",
+      "surface_clue": "固結砂岩の露出面の濃集帯。普通の黒色砂だけでは鉱床と断定できない",
+      "sample_bounds": [
+        -3578,
+        -4388,
+        -3482,
+        -4292
+      ],
+      "historic_extracted_ore_equivalent": 7902,
+      "mine_id": "M26"
+    },
+    {
+      "id": "peat",
+      "block": "peat",
+      "host": "shale",
+      "xz": [
+        -4200,
+        -13800
+      ],
+      "radii": [
+        12,
+        2,
+        8
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 114,
+      "target_blocks": 1440,
+      "profile": "G11",
+      "rationale": "北部低地縁の埋没した小さな泥炭レンズ。頁岩母岩への集約はゲーム用。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 27,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -4248,
+        -13848,
+        -4152,
+        -13752
+      ],
+      "historic_extracted_ore_equivalent": 5760,
+      "mine_id": "M27"
+    },
+    {
+      "id": "lignite",
+      "block": "lignite",
+      "host": "shale",
+      "xz": [
+        -6150,
+        -9160
+      ],
+      "radii": [
+        12,
+        2,
+        8
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 218,
+      "target_blocks": 1431,
+      "profile": "G07",
+      "rationale": "背弧の含炭堆積層、瀝青炭とは別層。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 28,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -6198,
+        -9208,
+        -6102,
+        -9112
+      ],
+      "historic_extracted_ore_equivalent": 27189,
+      "mine_id": "M28"
+    },
+    {
+      "id": "anthracite",
+      "block": "anthracite",
+      "host": "shale",
+      "xz": [
+        -11020,
+        -9350
+      ],
+      "radii": [
+        12,
+        2,
+        8
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": 93,
+      "target_blocks": 1424,
+      "profile": "G07",
+      "rationale": "前弧の古い含炭層が変形・熱を受けた部分。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 29,
+      "deposit_type": "層状型",
+      "shape_rule": "傾き・褶曲・尖滅を持つ層の残部。平行な定厚板を避ける。",
+      "surface_clue": "層の露出窓と、断続する同じ岩相の採掘面",
+      "sample_bounds": [
+        -11068,
+        -9398,
+        -10972,
+        -9302
+      ],
+      "historic_extracted_ore_equivalent": 27056,
+      "mine_id": "M29"
+    },
+    {
+      "id": "oil_light_low_sulfur",
+      "block": "light_low_sulfur_crude_oil",
+      "host": "minecraft:sandstone",
+      "xz": [
+        -5630,
+        -9110
+      ],
+      "radii": [
+        7,
+        2,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": -36,
+      "target_blocks": 655,
+      "profile": "G08",
+      "rationale": "砂岩貯留層と頁岩封止の小さな層位/構造トラップ。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 30,
+      "deposit_type": "油層（六型の対象外）",
+      "shape_rule": "頁岩で封止された砂岩貯留層。仮想化は未承認。",
+      "surface_clue": "自然の油漏れは新設しない。D5の廃井・封止跡を候補地域の手掛かりとする",
+      "sample_bounds": [
+        -5678,
+        -9158,
+        -5582,
+        -9062
+      ],
+      "historic_extracted_ore_equivalent": null,
+      "mine_id": "W30"
+    },
+    {
+      "id": "oil_light_high_sulfur",
+      "block": "light_high_sulfur_crude_oil",
+      "host": "minecraft:sandstone",
+      "xz": [
+        -4180,
+        -9530
+      ],
+      "radii": [
+        7,
+        2,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": -40,
+      "target_blocks": 655,
+      "profile": "G08",
+      "rationale": "砂岩貯留層と頁岩封止の小さな層位/構造トラップ。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 31,
+      "deposit_type": "油層（六型の対象外）",
+      "shape_rule": "頁岩で封止された砂岩貯留層。仮想化は未承認。",
+      "surface_clue": "自然の油漏れは新設しない。D5の廃井・封止跡を候補地域の手掛かりとする",
+      "sample_bounds": [
+        -4228,
+        -9578,
+        -4132,
+        -9482
+      ],
+      "historic_extracted_ore_equivalent": null,
+      "mine_id": "W31"
+    },
+    {
+      "id": "oil_heavy_low_sulfur",
+      "block": "heavy_low_sulfur_crude_oil",
+      "host": "minecraft:sandstone",
+      "xz": [
+        -5530,
+        -5170
+      ],
+      "radii": [
+        7,
+        2,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": -44,
+      "target_blocks": 655,
+      "profile": "G08",
+      "rationale": "砂岩貯留層と頁岩封止の小さな層位/構造トラップ。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 32,
+      "deposit_type": "油層（六型の対象外）",
+      "shape_rule": "頁岩で封止された砂岩貯留層。仮想化は未承認。",
+      "surface_clue": "自然の油漏れは新設しない。D5の廃井・封止跡を候補地域の手掛かりとする",
+      "sample_bounds": [
+        -5578,
+        -5218,
+        -5482,
+        -5122
+      ],
+      "historic_extracted_ore_equivalent": null,
+      "mine_id": "W32"
+    },
+    {
+      "id": "oil_heavy_high_sulfur",
+      "block": "heavy_high_sulfur_crude_oil",
+      "host": "minecraft:sandstone",
+      "xz": [
+        -3210,
+        -8660
+      ],
+      "radii": [
+        7,
+        2,
+        6
+      ],
+      "required": false,
+      "vanilla": null,
+      "center_y": -32,
+      "target_blocks": 655,
+      "profile": "G08",
+      "rationale": "砂岩貯留層と頁岩封止の小さな層位/構造トラップ。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 33,
+      "deposit_type": "油層（六型の対象外）",
+      "shape_rule": "頁岩で封止された砂岩貯留層。仮想化は未承認。",
+      "surface_clue": "自然の油漏れは新設しない。D5の廃井・封止跡を候補地域の手掛かりとする",
+      "sample_bounds": [
+        -3258,
+        -8708,
+        -3162,
+        -8612
+      ],
+      "historic_extracted_ore_equivalent": null,
+      "mine_id": "W33"
+    },
+    {
+      "id": "vanilla_iron",
+      "block": "minecraft:iron_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -6070,
+        -11480
+      ],
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "required": false,
+      "vanilla": true,
+      "center_y": 141,
+      "target_blocks": 23,
+      "profile": "G05",
+      "rationale": "旧版のバニラ互換局所枠。実在の花崗岩鉱床の成因を主張しないゲーム用例外。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 34,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -6118,
+        -11528,
+        -6022,
+        -11432
+      ],
+      "historic_extracted_ore_equivalent": 92,
+      "mine_id": "M34"
+    },
+    {
+      "id": "vanilla_copper",
+      "block": "minecraft:copper_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -5760,
+        -11130
+      ],
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "required": false,
+      "vanilla": true,
+      "center_y": 196,
+      "target_blocks": 32,
+      "profile": "G05",
+      "rationale": "旧版のバニラ互換局所枠。実在の花崗岩鉱床の成因を主張しないゲーム用例外。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 35,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -5808,
+        -11178,
+        -5712,
+        -11082
+      ],
+      "historic_extracted_ore_equivalent": 128,
+      "mine_id": "M35"
+    },
+    {
+      "id": "vanilla_gold",
+      "block": "minecraft:gold_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -5580,
+        -11720
+      ],
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "required": false,
+      "vanilla": true,
+      "center_y": 275,
+      "target_blocks": 33,
+      "profile": "G05",
+      "rationale": "旧版のバニラ互換局所枠。実在の花崗岩鉱床の成因を主張しないゲーム用例外。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 36,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -5628,
+        -11768,
+        -5532,
+        -11672
+      ],
+      "historic_extracted_ore_equivalent": 132,
+      "mine_id": "M36"
+    },
+    {
+      "id": "vanilla_redstone",
+      "block": "minecraft:redstone_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -9020,
+        -7620
+      ],
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "required": false,
+      "vanilla": true,
+      "center_y": 314,
+      "target_blocks": 22,
+      "profile": "G05",
+      "rationale": "旧版のバニラ互換局所枠。実在の花崗岩鉱床の成因を主張しないゲーム用例外。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 37,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -9068,
+        -7668,
+        -8972,
+        -7572
+      ],
+      "historic_extracted_ore_equivalent": 88,
+      "mine_id": "M37"
+    },
+    {
+      "id": "vanilla_lapis",
+      "block": "minecraft:lapis_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -6130,
+        -11860
+      ],
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "required": false,
+      "vanilla": true,
+      "center_y": 218,
+      "target_blocks": 23,
+      "profile": "G05",
+      "rationale": "旧版のバニラ互換局所枠。実在の花崗岩鉱床の成因を主張しないゲーム用例外。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 38,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -6178,
+        -11908,
+        -6082,
+        -11812
+      ],
+      "historic_extracted_ore_equivalent": 92,
+      "mine_id": "M38"
+    },
+    {
+      "id": "vanilla_diamond",
+      "block": "minecraft:diamond_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -11710,
+        -10580
+      ],
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "required": false,
+      "vanilla": true,
+      "center_y": 177,
+      "target_blocks": 33,
+      "profile": "G05",
+      "rationale": "旧版のバニラ互換局所枠。実在の花崗岩鉱床の成因を主張しないゲーム用例外。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 39,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -11758,
+        -10628,
+        -11662,
+        -10532
+      ],
+      "historic_extracted_ore_equivalent": 132,
+      "mine_id": "M39"
+    },
+    {
+      "id": "vanilla_emerald",
+      "block": "minecraft:emerald_ore",
+      "host": "minecraft:granite",
+      "xz": [
+        -8740,
+        -7100
+      ],
+      "radii": [
+        2,
+        2,
+        2
+      ],
+      "required": false,
+      "vanilla": true,
+      "center_y": 154,
+      "target_blocks": 23,
+      "profile": "G05",
+      "rationale": "旧版のバニラ互換局所枠。実在の花崗岩鉱床の成因を主張しないゲーム用例外。",
+      "outcrop_ground_y": null,
+      "exposure_budget_blocks": 0,
+      "number": 40,
+      "deposit_type": "鉱脈型",
+      "shape_rule": "屈曲・分岐・膨縮する脈。採掘済み中央を避け壁際の残脈に連続。",
+      "surface_clue": "母岩の割れ目に沿う露頭・変色と、同じ鉱物を含む既存ブロックの短い連続帯",
+      "sample_bounds": [
+        -8788,
+        -7148,
+        -8692,
+        -7052
+      ],
+      "historic_extracted_ore_equivalent": 92,
+      "mine_id": "M40"
+    }
+  ],
+  "cave": {
+    "id": "fixed_cave",
+    "profile": "G06",
+    "entrance": [
+      -8000,
+      -8720
+    ],
+    "axis": [
+      [
+        -8000,
+        -8720
+      ],
+      [
+        -8040,
+        -8735
+      ],
+      [
+        -8090,
+        -8722
+      ],
+      [
+        -8140,
+        -8770
+      ],
+      [
+        -8210,
+        -8752
+      ],
+      [
+        -8260,
+        -8800
+      ]
+    ],
+    "branches": [
+      [
+        [
+          -8090,
+          -8722
+        ],
+        [
+          -8110,
+          -8680
+        ],
+        [
+          -8160,
+          -8668
+        ]
+      ],
+      [
+        [
+          -8210,
+          -8752
+        ],
+        [
+          -8220,
+          -8800
+        ]
+      ]
+    ],
+    "full_width_B": [
+      3,
+      9
+    ],
+    "height_B": [
+      3,
+      7
+    ],
+    "minimum_roof_B": 12,
+    "floor_rule": "入口は実地表-1から始め、内部へ最大1/8で下る。最初64Bの自然開口部以外は天井厚12B以上。幅2B以上・頭上2B以上の連続した乾いた踏面を確保。",
+    "active_water": false,
+    "portal_transition_B": 64,
+    "formation_reference_y": 240,
+    "formation_limestone_thickness_B": [
+      100,
+      140
+    ],
+    "floor_y": [
+      177,
+      175,
+      173,
+      171,
+      169,
+      166
+    ],
+    "axis_length_B": 310.1,
+    "branch_floor_y": [
+      [
+        173,
+        172,
+        171
+      ],
+      [
+        169,
+        167
+      ]
+    ],
+    "axis_full_width_B": [
+      3,
+      5,
+      7,
+      5,
+      9,
+      6
+    ],
+    "axis_height_B": [
+      3,
+      4,
+      6,
+      5,
+      7,
+      4
+    ],
+    "plan_curve": "Catmull-Rom、制御点を通る。平面は64標本/区間、床は同じ区間パラメータで連続補間。",
+    "curve_lengths_B": [
+      310.1,
+      99.0,
+      49.0
+    ],
+    "curve_envelope_roof_min_B": 24.84,
+    "curve_max_grade": 0.0908,
+    "control_chords_length_B": 305.3,
+    "sample_bounds": [
+      -8460,
+      -9020,
+      -7800,
+      -8500
+    ]
+  },
+  "registered_pairs": [
+    {
+      "block": "quartzite_hematite_ore",
+      "name": "珪岩中の赤鉄鉱鉱石",
+      "host": "ashen_frontier:quartzite",
+      "hardness": 3,
+      "recovery": "raw_hematite",
+      "used_by": [
+        "mining_iron"
+      ],
+      "source_key": "banded_iron",
+      "source_url": "https://pubs.usgs.gov/pp/0440w/report.pdf"
+    },
+    {
+      "block": "limestone_hematite_ore",
+      "name": "石灰岩中の赤鉄鉱鉱石",
+      "host": "ashen_frontier:limestone",
+      "hardness": 1.5,
+      "recovery": "raw_hematite",
+      "used_by": [],
+      "source_key": "iron_skarn",
+      "source_url": "https://pubs.usgs.gov/of/1998/0219a/pdf/of98-219a.pdf"
+    },
+    {
+      "block": "limestone_magnetite_ore",
+      "name": "石灰岩中の磁鉄鉱鉱石",
+      "host": "ashen_frontier:limestone",
+      "hardness": 1.5,
+      "recovery": "raw_magnetite",
+      "used_by": [
+        "magnetite"
+      ],
+      "source_key": "iron_skarn",
+      "source_url": "https://pubs.usgs.gov/of/1998/0219a/pdf/of98-219a.pdf"
+    },
+    {
+      "block": "peridotite_magnetite_ore",
+      "name": "かんらん岩中の磁鉄鉱鉱石",
+      "host": "ashen_frontier:peridotite",
+      "hardness": 3,
+      "recovery": "raw_magnetite",
+      "used_by": [],
+      "source_key": "ultramafic",
+      "source_url": "https://doi.org/10.1029/2007GC001617"
+    },
+    {
+      "block": "granite_chalcopyrite_ore",
+      "name": "花崗岩中の黄銅鉱鉱石",
+      "host": "minecraft:granite",
+      "hardness": 1.5,
+      "recovery": "raw_chalcopyrite",
+      "used_by": [
+        "mining_copper"
+      ],
+      "source_key": "porphyry",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull5m0l.htm"
+    },
+    {
+      "block": "andesite_chalcopyrite_ore",
+      "name": "安山岩中の黄銅鉱鉱石",
+      "host": "minecraft:andesite",
+      "hardness": 1.5,
+      "recovery": "raw_chalcopyrite",
+      "used_by": [],
+      "source_key": "porphyry",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull5m0l.htm"
+    },
+    {
+      "block": "granite_cassiterite_ore",
+      "name": "花崗岩中の錫石鉱石",
+      "host": "minecraft:granite",
+      "hardness": 1.5,
+      "recovery": "raw_cassiterite",
+      "used_by": [
+        "mining_tin"
+      ],
+      "source_key": "greisen",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull217y.htm"
+    },
+    {
+      "block": "limestone_cassiterite_ore",
+      "name": "石灰岩中の錫石鉱石",
+      "host": "ashen_frontier:limestone",
+      "hardness": 1.5,
+      "recovery": "raw_cassiterite",
+      "used_by": [],
+      "source_key": "tin_skarn",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/Md14b.pdf"
+    },
+    {
+      "block": "limestone_galena_ore",
+      "name": "石灰岩中の方鉛鉱鉱石",
+      "host": "ashen_frontier:limestone",
+      "hardness": 1.5,
+      "recovery": "raw_galena",
+      "used_by": [
+        "lead"
+      ],
+      "source_key": "carbonate_zinc",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull3bvy.htm"
+    },
+    {
+      "block": "limestone_sphalerite_ore",
+      "name": "石灰岩中の閃亜鉛鉱鉱石",
+      "host": "ashen_frontier:limestone",
+      "hardness": 1.5,
+      "recovery": "raw_sphalerite",
+      "used_by": [
+        "zinc"
+      ],
+      "source_key": "carbonate_zinc",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull3bvy.htm"
+    },
+    {
+      "block": "peridotite_pentlandite_ore",
+      "name": "かんらん岩中のペントランド鉱鉱石",
+      "host": "ashen_frontier:peridotite",
+      "hardness": 3,
+      "recovery": "raw_pentlandite",
+      "used_by": [
+        "nickel"
+      ],
+      "source_key": "ultramafic",
+      "source_url": "https://doi.org/10.1029/2007GC001617"
+    },
+    {
+      "block": "limestone_bauxite_ore",
+      "name": "石灰岩中のボーキサイト鉱石",
+      "host": "ashen_frontier:limestone",
+      "hardness": 1.5,
+      "recovery": "raw_bauxite",
+      "used_by": [
+        "aluminium"
+      ],
+      "source_key": "bauxite",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull20dh.htm"
+    },
+    {
+      "block": "sandstone_rutile_ore",
+      "name": "砂岩中のルチル鉱石",
+      "host": "minecraft:sandstone",
+      "hardness": 0.8,
+      "recovery": "raw_rutile",
+      "used_by": [
+        "titanium"
+      ],
+      "source_key": "placer",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull3pke.htm"
+    },
+    {
+      "block": "peridotite_chromite_ore",
+      "name": "かんらん岩中のクロム鉄鉱鉱石",
+      "host": "ashen_frontier:peridotite",
+      "hardness": 3,
+      "recovery": "raw_chromite",
+      "used_by": [
+        "chromium"
+      ],
+      "source_key": "chromite",
+      "source_url": "https://pubs.usgs.gov/sir/2010/5070/e/pdf/sir2010-5070e_LR.pdf"
+    },
+    {
+      "block": "limestone_pyrolusite_ore",
+      "name": "石灰岩中の軟マンガン鉱鉱石",
+      "host": "ashen_frontier:limestone",
+      "hardness": 1.5,
+      "recovery": "raw_pyrolusite",
+      "used_by": [
+        "manganese"
+      ],
+      "source_key": "manganese",
+      "source_url": "https://pubs.usgs.gov/bul/0979b/report.pdf"
+    },
+    {
+      "block": "granite_molybdenite_ore",
+      "name": "花崗岩中の輝水鉛鉱鉱石",
+      "host": "minecraft:granite",
+      "hardness": 1.5,
+      "recovery": "raw_molybdenite",
+      "used_by": [
+        "molybdenum"
+      ],
+      "source_key": "greisen",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull217y.htm"
+    },
+    {
+      "block": "limestone_scheelite_ore",
+      "name": "石灰岩中の灰重石鉱石",
+      "host": "ashen_frontier:limestone",
+      "hardness": 1.5,
+      "recovery": "raw_scheelite",
+      "used_by": [
+        "tungsten"
+      ],
+      "source_key": "tungsten_skarn",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/Md14a.pdf"
+    },
+    {
+      "block": "gneiss_uraninite_ore",
+      "name": "片麻岩中の閃ウラン鉱鉱石",
+      "host": "ashen_frontier:gneiss",
+      "hardness": 2.5,
+      "recovery": "raw_uraninite",
+      "used_by": [],
+      "source_key": "uranium",
+      "source_url": "https://www.usgs.gov/publications/occurrence-disseminated-uraninite-wheeler-basin-grand-county-colorado"
+    },
+    {
+      "block": "granite_uraninite_ore",
+      "name": "花崗岩中の閃ウラン鉱鉱石",
+      "host": "minecraft:granite",
+      "hardness": 1.5,
+      "recovery": "raw_uraninite",
+      "used_by": [
+        "uranium"
+      ],
+      "source_key": "uranium_pegmatite",
+      "source_url": "https://pubs.usgs.gov/bul/1064/report.pdf"
+    },
+    {
+      "block": "limestone_apatite_ore",
+      "name": "石灰岩中の燐灰石鉱石",
+      "host": "ashen_frontier:limestone",
+      "hardness": 1.5,
+      "recovery": "raw_apatite",
+      "used_by": [
+        "phosphate"
+      ],
+      "source_key": "phosphate",
+      "source_url": "https://pubs.usgs.gov/sir/2017/5118/sir20175118_element.php?el=15"
+    },
+    {
+      "block": "andesite_sulfur_ore",
+      "name": "安山岩中の硫黄鉱石",
+      "host": "minecraft:andesite",
+      "hardness": 1.5,
+      "recovery": "raw_sulfur",
+      "used_by": [
+        "sulfur_fumarole"
+      ],
+      "source_key": "sulfur",
+      "source_url": "https://pubs.usgs.gov/of/1983/0474/report.pdf"
+    },
+    {
+      "block": "clay_sediment_nitrate_ore",
+      "name": "粘土質堆積物中の硝石鉱石",
+      "host": "ashen_frontier:clay_sediment",
+      "hardness": 0.6,
+      "recovery": "raw_nitrate",
+      "used_by": [
+        "arid_nitrate"
+      ],
+      "source_key": "nitrate",
+      "source_url": "https://www.usgs.gov/publications/chemistry-mineralogy-and-origin-clay-hill-nitrate-deposits-amargosa-river-valley-death"
+    },
+    {
+      "block": "gneiss_graphite_ore",
+      "name": "片麻岩中の黒鉛鉱石",
+      "host": "ashen_frontier:gneiss",
+      "hardness": 2.5,
+      "recovery": "raw_graphite",
+      "used_by": [
+        "graphite"
+      ],
+      "source_key": "graphite",
+      "source_url": "https://pubs.usgs.gov/bul/b2123/midpro.html"
+    },
+    {
+      "block": "quartzite_quartz_ore",
+      "name": "珪岩中の石英鉱石",
+      "host": "ashen_frontier:quartzite",
+      "hardness": 3,
+      "recovery": "raw_quartz",
+      "used_by": [],
+      "source_key": "silica",
+      "source_url": "https://pubs.usgs.gov/sir/2016/5089/a/sir20165089a.pdf"
+    },
+    {
+      "block": "sandstone_quartz_ore",
+      "name": "砂岩中の石英鉱石",
+      "host": "minecraft:sandstone",
+      "hardness": 0.8,
+      "recovery": "raw_quartz",
+      "used_by": [
+        "coastal_silica"
+      ],
+      "source_key": "silica",
+      "source_url": "https://pubs.usgs.gov/sir/2016/5089/a/sir20165089a.pdf"
+    },
+    {
+      "block": "granite_spodumene_ore",
+      "name": "花崗岩中のリチア輝石鉱石",
+      "host": "minecraft:granite",
+      "hardness": 1.5,
+      "recovery": "raw_spodumene",
+      "used_by": [
+        "lithium"
+      ],
+      "source_key": "spodumene",
+      "source_url": "https://gq.mines.gouv.qc.ca/lexique-stratigraphique/province-du-superieur/suite-de-spodumene_en/"
+    },
+    {
+      "block": "quartzite_cobaltite_ore",
+      "name": "珪岩中の輝コバルト鉱鉱石",
+      "host": "ashen_frontier:quartzite",
+      "hardness": 3,
+      "recovery": "raw_cobaltite",
+      "used_by": [
+        "cobalt"
+      ],
+      "source_key": "cobalt",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull49bp.htm"
+    },
+    {
+      "block": "sandstone_monazite_ore",
+      "name": "砂岩中のモナザイト鉱石",
+      "host": "minecraft:sandstone",
+      "hardness": 0.8,
+      "recovery": "raw_monazite",
+      "used_by": [
+        "rare_earth"
+      ],
+      "source_key": "placer",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull3pke.htm"
+    },
+    {
+      "block": "shale_pyrite_ore",
+      "name": "頁岩中の黄鉄鉱鉱石",
+      "host": "ashen_frontier:shale",
+      "hardness": 1,
+      "recovery": "raw_pyrite",
+      "used_by": [],
+      "source_key": "pyrite",
+      "source_url": "https://www.nature.com/articles/s41598-021-97022-y"
+    },
+    {
+      "block": "granite_pyrite_ore",
+      "name": "花崗岩中の黄鉄鉱鉱石",
+      "host": "minecraft:granite",
+      "hardness": 1.5,
+      "recovery": "raw_pyrite",
+      "used_by": [
+        "sulfur_pyrite"
+      ],
+      "source_key": "greisen",
+      "source_url": "https://pubs.usgs.gov/bul/b1693/html/bull217y.htm"
+    }
+  ],
+  "notes": "Nは旧文明の採掘後の残存実ブロック数。人工採掘場跡はD5。深度の25m換算や仮想資源は含めない。",
+  "d5_mines": [
+    {
+      "id": "M01",
+      "deposit_id": "mining_iron",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "大規模地下",
+      "axis_x_z_floor_y": [
+        [
+          -8060,
+          -9260,
+          174
+        ],
+        [
+          -7990,
+          -9225,
+          178
+        ],
+        [
+          -7900,
+          -9200,
+          182
+        ],
+        [
+          -7810,
+          -9178,
+          178
+        ],
+        [
+          -7700,
+          -9205,
+          169
+        ]
+      ],
+      "full_width_B": [
+        28,
+        42,
+        35,
+        55,
+        32
+      ],
+      "height_B": [
+        20,
+        28,
+        22,
+        32,
+        24
+      ]
+    },
+    {
+      "id": "M02",
+      "deposit_id": "mining_copper",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -8456,
+          -10034,
+          198
+        ],
+        [
+          -8433,
+          -10028,
+          200
+        ],
+        [
+          -8420,
+          -10020,
+          201
+        ],
+        [
+          -8396,
+          -10007,
+          199
+        ],
+        [
+          -8377,
+          -10013,
+          196
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M03",
+      "deposit_id": "mining_coal",
+      "owner": "D5",
+      "method": "層に沿う残柱式採掘跡",
+      "scale": "大規模地下",
+      "axis_x_z_floor_y": [
+        [
+          -6760,
+          -9500,
+          185
+        ],
+        [
+          -6640,
+          -9470,
+          188
+        ],
+        [
+          -6520,
+          -9420,
+          190
+        ],
+        [
+          -6380,
+          -9440,
+          186
+        ],
+        [
+          -6230,
+          -9370,
+          181
+        ]
+      ],
+      "full_width_B": [
+        32,
+        48,
+        40,
+        62,
+        38
+      ],
+      "height_B": [
+        8,
+        12,
+        9,
+        14,
+        10
+      ]
+    },
+    {
+      "id": "M04",
+      "deposit_id": "mining_tin",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -8896,
+          -10194,
+          198
+        ],
+        [
+          -8873,
+          -10188,
+          200
+        ],
+        [
+          -8860,
+          -10180,
+          201
+        ],
+        [
+          -8836,
+          -10167,
+          199
+        ],
+        [
+          -8817,
+          -10173,
+          196
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M05",
+      "deposit_id": "mining_limestone",
+      "owner": "D5",
+      "method": "露天採掘跡と短い横坑",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -7136,
+          -8874,
+          148
+        ],
+        [
+          -7113,
+          -8868,
+          150
+        ],
+        [
+          -7100,
+          -8860,
+          151
+        ],
+        [
+          -7076,
+          -8847,
+          149
+        ],
+        [
+          -7057,
+          -8853,
+          146
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M06",
+      "deposit_id": "agriculture_clay",
+      "owner": "D5",
+      "method": "浅い採取跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -5396,
+          -8374,
+          108
+        ],
+        [
+          -5373,
+          -8368,
+          110
+        ],
+        [
+          -5360,
+          -8360,
+          111
+        ],
+        [
+          -5336,
+          -8347,
+          109
+        ],
+        [
+          -5317,
+          -8353,
+          106
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "M07",
+      "deposit_id": "arid_nitrate",
+      "owner": "D5",
+      "method": "浅い採取跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -8226,
+          -5524,
+          134
+        ],
+        [
+          -8203,
+          -5518,
+          136
+        ],
+        [
+          -8190,
+          -5510,
+          137
+        ],
+        [
+          -8166,
+          -5497,
+          135
+        ],
+        [
+          -8147,
+          -5503,
+          132
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "M08",
+      "deposit_id": "coastal_silica",
+      "owner": "D5",
+      "method": "露天採掘跡と短い横坑",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -4136,
+          -4714,
+          76
+        ],
+        [
+          -4113,
+          -4708,
+          78
+        ],
+        [
+          -4100,
+          -4700,
+          79
+        ],
+        [
+          -4076,
+          -4687,
+          77
+        ],
+        [
+          -4057,
+          -4693,
+          74
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M09",
+      "deposit_id": "sulfur_fumarole",
+      "owner": "D5",
+      "method": "浅い採取跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -9028,
+          -8662,
+          153
+        ],
+        [
+          -9005,
+          -8656,
+          155
+        ],
+        [
+          -8992,
+          -8648,
+          156
+        ],
+        [
+          -8968,
+          -8635,
+          154
+        ],
+        [
+          -8949,
+          -8641,
+          151
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "M10",
+      "deposit_id": "sulfur_pyrite",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -8296,
+          -9874,
+          213
+        ],
+        [
+          -8273,
+          -9868,
+          215
+        ],
+        [
+          -8260,
+          -9860,
+          216
+        ],
+        [
+          -8236,
+          -9847,
+          214
+        ],
+        [
+          -8217,
+          -9853,
+          211
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M11",
+      "deposit_id": "magnetite",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -8636,
+          -9644,
+          186
+        ],
+        [
+          -8613,
+          -9638,
+          188
+        ],
+        [
+          -8600,
+          -9630,
+          189
+        ],
+        [
+          -8576,
+          -9617,
+          187
+        ],
+        [
+          -8557,
+          -9623,
+          184
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M12",
+      "deposit_id": "lead",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -7076,
+          -9674,
+          184
+        ],
+        [
+          -7053,
+          -9668,
+          186
+        ],
+        [
+          -7040,
+          -9660,
+          187
+        ],
+        [
+          -7016,
+          -9647,
+          185
+        ],
+        [
+          -6997,
+          -9653,
+          182
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M13",
+      "deposit_id": "zinc",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -6626,
+          -10024,
+          163
+        ],
+        [
+          -6603,
+          -10018,
+          165
+        ],
+        [
+          -6590,
+          -10010,
+          166
+        ],
+        [
+          -6566,
+          -9997,
+          164
+        ],
+        [
+          -6547,
+          -10003,
+          161
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M14",
+      "deposit_id": "nickel",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "大規模地下",
+      "axis_x_z_floor_y": [
+        [
+          -12530,
+          -10980,
+          119
+        ],
+        [
+          -12440,
+          -10905,
+          128
+        ],
+        [
+          -12320,
+          -10880,
+          136
+        ],
+        [
+          -12215,
+          -10920,
+          125
+        ],
+        [
+          -12120,
+          -10870,
+          111
+        ]
+      ],
+      "full_width_B": [
+        22,
+        34,
+        29,
+        45,
+        26
+      ],
+      "height_B": [
+        28,
+        40,
+        38,
+        48,
+        32
+      ]
+    },
+    {
+      "id": "M15",
+      "deposit_id": "aluminium",
+      "owner": "D5",
+      "method": "露天採掘跡と短い横坑",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -3656,
+          -9324,
+          89
+        ],
+        [
+          -3633,
+          -9318,
+          91
+        ],
+        [
+          -3620,
+          -9310,
+          92
+        ],
+        [
+          -3596,
+          -9297,
+          90
+        ],
+        [
+          -3577,
+          -9303,
+          87
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M16",
+      "deposit_id": "titanium",
+      "owner": "D5",
+      "method": "露天採掘跡と短い横坑",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -4406,
+          -5214,
+          84
+        ],
+        [
+          -4383,
+          -5208,
+          86
+        ],
+        [
+          -4370,
+          -5200,
+          87
+        ],
+        [
+          -4346,
+          -5187,
+          85
+        ],
+        [
+          -4327,
+          -5193,
+          82
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M17",
+      "deposit_id": "chromium",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -12036,
+          -10954,
+          -2
+        ],
+        [
+          -12013,
+          -10948,
+          0
+        ],
+        [
+          -12000,
+          -10940,
+          1
+        ],
+        [
+          -11976,
+          -10927,
+          -1
+        ],
+        [
+          -11957,
+          -10933,
+          -4
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M18",
+      "deposit_id": "manganese",
+      "owner": "D5",
+      "method": "露天採掘跡と短い横坑",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -2976,
+          -8894,
+          107
+        ],
+        [
+          -2953,
+          -8888,
+          109
+        ],
+        [
+          -2940,
+          -8880,
+          110
+        ],
+        [
+          -2916,
+          -8867,
+          108
+        ],
+        [
+          -2897,
+          -8873,
+          105
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M19",
+      "deposit_id": "molybdenum",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -10886,
+          -11194,
+          245
+        ],
+        [
+          -10863,
+          -11188,
+          247
+        ],
+        [
+          -10850,
+          -11180,
+          248
+        ],
+        [
+          -10826,
+          -11167,
+          246
+        ],
+        [
+          -10807,
+          -11173,
+          243
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M20",
+      "deposit_id": "tungsten",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -8276,
+          -9174,
+          284
+        ],
+        [
+          -8253,
+          -9168,
+          286
+        ],
+        [
+          -8240,
+          -9160,
+          287
+        ],
+        [
+          -8216,
+          -9147,
+          285
+        ],
+        [
+          -8197,
+          -9153,
+          282
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M21",
+      "deposit_id": "uranium",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -5956,
+          -12034,
+          295
+        ],
+        [
+          -5933,
+          -12028,
+          297
+        ],
+        [
+          -5920,
+          -12020,
+          298
+        ],
+        [
+          -5896,
+          -12007,
+          296
+        ],
+        [
+          -5877,
+          -12013,
+          293
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M22",
+      "deposit_id": "phosphate",
+      "owner": "D5",
+      "method": "露天採掘跡と短い横坑",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -2006,
+          -10094,
+          113
+        ],
+        [
+          -1983,
+          -10088,
+          115
+        ],
+        [
+          -1970,
+          -10080,
+          116
+        ],
+        [
+          -1946,
+          -10067,
+          114
+        ],
+        [
+          -1927,
+          -10073,
+          111
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M23",
+      "deposit_id": "graphite",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -8276,
+          -6704,
+          140
+        ],
+        [
+          -8253,
+          -6698,
+          142
+        ],
+        [
+          -8240,
+          -6690,
+          143
+        ],
+        [
+          -8216,
+          -6677,
+          141
+        ],
+        [
+          -8197,
+          -6683,
+          138
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M24",
+      "deposit_id": "lithium",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -9696,
+          -11434,
+          231
+        ],
+        [
+          -9673,
+          -11428,
+          233
+        ],
+        [
+          -9660,
+          -11420,
+          234
+        ],
+        [
+          -9636,
+          -11407,
+          232
+        ],
+        [
+          -9617,
+          -11413,
+          229
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M25",
+      "deposit_id": "cobalt",
+      "owner": "D5",
+      "method": "脈・レンズ沿いの採掘室と充填跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -7346,
+          -9394,
+          122
+        ],
+        [
+          -7323,
+          -9388,
+          124
+        ],
+        [
+          -7310,
+          -9380,
+          125
+        ],
+        [
+          -7286,
+          -9367,
+          123
+        ],
+        [
+          -7267,
+          -9373,
+          120
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M26",
+      "deposit_id": "rare_earth",
+      "owner": "D5",
+      "method": "露天採掘跡と短い横坑",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -3566,
+          -4354,
+          51
+        ],
+        [
+          -3543,
+          -4348,
+          53
+        ],
+        [
+          -3530,
+          -4340,
+          54
+        ],
+        [
+          -3506,
+          -4327,
+          52
+        ],
+        [
+          -3487,
+          -4333,
+          49
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M27",
+      "deposit_id": "peat",
+      "owner": "D5",
+      "method": "浅い採取跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -4236,
+          -13814,
+          110
+        ],
+        [
+          -4213,
+          -13808,
+          112
+        ],
+        [
+          -4200,
+          -13800,
+          113
+        ],
+        [
+          -4176,
+          -13787,
+          111
+        ],
+        [
+          -4157,
+          -13793,
+          108
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "M28",
+      "deposit_id": "lignite",
+      "owner": "D5",
+      "method": "層に沿う残柱式採掘跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -6186,
+          -9174,
+          204
+        ],
+        [
+          -6163,
+          -9168,
+          206
+        ],
+        [
+          -6150,
+          -9160,
+          207
+        ],
+        [
+          -6126,
+          -9147,
+          205
+        ],
+        [
+          -6107,
+          -9153,
+          202
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "M29",
+      "deposit_id": "anthracite",
+      "owner": "D5",
+      "method": "層に沿う残柱式採掘跡",
+      "scale": "中小規模",
+      "axis_x_z_floor_y": [
+        [
+          -11056,
+          -9364,
+          79
+        ],
+        [
+          -11033,
+          -9358,
+          81
+        ],
+        [
+          -11020,
+          -9350,
+          82
+        ],
+        [
+          -10996,
+          -9337,
+          80
+        ],
+        [
+          -10977,
+          -9343,
+          77
+        ]
+      ],
+      "full_width_B": [
+        5,
+        11,
+        8,
+        15,
+        7
+      ],
+      "height_B": [
+        4,
+        7,
+        5,
+        8,
+        4
+      ]
+    },
+    {
+      "id": "W30",
+      "deposit_id": "oil_light_low_sulfur",
+      "owner": "D5",
+      "method": "廃井・封止済み小油層",
+      "scale": "廃井のみ",
+      "axis_x_z_floor_y": [],
+      "full_width_B": [],
+      "height_B": []
+    },
+    {
+      "id": "W31",
+      "deposit_id": "oil_light_high_sulfur",
+      "owner": "D5",
+      "method": "廃井・封止済み小油層",
+      "scale": "廃井のみ",
+      "axis_x_z_floor_y": [],
+      "full_width_B": [],
+      "height_B": []
+    },
+    {
+      "id": "W32",
+      "deposit_id": "oil_heavy_low_sulfur",
+      "owner": "D5",
+      "method": "廃井・封止済み小油層",
+      "scale": "廃井のみ",
+      "axis_x_z_floor_y": [],
+      "full_width_B": [],
+      "height_B": []
+    },
+    {
+      "id": "W33",
+      "deposit_id": "oil_heavy_high_sulfur",
+      "owner": "D5",
+      "method": "廃井・封止済み小油層",
+      "scale": "廃井のみ",
+      "axis_x_z_floor_y": [],
+      "full_width_B": [],
+      "height_B": []
+    },
+    {
+      "id": "M34",
+      "deposit_id": "vanilla_iron",
+      "owner": "D5",
+      "method": "局所的な試掘跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -6106,
+          -11494,
+          136
+        ],
+        [
+          -6083,
+          -11488,
+          138
+        ],
+        [
+          -6070,
+          -11480,
+          139
+        ],
+        [
+          -6046,
+          -11467,
+          137
+        ],
+        [
+          -6027,
+          -11473,
+          134
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "M35",
+      "deposit_id": "vanilla_copper",
+      "owner": "D5",
+      "method": "局所的な試掘跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -5796,
+          -11144,
+          191
+        ],
+        [
+          -5773,
+          -11138,
+          193
+        ],
+        [
+          -5760,
+          -11130,
+          194
+        ],
+        [
+          -5736,
+          -11117,
+          192
+        ],
+        [
+          -5717,
+          -11123,
+          189
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "M36",
+      "deposit_id": "vanilla_gold",
+      "owner": "D5",
+      "method": "局所的な試掘跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -5616,
+          -11734,
+          270
+        ],
+        [
+          -5593,
+          -11728,
+          272
+        ],
+        [
+          -5580,
+          -11720,
+          273
+        ],
+        [
+          -5556,
+          -11707,
+          271
+        ],
+        [
+          -5537,
+          -11713,
+          268
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "M37",
+      "deposit_id": "vanilla_redstone",
+      "owner": "D5",
+      "method": "局所的な試掘跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -9056,
+          -7634,
+          309
+        ],
+        [
+          -9033,
+          -7628,
+          311
+        ],
+        [
+          -9020,
+          -7620,
+          312
+        ],
+        [
+          -8996,
+          -7607,
+          310
+        ],
+        [
+          -8977,
+          -7613,
+          307
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "M38",
+      "deposit_id": "vanilla_lapis",
+      "owner": "D5",
+      "method": "局所的な試掘跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -6166,
+          -11874,
+          213
+        ],
+        [
+          -6143,
+          -11868,
+          215
+        ],
+        [
+          -6130,
+          -11860,
+          216
+        ],
+        [
+          -6106,
+          -11847,
+          214
+        ],
+        [
+          -6087,
+          -11853,
+          211
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "M39",
+      "deposit_id": "vanilla_diamond",
+      "owner": "D5",
+      "method": "局所的な試掘跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -11746,
+          -10594,
+          172
+        ],
+        [
+          -11723,
+          -10588,
+          174
+        ],
+        [
+          -11710,
+          -10580,
+          175
+        ],
+        [
+          -11686,
+          -10567,
+          173
+        ],
+        [
+          -11667,
+          -10573,
+          170
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    },
+    {
+      "id": "M40",
+      "deposit_id": "vanilla_emerald",
+      "owner": "D5",
+      "method": "局所的な試掘跡",
+      "scale": "局所採取",
+      "axis_x_z_floor_y": [
+        [
+          -8776,
+          -7114,
+          149
+        ],
+        [
+          -8753,
+          -7108,
+          151
+        ],
+        [
+          -8740,
+          -7100,
+          152
+        ],
+        [
+          -8716,
+          -7087,
+          150
+        ],
+        [
+          -8697,
+          -7093,
+          147
+        ]
+      ],
+      "full_width_B": [
+        3,
+        6,
+        4,
+        7,
+        3
+      ],
+      "height_B": [
+        2,
+        3,
+        3,
+        4,
+        2
+      ]
+    }
+  ]
+}

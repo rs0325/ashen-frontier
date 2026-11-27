@@ -19,6 +19,7 @@ public final class FixedMapData {
     private static final int SIZE = 2048;
     private final short[] heights;
     private final byte[][] categories;
+    private final byte[] geologyIds;
     private final short[] waterSurface;
     private final boolean[] protectedArea;
     private final float[] coastDistance;
@@ -50,6 +51,7 @@ public final class FixedMapData {
     private final JsonObject geology;
     private final long seed;
     private final TerrainBasis basis;
+    private final TerrainDetails details;
     private final HydrologyTerrain hydrology;
     private final FixedMapData background;
 
@@ -66,7 +68,8 @@ public final class FixedMapData {
             basis = new TerrainBasis(version);
             var previous = require(basis.background);
             background = previous;
-            hydrology = new HydrologyTerrain(version,previous);
+            details = new TerrainDetails(version,previous.seed);
+            hydrology = new HydrologyTerrain(version,previous,details);
             heights = previous.heights;
             categories = previous.categories;
             waterSurface = previous.waterSurface;
@@ -96,10 +99,32 @@ public final class FixedMapData {
             seed = previous.seed;
             terminationJoin = previous.terminationJoin;
             terminationTransition = previous.terminationTransition;
-            geology = previous.geology;
+            String root = "/data/ashen_frontier/fixed_map/" + version.mapVersion() + "/";
+            try {
+                if (json(root+"manifest.json").get("stage").getAsString().equals("D4")) {
+                    geology=json(root+"geology_profiles.json");
+                    geologyIds=new byte[SIZE*SIZE];
+                    try(var stream=FixedMapData.class.getResourceAsStream(root+"geology.png")) {
+                        var image=ImageIO.read(stream);
+                        if(image==null || image.getWidth()!=SIZE || image.getHeight()!=SIZE
+                                || image.getRaster().getNumBands()!=1 || image.getSampleModel().getSampleSize(0)!=8)
+                            throw new IllegalStateException("D4の地質ラスターが不正です");
+                        var raster=image.getRaster();
+                        for(int z=0;z<SIZE;z++)for(int x=0;x<SIZE;x++)geologyIds[z*SIZE+x]=(byte)raster.getSample(x,z,0);
+                        image.flush();
+                    }
+                } else {
+                    geology=previous.geology;
+                    geologyIds=null;
+                }
+            } catch(IOException error) {
+                throw new IllegalStateException("D4の地質を読めません: "+version.mapVersion(),error);
+            }
             return;
         }
+        geologyIds = null;
         basis = null;
+        details = null;
         hydrology = null;
         background = null;
         heights = new short[SIZE * SIZE];
@@ -635,6 +660,7 @@ public final class FixedMapData {
     JsonObject geology() { return geology.deepCopy(); }
 
     TerrainBasis basis() { return basis; }
+    TerrainDetails details() { return details; }
     FixedMapData background() { return background; }
 
     /** 物理的な地形区分。旧版・海・他大陸は0。31～40はD1では予約分類だけ。 */
@@ -685,6 +711,7 @@ public final class FixedMapData {
         return new Boundary(region,soil,dry,cold);
     }
     int category(int layer, int x, int z) {
+        if(layer==3 && geologyIds!=null)return MapCoordinates.contains(x,z)?Byte.toUnsignedInt(geologyIds[at(x,z)]):0;
         if (basis != null && basis.contains(x,z)) return layer == 0 ? 255 : layer == 4 ? 1 : 0;
         return MapCoordinates.contains(x, z) ? Byte.toUnsignedInt(categories[layer][at(x, z)]) : 0;
     }

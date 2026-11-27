@@ -25,8 +25,9 @@ public final class FixedTerrain {
                            double gx, double gz, List<Fault> faults) {}
     private final FixedMapData map;
     private final Profile basisProfile;
+    private final TerrainDetails details;
     private final FixedTerrain backgroundTerrain;
-    private final Profile[] profiles = new Profile[6];
+    private final Profile[] profiles;
     private final BlockState[] soils = new BlockState[4];
     private final FixedContamination contamination;
     private final BlockState[] waters = new BlockState[9];
@@ -43,6 +44,7 @@ public final class FixedTerrain {
 
     public FixedTerrain(MapVersion version) {
         map = FixedMapData.require(version);
+        details=map.details();
         basisProfile = map.basis() == null ? null : new Profile(List.of(), Blocks.STONE.defaultBlockState(),0,null,0,0,0,0,List.of());
         backgroundTerrain = map.basis() == null ? null : new FixedTerrain(map.basis().background);
         contamination = new FixedContamination(map);
@@ -65,6 +67,7 @@ public final class FixedTerrain {
                 Blocks.COBBLESTONE.defaultBlockState()};
         var geology = map.geology();
         islandReferenceY = geology.get("island_reference_y").getAsDouble();
+        profiles=new Profile[1+geology.getAsJsonObject("profiles").keySet().stream().mapToInt(Integer::parseInt).max().orElseThrow()];
         String salt = geology.get("thickness_salt").getAsString();
         for (var entry : geology.getAsJsonObject("profiles").entrySet()) {
             var profile = entry.getValue().getAsJsonObject();
@@ -119,7 +122,8 @@ public final class FixedTerrain {
 
     /** 地面の基準Y。地面の上の雪層・水面を含めず、範囲外は−65。 */
     public int surfaceY(int x, int z) {
-        return surfaceY(map, x, z);
+        int original=surfaceY(map,x,z);
+        return underground==null?original:underground.surface(x,z,original);
     }
 
     static int surfaceY(FixedMapData map, int x, int z) {
@@ -368,11 +372,32 @@ public final class FixedTerrain {
                 int next=map.waterSurface(x+direction.getStepX(),z+direction.getStepZ());
                 if(next!=Integer.MIN_VALUE)spill=Math.max(spill,next);
             }
-            // D3の雪氷制作までは新しい淡水を液面で示す。既存の海氷は引き継ぐ。
-            BlockState frozen=map.coastDistance(x,z)<0?backgroundTerrain.column(x,z).frozenWater:null;
-            return new Column(SoilContamination.CLEAN,ground,water,water==Integer.MIN_VALUE?null:riverGravel,
-                    waters[quality],new int[0],basisProfile,0,0,x,z,null,water==Integer.MIN_VALUE?0:2,null,
-                    575,false,null,0,0,0,1,frozen,575,false,spill);
+            double coast=map.coastDistance(x,z);
+            BlockState frozen=coast<0?backgroundTerrain.column(x,z).frozenWater:null;
+            var cover=details.cover(map,x,z,ground,water!=Integer.MIN_VALUE,coast);
+            BlockState cap=cover.layers()==0 || cover.powder()?null:Blocks.SNOW.defaultBlockState().setValue(SnowLayerBlock.LAYERS,cover.layers());
+            double patches=TerrainMath.noise(map.seed(),"d3_surface",x,z,48);
+            int landform=map.landformId(x+(int)((patches-.5)*48),z+(int)((.5-patches)*32));
+            BlockState material=cover.ice()>0?null:water!=Integer.MIN_VALUE?riverGravel:switch(landform) {
+                case 31,34,38 -> patches>.55?loess:silt;
+                case 32,40 -> Blocks.BASALT.defaultBlockState();
+                case 33 -> patches>.55?silt:riverGravel;
+                case 35,36 -> patches>.64?organicMud:silt;
+                case 37 -> patches>.65?talus:null;
+                case 39 -> patches>.7?talus:null;
+                default -> null;
+            };
+            if(cover.ice()==0 && water==Integer.MIN_VALUE && ground<245) {
+                if(details.outwash(x,z))material=riverGravel;
+                if(details.moraine(x,z))material=till;
+            }
+            boolean geological=underground.detailed() && map.basis().contains(x,z) && coast>=0;
+            var profile=geological?profiles[map.geologyProfile(x,z)]:basisProfile;
+            int[] boundaries=geological?geologyBoundaries(profile,x,z):new int[0];
+            var cell=underground.cell(x,z);
+            return new Column(SoilContamination.CLEAN,ground,water,material,
+                    waters[quality],boundaries,profile,cover.ice(),cover.snow(),x,z,cell,material==null?0:2,cap,
+                    ground+1,cover.powder(),null,0,0,0,1,frozen,575,false,spill);
         }
         if (backgroundTerrain != null) return backgroundTerrain.column(x,z);
         var relief = sampleSurface(map, x, z);
@@ -530,6 +555,19 @@ public final class FixedTerrain {
                 18+24*TerrainMath.noise(map.seed(),"rock_band_width",x,z,192), frozen, anchor == null ? 575 : (int) anchorY - 20, contactWeathered, spill);
     }
 
+    private int[] geologyBoundaries(Profile profile,int x,int z) {
+        double top=profile.referenceY+(x-profile.ax)*profile.gx+(z-profile.az)*profile.gz;
+        top+=TerrainMath.fbm(map.seed(),"d4_fold",x,z,840)*18
+                +TerrainMath.fbm(map.seed(),"d4_fold_local",x,z,310)*6;
+        int[] result=new int[profile.layers.size()];
+        for(int i=0;i<result.length;i++) {
+            var layer=profile.layers.get(i);
+            top-=layer.min+(layer.max-layer.min)*TerrainMath.noise(map.seed(),layer.salt,x,z,570+i*137);
+            result[i]=(int)Math.round(top);
+        }
+        return result;
+    }
+
     BlockState frozenWater(int quality, int x, int z, int water, int depth, int kind, double cold) {
         double latitude = Math.abs(MapCoordinates.latitude(z)) + TerrainMath.fbm(map.seed(), "freezing_edge", x, z, 384) * 1.5;
         return quality >= 4 && quality <= 8 && TerrainMath.freezes(latitude, water, depth, kind, cold)
@@ -621,6 +659,7 @@ public final class FixedTerrain {
         private final int x, z;
         private final FixedUnderground.Cell underground;
         private final int[] passageFloors;
+        private final FixedUnderground.Voxels voxels;
         private final int soilDepth;
         private final BlockState cover;
         private final int coverY;
@@ -649,6 +688,7 @@ public final class FixedTerrain {
             this.x = x;
             this.z = z;
             this.underground = underground;
+            voxels=FixedUnderground.voxels(underground,x,z);
             passageFloors = FixedUnderground.passageFloors(underground, x, z);
             this.soilDepth = soilDepth;
             this.cover = FixedUnderground.carved(passageFloors, coverY) ? null : cover;
@@ -677,6 +717,10 @@ public final class FixedTerrain {
             if (profile == null || y < -128 || y > 575 || y > topY()) return Blocks.AIR.defaultBlockState();
             if (y == -128) return Blocks.BEDROCK.defaultBlockState();
             if (FixedUnderground.carved(passageFloors, y)) return Blocks.AIR.defaultBlockState();
+            if(voxels!=null && y<=surface) {
+                var state=voxels.state(y,0);
+                if(state!=null && state.isAir())return state;
+            }
             if (y > surface) return frozenWater != null && y == waterY ? frozenWater : cover != null && y == coverY ? cover
                     : y>waterY ? water.setValue(LiquidBlock.LEVEL,8) : water;
             if (cover != null && y == coverY) return cover;
@@ -684,6 +728,10 @@ public final class FixedTerrain {
             if (snow > 0 && y > surface - snow) return Blocks.SNOW_BLOCK.defaultBlockState();
             int iceDepth = surface - snow + 1 - y;
             if (iceDepth >= 1 && iceDepth <= ice) return (iceDepth >= 4 ? Blocks.BLUE_ICE : Blocks.PACKED_ICE).defaultBlockState();
+            if(voxels!=null) {
+                var state=voxels.state(y,0);
+                if(state!=null)return state;
+            }
             if (soil != null && y > surface - soilDepth) return soil;
             var rock = rockState(y);
             return underground == null ? rock : FixedUnderground.state(underground, x, y, z, rock);
@@ -693,6 +741,10 @@ public final class FixedTerrain {
         public BlockState rockState(int y) {
             if (profile == null || y < -128 || y > surface) return Blocks.AIR.defaultBlockState();
             if (y == -128) return Blocks.BEDROCK.defaultBlockState();
+            if(voxels!=null) {
+                var host=voxels.state(y,1);
+                if(host!=null)return host;
+            }
             BlockState material=profile.basement;
             for (int i=0;i<boundaries.length;i++)if(y>boundaries[i]){material=profile.layers.get(i).rock;break;}
             if(facing!=null && (y>surface-3 || contactWeathered && geologyWeight<1 && y>contactFloor)) {
