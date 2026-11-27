@@ -18,6 +18,9 @@
     "ashen_frontier:archive_document": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:asphalt_fragment": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:bandage": {
       "mass_kg": 1.0
     },
@@ -28,6 +31,18 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:black_sand": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:brick_rubble": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:broken_concrete": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:broken_glass_window": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:broken_hollow_concrete": {
       "mass_kg": 1.0
     },
     "ashen_frontier:cable_fragment": {
@@ -69,6 +84,18 @@
     "ashen_frontier:clay_sediment_nitrate_ore": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:clear_glass_window": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:clouded_glass_window": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:coated_corrugated_steel_sheet": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:coated_steel_sheet": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:coil_winding": {
       "mass_kg": 1.0
     },
@@ -108,6 +135,9 @@
     "ashen_frontier:concrete_floor": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:concrete_rubble": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:concrete_slab": {
       "mass_kg": 1.0
     },
@@ -121,6 +151,9 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:copper_scrap": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:corroded_exposed_rebar": {
       "mass_kg": 1.0
     },
     "ashen_frontier:corroded_steel_cable_casing": {
@@ -150,7 +183,37 @@
     "ashen_frontier:corroded_steel_window": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:cracked_brickwork": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cracked_brickwork_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cracked_brickwork_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cracked_concrete": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cracked_concrete_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cracked_concrete_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cracked_glass_window": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:cracked_mud": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cracked_reinforced_concrete": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cracked_reinforced_concrete_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:cracked_reinforced_concrete_stairs": {
       "mass_kg": 1.0
     },
     "ashen_frontier:damaged_android_wreck": {
@@ -267,6 +330,9 @@
     "ashen_frontier:electronic_component": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:exposed_rebar": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:fallen_branch": {
       "mass_kg": 1.0
     },
@@ -367,6 +433,39 @@
     "ashen_frontier:insulation_wall": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:intact_asphalt": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:intact_brickwork": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:intact_brickwork_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:intact_brickwork_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:intact_concrete": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:intact_concrete_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:intact_concrete_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:intact_reinforced_concrete": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:intact_reinforced_concrete_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:intact_reinforced_concrete_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:intact_steel_beam": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:iron_scrap": {
       "mass_kg": 1.0
     },
@@ -436,6 +535,12 @@
     "ashen_frontier:pebble": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:perforated_corrugated_steel_sheet": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:perforated_steel_sheet": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:peridotite": {
       "mass_kg": 1.0
     },
@@ -449,6 +554,9 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:pipe_fragment": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:pitted_steel_beam": {
       "mass_kg": 1.0
     },
     "ashen_frontier:plant_fiber": {
@@ -482,6 +590,9 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:quartzite_quartz_ore": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:raveled_asphalt": {
       "mass_kg": 1.0
     },
     "ashen_frontier:raw_anthracite": {
@@ -576,6 +687,9 @@
     "ashen_frontier:reinforced_concrete_floor": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:reinforced_concrete_rubble": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:reinforced_concrete_slab": {
       "mass_kg": 1.0
     },
@@ -588,16 +702,34 @@
     "ashen_frontier:reinforced_concrete_window": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:remnant_corrugated_steel_sheet": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:remnant_steel_sheet": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:river_gravel": {
       "mass_kg": 1.0
     },
     "ashen_frontier:rock_salt": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:rotten_timber": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:rotten_timber_board": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:rubber_plant_propagule": {
       "mass_kg": 1.0
     },
     "ashen_frontier:rubber_plant_seed": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:rusted_corrugated_steel_sheet": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:rusted_steel_sheet": {
       "mass_kg": 1.0
     },
     "ashen_frontier:salvaged_battery": {
@@ -630,10 +762,16 @@
     "ashen_frontier:sealed_water_container": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:section_loss_steel_beam": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:seed_specimen": {
       "mass_kg": 1.0
     },
     "ashen_frontier:sensor": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:severely_spalled_reinforced_concrete": {
       "mass_kg": 1.0
     },
     "ashen_frontier:shale": {
@@ -675,10 +813,25 @@
     "ashen_frontier:slate": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:spalled_brickwork": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:spalled_reinforced_concrete": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:split_timber": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:split_timber_board": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:spring": {
       "mass_kg": 1.0
     },
     "ashen_frontier:stainless_steel_scrap": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:steel_rubble": {
       "mass_kg": 1.0
     },
     "ashen_frontier:steel_scrap": {
@@ -696,6 +849,9 @@
     "ashen_frontier:tidal_mud": {
       "mass_kg": 1.0
     },
+    "ashen_frontier:timber_rubble": {
+      "mass_kg": 1.0
+    },
     "ashen_frontier:titanium_scrap": {
       "mass_kg": 1.0
     },
@@ -709,6 +865,42 @@
       "mass_kg": 1.0
     },
     "ashen_frontier:valve": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_asphalt": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_brickwork": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_brickwork_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_brickwork_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_concrete": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_concrete_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_concrete_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_reinforced_concrete": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_reinforced_concrete_slab": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_reinforced_concrete_stairs": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_steel_beam": {
+      "mass_kg": 1.0
+    },
+    "ashen_frontier:weathered_timber": {
       "mass_kg": 1.0
     },
     "ashen_frontier:wood_scrap": {

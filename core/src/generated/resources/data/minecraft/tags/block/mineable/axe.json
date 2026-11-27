@@ -1,6 +1,12 @@
 {
   "replace": false,
   "values": [
+    "ashen_frontier:weathered_timber",
+    "ashen_frontier:split_timber",
+    "ashen_frontier:rotten_timber",
+    "ashen_frontier:split_timber_board",
+    "ashen_frontier:rotten_timber_board",
+    "ashen_frontier:timber_rubble",
     "ashen_frontier:dead_tree",
     "ashen_frontier:fallen_log"
   ]

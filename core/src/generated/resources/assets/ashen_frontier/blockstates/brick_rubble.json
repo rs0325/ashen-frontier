@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/brick_rubble_east"
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/brick_rubble"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/brick_rubble_south"
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/brick_rubble_west"
+    }
+  }
+}

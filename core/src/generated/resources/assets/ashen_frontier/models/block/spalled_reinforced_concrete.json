@@ -1,0 +1,201 @@
+{
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        0,
+        0,
+        5
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#all"
+        },
+        "east": {
+          "texture": "#all"
+        },
+        "north": {
+          "texture": "#all"
+        },
+        "south": {
+          "texture": "#all"
+        },
+        "up": {
+          "texture": "#all"
+        },
+        "west": {
+          "texture": "#all"
+        }
+      },
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        6,
+        10,
+        5
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#rebar"
+        },
+        "east": {
+          "texture": "#rebar"
+        },
+        "north": {
+          "texture": "#rebar"
+        },
+        "south": {
+          "texture": "#rebar"
+        },
+        "up": {
+          "texture": "#rebar"
+        },
+        "west": {
+          "texture": "#rebar"
+        }
+      },
+      "from": [
+        3,
+        1,
+        2
+      ],
+      "to": [
+        5,
+        16,
+        4
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#rebar"
+        },
+        "east": {
+          "texture": "#rebar"
+        },
+        "north": {
+          "texture": "#rebar"
+        },
+        "south": {
+          "texture": "#rebar"
+        },
+        "up": {
+          "texture": "#rebar"
+        },
+        "west": {
+          "texture": "#rebar"
+        }
+      },
+      "from": [
+        11,
+        0,
+        2
+      ],
+      "to": [
+        13,
+        16,
+        4
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#rebar"
+        },
+        "east": {
+          "texture": "#rebar"
+        },
+        "north": {
+          "texture": "#rebar"
+        },
+        "south": {
+          "texture": "#rebar"
+        },
+        "up": {
+          "texture": "#rebar"
+        },
+        "west": {
+          "texture": "#rebar"
+        }
+      },
+      "from": [
+        1,
+        4,
+        1
+      ],
+      "to": [
+        15,
+        6,
+        3
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#rebar"
+        },
+        "east": {
+          "texture": "#rebar"
+        },
+        "north": {
+          "texture": "#rebar"
+        },
+        "south": {
+          "texture": "#rebar"
+        },
+        "up": {
+          "texture": "#rebar"
+        },
+        "west": {
+          "texture": "#rebar"
+        }
+      },
+      "from": [
+        1,
+        12,
+        1
+      ],
+      "to": [
+        15,
+        14,
+        3
+      ]
+    }
+  ],
+  "textures": {
+    "all": "ashen_frontier:block/spalled_reinforced_concrete",
+    "particle": "ashen_frontier:block/spalled_reinforced_concrete",
+    "rebar": "ashen_frontier:block/exposed_rebar"
+  }
+}

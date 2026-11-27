@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/broken_hollow_concrete_east"
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/broken_hollow_concrete"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/broken_hollow_concrete_south"
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/broken_hollow_concrete_west"
+    }
+  }
+}

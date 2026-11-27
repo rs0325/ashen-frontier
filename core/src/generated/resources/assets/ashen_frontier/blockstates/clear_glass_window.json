@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/clear_glass_window_east"
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/clear_glass_window"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/clear_glass_window_south"
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/clear_glass_window_west"
+    }
+  }
+}

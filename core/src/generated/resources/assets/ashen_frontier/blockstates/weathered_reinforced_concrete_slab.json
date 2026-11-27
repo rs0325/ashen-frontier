@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "ashen_frontier:block/weathered_reinforced_concrete_slab"
+    },
+    "type=double": {
+      "model": "ashen_frontier:block/weathered_reinforced_concrete"
+    },
+    "type=top": {
+      "model": "ashen_frontier:block/weathered_reinforced_concrete_slab_top"
+    }
+  }
+}

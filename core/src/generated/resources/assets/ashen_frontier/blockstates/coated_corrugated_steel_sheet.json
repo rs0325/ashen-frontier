@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/coated_corrugated_steel_sheet_east"
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/coated_corrugated_steel_sheet"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/coated_corrugated_steel_sheet_south"
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/coated_corrugated_steel_sheet_west"
+    }
+  }
+}

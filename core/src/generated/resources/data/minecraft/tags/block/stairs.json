@@ -7,6 +7,15 @@
     "ashen_frontier:firebrick_stairs",
     "ashen_frontier:chemical_tile_stairs",
     "ashen_frontier:shielding_stairs",
-    "ashen_frontier:composite_stairs"
+    "ashen_frontier:composite_stairs",
+    "ashen_frontier:intact_reinforced_concrete_stairs",
+    "ashen_frontier:weathered_reinforced_concrete_stairs",
+    "ashen_frontier:cracked_reinforced_concrete_stairs",
+    "ashen_frontier:intact_concrete_stairs",
+    "ashen_frontier:weathered_concrete_stairs",
+    "ashen_frontier:cracked_concrete_stairs",
+    "ashen_frontier:intact_brickwork_stairs",
+    "ashen_frontier:weathered_brickwork_stairs",
+    "ashen_frontier:cracked_brickwork_stairs"
   ]
 }

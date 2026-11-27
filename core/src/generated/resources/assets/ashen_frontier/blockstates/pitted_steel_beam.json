@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "ashen_frontier:block/pitted_steel_beam_x"
+    },
+    "axis=y": {
+      "model": "ashen_frontier:block/pitted_steel_beam"
+    },
+    "axis=z": {
+      "model": "ashen_frontier:block/pitted_steel_beam_z"
+    }
+  }
+}

@@ -8,6 +8,15 @@
     "ashen_frontier:insulation_slab",
     "ashen_frontier:chemical_tile_slab",
     "ashen_frontier:shielding_slab",
-    "ashen_frontier:composite_slab"
+    "ashen_frontier:composite_slab",
+    "ashen_frontier:intact_reinforced_concrete_slab",
+    "ashen_frontier:weathered_reinforced_concrete_slab",
+    "ashen_frontier:cracked_reinforced_concrete_slab",
+    "ashen_frontier:intact_concrete_slab",
+    "ashen_frontier:weathered_concrete_slab",
+    "ashen_frontier:cracked_concrete_slab",
+    "ashen_frontier:intact_brickwork_slab",
+    "ashen_frontier:weathered_brickwork_slab",
+    "ashen_frontier:cracked_brickwork_slab"
   ]
 }

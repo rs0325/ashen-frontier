@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "ashen_frontier:block/split_timber_board_east"
+    },
+    "facing=north": {
+      "model": "ashen_frontier:block/split_timber_board"
+    },
+    "facing=south": {
+      "model": "ashen_frontier:block/split_timber_board_south"
+    },
+    "facing=west": {
+      "model": "ashen_frontier:block/split_timber_board_west"
+    }
+  }
+}

@@ -42,7 +42,7 @@ class NatureCatalogTest {
                 assertNotNull(RelicCatalog.require(entry.recovery()));
             }
         }
-        assertEquals(50, RelicCatalog.entries().stream().filter(e -> e.kind().equals("structure")).count());
+        assertEquals(114, RelicCatalog.entries().stream().filter(e -> e.kind().equals("structure")).count());
         assertEquals(32, RelicCatalog.entries().stream().filter(e -> e.kind().equals("equipment")).count());
         assertEquals(50, RelicCatalog.entries().stream().filter(e -> e.kind().equals("item")).count());
     }

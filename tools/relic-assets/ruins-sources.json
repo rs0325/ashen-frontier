@@ -1,0 +1,23 @@
+{
+  "status": "確定（ユーザー承認 2026-11-27）",
+  "generator": "組込みimage_gen.imagegen",
+  "source": "ruins-source-atlas.png",
+  "source_sha256": "85a9091117d111fb23b3b285a1e5d045e26c22d933f9abbab3cba41fb1864e8c",
+  "prompt": "ruins-prompt.txt",
+  "reference": "既存tools/relic-assets/preview.pngの承認時の質感を参照",
+  "external_assets": false,
+  "license": "リポジトリのMIT",
+  "processing": [
+    "generate.py",
+    "ruins.py"
+  ],
+  "texture_size": [
+    16,
+    16
+  ],
+  "original_grid": [
+    8,
+    5
+  ],
+  "proposal_prompts": "ruins-proposal-prompts.md"
+}
