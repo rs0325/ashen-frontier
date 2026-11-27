@@ -29,7 +29,7 @@ final class TerrainBasis {
              var metadata = TerrainBasis.class.getResourceAsStream(root + "manifest.json")) {
             var manifest = JsonParser.parseString(new String(metadata.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
             if (LayoutJson.integer(manifest,"terrain_basis_schema_version") != 1
-                    || !manifest.get("stage").getAsString().equals("D3")
+                    || !List.of("D3", "D4").contains(manifest.get("stage").getAsString())
                     || !manifest.getAsJsonObject("files").has("landform.png"))
                 throw new IllegalStateException("骨格のmanifest・分類資産が不正です");
             if (LayoutJson.integer(manifest,"runtime_relief_version") != 1)

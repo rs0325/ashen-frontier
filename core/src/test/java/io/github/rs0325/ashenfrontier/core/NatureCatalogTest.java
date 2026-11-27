@@ -69,9 +69,26 @@ class NatureCatalogTest {
             if (entry.block()) json("assets/ashen_frontier/blockstates/" + id + ".json");
             if (entry.fluid()) {
                 var model = json("assets/ashen_frontier/models/block/" + id + ".json");
-                assertEquals("minecraft:block/water_still", model.getAsJsonObject("textures").get("particle").getAsString());
-                assertNull(getClass().getResource("/assets/ashen_frontier/textures/block/" + id + "_still.png"));
-                assertNull(getClass().getResource("/assets/ashen_frontier/textures/block/" + id + "_flow.png"));
+                if (entry.kind().equals("oil")) {
+                    assertEquals("ashen_frontier:block/" + id + "_still",
+                            model.getAsJsonObject("textures").get("particle").getAsString());
+                    for (String suffix : new String[]{"still", "flow"}) {
+                        var image = javax.imageio.ImageIO.read(resource(
+                                "assets/ashen_frontier/textures/block/" + id + "_" + suffix + ".png"));
+                        int size = suffix.equals("still") ? 16 : 32;
+                        assertEquals(size, image.getWidth());
+                        assertEquals(size, image.getHeight());
+                        for (int y = 0; y < size; y++) {
+                            for (int x = 0; x < size; x++) {
+                                assertEquals(255, image.getRGB(x, y) >>> 24, id + " " + suffix);
+                            }
+                        }
+                    }
+                } else {
+                    assertEquals("minecraft:block/water_still", model.getAsJsonObject("textures").get("particle").getAsString());
+                    assertNull(getClass().getResource("/assets/ashen_frontier/textures/block/" + id + "_still.png"));
+                    assertNull(getClass().getResource("/assets/ashen_frontier/textures/block/" + id + "_flow.png"));
+                }
                 continue;
             }
             assertTrue(materials.has("ashen_frontier:" + id), id);

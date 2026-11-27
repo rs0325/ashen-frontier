@@ -110,7 +110,8 @@ public final class NatureDataProvider implements DataProvider {
                 save(writes, output, "assets/ashen_frontier/blockstates/" + id,
                         "{\"variants\":{\"\":{\"model\":\"ashen_frontier:block/" + id + "\"}}}");
                 save(writes, output, "assets/ashen_frontier/models/block/" + id,
-                        "{\"textures\":{\"particle\":\"minecraft:block/water_still\"}}");
+                        "{\"textures\":{\"particle\":\"" + (entry.kind().equals("oil")
+                                ? "ashen_frontier:block/" + id + "_still" : "minecraft:block/water_still") + "\"}}");
             } else {
                 if (entry.layer()) {
                     sedimentLayer(writes, output, entry);

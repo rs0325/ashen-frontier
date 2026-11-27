@@ -376,18 +376,22 @@ def generate_assets(input_dir, output):
     geology=json.loads((background/'geology_profiles.json').read_text(encoding='utf-8'));geology['map_version']='earth_002'
     write_json(output/'geology_profiles.json',geology)
     write_json(output/'underground.json',{'map_version':'earth_002','format_version':1,'fixed_seed':520026,'salt':'earth_002_basis','deposits':[],'spaces':[]})
+    from generate_geology import generate as generate_geology
+    generate_geology(input_dir,output)
+    index=json.loads((output/'index.json').read_text(encoding='utf-8'))
+    layers['geology']=np.array(Image.open(output/'geology.png'))
     base=json.loads((background/'manifest.json').read_text(encoding='utf-8'))
     names=(*RESOURCE_FILES,'landform.png','landform.json','hydrology.json',*WATER_ASSETS)
     base.update(map_version='earth_002',landform_schema_version=1,hydrology_schema_version=1,
-                terrain_basis_schema_version=1,runtime_relief_version=1,stage='D3',
+                terrain_basis_schema_version=1,runtime_relief_version=1,stage='D4',geology_profile_version='geology_003',
                 background_manifest_sha256=sha(background/'manifest.json'),
                 inputs={p.name:sha(p) for p in sorted(input_dir.iterdir()) if p.is_file()},
                 files={name:sha(output/name) for name in names})
-    base['tool']={'version':'2.0.0-D3','files':{f'tools/fixed-map/{name}':sha(Path(__file__).parent/name)
-        for name in ['generate_basis.py','detail_relief.py','generate_hydrology.py','generate.py','layout_contract.py']}}
+    base['tool']={'version':'2.0.0-D4','files':{f'tools/fixed-map/{name}':sha(Path(__file__).parent/name)
+        for name in ['generate_basis.py','generate_geology.py','detail_relief.py','generate_hydrology.py','generate.py','layout_contract.py']}}
     sampler='modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/TerrainBasis.java'
     base['tool']['files'][sampler]=sha(ROOT/sampler)
-    for name in ['HydrologyTerrain.java','HydrologyNoise.java','FixedTerrain.java','TerrainDetails.java','FixedMapData.java']:
+    for name in ['HydrologyTerrain.java','HydrologyNoise.java','FixedTerrain.java','FixedUnderground.java','UndergroundLayout.java','BundledMaps.java','TerrainBasis.java','TerrainDetails.java','FixedMapData.java']:
         path='modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/'+name
         base['tool']['files'][path]=sha(ROOT/path)
     write_json(output/'manifest.json',base)

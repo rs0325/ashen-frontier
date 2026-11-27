@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "profile_version": "geology_002",
+  "profile_version": "geology_003",
   "catalog": {
     "version": 1,
     "commit": "d033a41789694242f619d327b04062509dad7720",
@@ -20,8 +20,8 @@
   },
   "layer_order": "top_to_bottom",
   "thickness_unit": "minecraft_block",
-  "bottom_y": -63,
-  "bedrock_y": -64,
+  "bottom_y": -127,
+  "bedrock_y": -128,
   "thickness_salt": "geology_thickness",
   "notes": "層順・厚さ範囲・傾斜・断層は架空地形の制作値。実在の地層や現実の厚さを復元する値ではない。鉱床の母岩との対応・鉱物・埋蔵量はE（#54）が確定する。",
   "source_catalog": "docs/nature-catalog.md",
@@ -301,6 +301,479 @@
       },
       "faults": [],
       "reference_y": 96
+    },
+    "6": {
+      "name": "付加体・褶曲堆積岩",
+      "layers_top_to_bottom": [
+        {
+          "id": "G01_0",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            14,
+            30
+          ]
+        },
+        {
+          "id": "G01_1",
+          "rock": "ashen_frontier:slate",
+          "thickness_blocks": [
+            20,
+            44
+          ]
+        },
+        {
+          "id": "G01_2",
+          "rock": "ashen_frontier:quartzite",
+          "thickness_blocks": [
+            12,
+            26
+          ]
+        }
+      ],
+      "basement": "ashen_frontier:gneiss",
+      "reference_y": 340,
+      "dip": {
+        "anchor_xz": [
+          -12600,
+          -11000
+        ],
+        "gradient_xz": [
+          0.012,
+          0.006
+        ]
+      },
+      "faults": []
+    },
+    "7": {
+      "name": "付加体内の超苦鉄質岩スライス",
+      "layers_top_to_bottom": [
+        {
+          "id": "G02_0",
+          "rock": "ashen_frontier:peridotite",
+          "thickness_blocks": [
+            24,
+            60
+          ]
+        }
+      ],
+      "basement": "ashen_frontier:peridotite",
+      "reference_y": 260,
+      "dip": {
+        "anchor_xz": [
+          -12320,
+          -10880
+        ],
+        "gradient_xz": [
+          0.018,
+          -0.009
+        ]
+      },
+      "faults": []
+    },
+    "8": {
+      "name": "古い変成基盤",
+      "layers_top_to_bottom": [
+        {
+          "id": "G03_0",
+          "rock": "ashen_frontier:gneiss",
+          "thickness_blocks": [
+            24,
+            56
+          ]
+        },
+        {
+          "id": "G03_1",
+          "rock": "ashen_frontier:quartzite",
+          "thickness_blocks": [
+            12,
+            32
+          ]
+        },
+        {
+          "id": "G03_2",
+          "rock": "ashen_frontier:slate",
+          "thickness_blocks": [
+            10,
+            24
+          ]
+        }
+      ],
+      "basement": "ashen_frontier:gneiss",
+      "reference_y": 420,
+      "dip": {
+        "anchor_xz": [
+          -6300,
+          -12300
+        ],
+        "gradient_xz": [
+          -0.008,
+          0.011
+        ]
+      },
+      "faults": []
+    },
+    "9": {
+      "name": "火山弧の噴出岩被覆",
+      "layers_top_to_bottom": [
+        {
+          "id": "G04_0",
+          "rock": "minecraft:andesite",
+          "thickness_blocks": [
+            18,
+            44
+          ]
+        },
+        {
+          "id": "G04_1",
+          "rock": "minecraft:tuff",
+          "thickness_blocks": [
+            8,
+            26
+          ]
+        },
+        {
+          "id": "G04_2",
+          "rock": "minecraft:basalt",
+          "thickness_blocks": [
+            8,
+            22
+          ]
+        }
+      ],
+      "basement": "minecraft:diorite",
+      "reference_y": 470,
+      "dip": {
+        "anchor_xz": [
+          -9900,
+          -11400
+        ],
+        "gradient_xz": [
+          0.006,
+          0.009
+        ]
+      },
+      "faults": []
+    },
+    "10": {
+      "name": "花崗岩質貫入・変質域",
+      "layers_top_to_bottom": [
+        {
+          "id": "G05_0",
+          "rock": "minecraft:granite",
+          "thickness_blocks": [
+            32,
+            80
+          ]
+        }
+      ],
+      "basement": "minecraft:granite",
+      "reference_y": 300,
+      "dip": {
+        "anchor_xz": [
+          -8550,
+          -10060
+        ],
+        "gradient_xz": [
+          0.009,
+          -0.007
+        ]
+      },
+      "faults": []
+    },
+    "11": {
+      "name": "古い炭酸塩岩・接触帯",
+      "layers_top_to_bottom": [
+        {
+          "id": "G06_0",
+          "rock": "ashen_frontier:limestone",
+          "thickness_blocks": [
+            28,
+            64
+          ]
+        },
+        {
+          "id": "G06_1",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            8,
+            22
+          ]
+        },
+        {
+          "id": "G06_2",
+          "rock": "ashen_frontier:limestone",
+          "thickness_blocks": [
+            20,
+            40
+          ]
+        }
+      ],
+      "basement": "minecraft:granite",
+      "reference_y": 220,
+      "dip": {
+        "anchor_xz": [
+          -7100,
+          -8860
+        ],
+        "gradient_xz": [
+          -0.011,
+          0.005
+        ]
+      },
+      "faults": []
+    },
+    "12": {
+      "name": "含炭砕屑岩盆地",
+      "layers_top_to_bottom": [
+        {
+          "id": "G07_0",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            14,
+            28
+          ]
+        },
+        {
+          "id": "G07_1",
+          "rock": "minecraft:sandstone",
+          "thickness_blocks": [
+            12,
+            32
+          ]
+        },
+        {
+          "id": "G07_2",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            20,
+            44
+          ]
+        }
+      ],
+      "basement": "minecraft:stone",
+      "reference_y": 240,
+      "dip": {
+        "anchor_xz": [
+          -6520,
+          -9420
+        ],
+        "gradient_xz": [
+          0.006,
+          0.004
+        ]
+      },
+      "faults": []
+    },
+    "13": {
+      "name": "背弧の内陸堆積層",
+      "layers_top_to_bottom": [
+        {
+          "id": "G08_0",
+          "rock": "ashen_frontier:clay_sediment",
+          "thickness_blocks": [
+            3,
+            9
+          ]
+        },
+        {
+          "id": "G08_1",
+          "rock": "minecraft:sandstone",
+          "thickness_blocks": [
+            12,
+            30
+          ]
+        },
+        {
+          "id": "G08_2",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            16,
+            36
+          ]
+        },
+        {
+          "id": "G08_3",
+          "rock": "ashen_frontier:limestone",
+          "thickness_blocks": [
+            12,
+            28
+          ]
+        }
+      ],
+      "basement": "ashen_frontier:gneiss",
+      "reference_y": 160,
+      "dip": {
+        "anchor_xz": [
+          -4624,
+          -8112
+        ],
+        "gradient_xz": [
+          0.002,
+          0.003
+        ]
+      },
+      "faults": []
+    },
+    "14": {
+      "name": "海成・河口・古海岸堆積層",
+      "layers_top_to_bottom": [
+        {
+          "id": "G09_0",
+          "rock": "ashen_frontier:clay_sediment",
+          "thickness_blocks": [
+            3,
+            8
+          ]
+        },
+        {
+          "id": "G09_1",
+          "rock": "minecraft:sandstone",
+          "thickness_blocks": [
+            18,
+            36
+          ]
+        },
+        {
+          "id": "G09_2",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            16,
+            32
+          ]
+        }
+      ],
+      "basement": "minecraft:granite",
+      "reference_y": 112,
+      "dip": {
+        "anchor_xz": [
+          -4100,
+          -4700
+        ],
+        "gradient_xz": [
+          0.001,
+          -0.002
+        ]
+      },
+      "faults": []
+    },
+    "15": {
+      "name": "乾燥した古湖成・蒸発岩層",
+      "layers_top_to_bottom": [
+        {
+          "id": "G10_0",
+          "rock": "ashen_frontier:clay_sediment",
+          "thickness_blocks": [
+            4,
+            9
+          ]
+        },
+        {
+          "id": "G10_1",
+          "rock": "ashen_frontier:gypsum",
+          "thickness_blocks": [
+            4,
+            12
+          ]
+        },
+        {
+          "id": "G10_2",
+          "rock": "ashen_frontier:rock_salt",
+          "thickness_blocks": [
+            5,
+            14
+          ]
+        },
+        {
+          "id": "G10_3",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            10,
+            24
+          ]
+        }
+      ],
+      "basement": "minecraft:stone",
+      "reference_y": 155,
+      "dip": {
+        "anchor_xz": [
+          -8190,
+          -5510
+        ],
+        "gradient_xz": [
+          0.002,
+          -0.001
+        ]
+      },
+      "faults": []
+    },
+    "16": {
+      "name": "氷河性被覆と古い堆積基盤",
+      "layers_top_to_bottom": [
+        {
+          "id": "G11_0",
+          "rock": "ashen_frontier:clay_sediment",
+          "thickness_blocks": [
+            3,
+            8
+          ]
+        },
+        {
+          "id": "G11_1",
+          "rock": "ashen_frontier:shale",
+          "thickness_blocks": [
+            12,
+            26
+          ]
+        },
+        {
+          "id": "G11_2",
+          "rock": "minecraft:sandstone",
+          "thickness_blocks": [
+            10,
+            24
+          ]
+        }
+      ],
+      "basement": "ashen_frontier:gneiss",
+      "reference_y": 150,
+      "dip": {
+        "anchor_xz": [
+          -4200,
+          -13800
+        ],
+        "gradient_xz": [
+          0.001,
+          0.002
+        ]
+      },
+      "faults": []
+    },
+    "17": {
+      "name": "G06_C01 炭酸塩岩の局所層",
+      "system": "G06",
+      "layers_top_to_bottom": [
+        {
+          "id": "cave_limestone",
+          "rock": "ashen_frontier:limestone",
+          "thickness_blocks": [
+            100,
+            140
+          ]
+        }
+      ],
+      "basement": "ashen_frontier:gneiss",
+      "reference_y": 240,
+      "dip": {
+        "anchor_xz": [
+          -8000,
+          -8720
+        ],
+        "gradient_xz": [
+          -0.011,
+          0.005
+        ]
+      },
+      "faults": []
     }
   },
   "island_reference_y": 180,
