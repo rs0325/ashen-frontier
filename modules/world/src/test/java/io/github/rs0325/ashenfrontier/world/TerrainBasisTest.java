@@ -24,6 +24,15 @@ class TerrainBasisTest {
         assertFalse(map.isProtected(-8500,-8192));
     }
 
+    @Test void d1HighRidgesOutsideDetailsKeepBaselineRelief() throws Exception {
+        var basis=FixedMapData.require(version()).basis();
+        // 起点a0c38b5の実装と、制作域外の同じ標高標本で照合した値。
+        int[][] points={{-12779,-11897},{-12779,-11865},{-9099,-7737}};
+        double[] expected={503.71998891518336,498.8312253305417,498.3938502801584};
+        for(int i=0;i<points.length;i++)
+            assertEquals(expected[i],basis.height(points[i][0],points[i][1]),1e-8,"D1の高い稜線の起伏を変えない");
+    }
+
     @Test void interpolationDoesNotStepAtTileOrClassificationEdges() throws Exception {
         var map=FixedMapData.require(version());int checked=0;double maximum=0;int worstX=0,worstZ=0;boolean worstEast=false;
         for(int z=-14000;z<-2000;z+=32) for(int x=-13800;x<-1500;x+=32) {
@@ -105,7 +114,7 @@ class TerrainBasisTest {
         assertTrue(maximum<.8,"北斜面の細部を一方向の櫛に集中させない: "+maximum);
     }
 
-    private static double curvatureSpread(double[][] height) {
+    static double curvatureSpread(double[][] height) {
         double sum=0,squares=0;int count=0;
         for(int z=2;z<height.length-2;z++)for(int x=2;x<height[0].length-2;x++) {
             double value=height[z-2][x]+height[z+2][x]+height[z][x-2]+height[z][x+2]-4*height[z][x];

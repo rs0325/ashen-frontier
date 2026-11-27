@@ -318,11 +318,16 @@ def build(input_dir):
     height=np.where(height>500,500+20*np.tanh((height-500)/20),height)
     height=np.rint(height).astype(np.int16)
     classification[~mask]=0
-    # 細地形は予約分類だけ。標高・火山・雪氷・河道は後続Issueで制作する。
+    # 分類の包絡を先に確定し、細地形の面の上限の支持域を共有する。
     for u in units:
         if u['kind']=='detail':
             detail=np.array(polygon(u,mask.shape,int(x[0,0]),int(z[0,0])))>0
             classification[detail & mask]=u['id']
+    from detail_relief import build_details
+    hydro=json.loads((input_dir/'hydrology.json').read_text(encoding='utf-8'))
+    print("DETAIL_RELIEF_START",flush=True)
+    height,_=build_details(doc,hydro,height,x,z,mask,classification)
+    print("DETAIL_RELIEF_COMPLETE",flush=True)
     return labels,(y0,y1,x0,x1),height,classification,all_ridges,all_valleys
 
 
@@ -362,7 +367,11 @@ def generate_assets(input_dir, output):
     hydrology=json.loads((input_dir/'hydrology.json').read_text(encoding='utf-8'))
     index['water_bodies'] += [{'id':r['id'],'kind':'river','inventory_id':r['inventory_id'],'hydrology_reach':r['id']} for r in hydrology['reaches']]
     index['water_bodies'] += [{'id':l['id'],'kind':'lake','inventory_id':l['inventory_id'],'surface_y':l['surface_y'],'hydrology_lake':l['id']} for l in hydrology['lakes']]
-    index['metrics']['stage']='D2; 水系まで制作。細地形・雪氷・資源・施設は未制作'
+    from detail_relief import controls, dry_routes
+    detail_doc=json.loads((input_dir/'landform.json').read_text(encoding='utf-8'))
+    index['detail_controls']=[list(p) for p in controls(detail_doc)]
+    index['detail_dry_routes']=dry_routes(detail_doc)
+    index['metrics']['stage']='D3; 骨格・水系・細地形・静的雪氷。資源・施設は未制作'
     write_json(output/'index.json',index)
     geology=json.loads((background/'geology_profiles.json').read_text(encoding='utf-8'));geology['map_version']='earth_002'
     write_json(output/'geology_profiles.json',geology)
@@ -370,15 +379,15 @@ def generate_assets(input_dir, output):
     base=json.loads((background/'manifest.json').read_text(encoding='utf-8'))
     names=(*RESOURCE_FILES,'landform.png','landform.json','hydrology.json',*WATER_ASSETS)
     base.update(map_version='earth_002',landform_schema_version=1,hydrology_schema_version=1,
-                terrain_basis_schema_version=1,runtime_relief_version=1,stage='D2',
+                terrain_basis_schema_version=1,runtime_relief_version=1,stage='D3',
                 background_manifest_sha256=sha(background/'manifest.json'),
                 inputs={p.name:sha(p) for p in sorted(input_dir.iterdir()) if p.is_file()},
                 files={name:sha(output/name) for name in names})
-    base['tool']={'version':'2.0.0-D2','files':{f'tools/fixed-map/{name}':sha(Path(__file__).parent/name)
-        for name in ['generate_basis.py','generate_hydrology.py','generate.py','layout_contract.py']}}
+    base['tool']={'version':'2.0.0-D3','files':{f'tools/fixed-map/{name}':sha(Path(__file__).parent/name)
+        for name in ['generate_basis.py','detail_relief.py','generate_hydrology.py','generate.py','layout_contract.py']}}
     sampler='modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/TerrainBasis.java'
     base['tool']['files'][sampler]=sha(ROOT/sampler)
-    for name in ['HydrologyTerrain.java','HydrologyNoise.java','FixedTerrain.java']:
+    for name in ['HydrologyTerrain.java','HydrologyNoise.java','FixedTerrain.java','TerrainDetails.java','FixedMapData.java']:
         path='modules/world/src/main/java/io/github/rs0325/ashenfrontier/world/'+name
         base['tool']['files'][path]=sha(ROOT/path)
     write_json(output/'manifest.json',base)

@@ -41,6 +41,7 @@ class HydrologyTerrainTest {
     @Test void coursesKeepTheirLevelsConnectionsAndExcavatedBeds() throws Exception {
         var version=TerrainBasisTest.version();var map=FixedMapData.require(version);var layout=BundledMaps.hydrology(version);
         int checked=0;
+        var elevations=new java.util.ArrayList<org.junit.jupiter.api.function.Executable>();
         for(var reach:layout.reaches().values()) {
             int previous=Integer.MAX_VALUE;
             for(var p:reach.profile()) {
@@ -50,11 +51,10 @@ class HydrologyTerrainTest {
                 previous=water;
                 assertEquals(map.coastDistance(p.x(),p.z())<0?1:reach.inventoryId(),map.waterInventoryId(p.x(),p.z()),"流域と海の境界: "+p);
                 assertEquals(map.coastDistance(p.x(),p.z())<0?8:4,map.waterQuality(p.x(),p.z()));
-                if(checked++%17==0) {
-                    int bed=FixedTerrain.surfaceY(map,p.x(),p.z());
-                    assertTrue(bed<water,"床が水面以上");
-                    assertTrue(bed<=Math.max(63,map.basis().height(p.x(),p.z()))+.5,"盛土が必要な河床: "+p+" bed="+bed+" natural="+map.basis().height(p.x(),p.z()));
-                }
+                checked++;
+                int bed=FixedTerrain.surfaceY(map,p.x(),p.z());
+                assertTrue(bed<water,"床が水面以上");
+                elevations.add(()->assertTrue(bed<=Math.max(63,map.basis().height(p.x(),p.z()))+.5,"盛土が必要な河床: "+p+" bed="+bed+" natural="+map.basis().height(p.x(),p.z())));
             }
             var start=layout.nodes().get(reach.from());var end=layout.nodes().get(reach.to());
             assertEquals(start.waterY(),map.waterSurface(start.x(),start.z()),start.id());
@@ -65,6 +65,7 @@ class HydrologyTerrainTest {
         assertEquals(145,map.waterSurface(-7000,-10400));
         assertEquals(120,minimumLakeBed(map));
         System.out.println("HYDROLOGY_COURSE checked="+checked);
+        assertAll(elevations);
     }
 
     private static int minimumLakeBed(FixedMapData map) {
@@ -344,7 +345,13 @@ class HydrologyTerrainTest {
                         blade&=dry[pz+dz][px+dx] && dry[pz-dz][px-dx]
                                 && h[pz][px]-Math.max(h[pz+dz][px+dx],h[pz-dz][px-dx])>=2;
                     }
-                    if(blade)count++;
+                    if(blade) {
+                        count++;System.out.println("THIN_BANK_COLUMN "+(x0+x)+","+(z0+z)+" axis="+dx+","+dz+" ground="+h[z][x]);
+                        for(int zz=-1;zz<=1;zz++)for(int xx=-1;xx<=1;xx++) {
+                            int px=x0+x+xx,pz=z0+z+zz;
+                            System.out.println("THIN_BANK_NEIGHBOR "+px+","+pz+" natural="+map.basis().height(px,pz)+" raw="+map.hydrology().height(px,pz,map.basis().height(px,pz))+" final="+h[z+zz][x+xx]);
+                        }
+                    }
                 }
             }
             System.out.println("THIN_BANK_BLADES point="+center[0]+","+center[1]+" count="+count);
@@ -399,7 +406,7 @@ class HydrologyTerrainTest {
                 }
             }
         }
-        double longest=0;
+        double longest=0;String longestPoint="";
         for(var point:steep) {
             int x=point[0],z=point[1],dx=point[2],dz=point[3];
             int sign=Integer.signum(FixedTerrain.surfaceY(map,x,z)-FixedTerrain.surfaceY(map,x+dx,z+dz));
@@ -415,10 +422,11 @@ class HydrologyTerrainTest {
                     if(jump*sign<=0 || Math.abs(jump)-inherited<8)break;
                     count++;
                 }
-                longest=Math.max(longest,count*Math.hypot(tangent[0],tangent[1]));
+                double run=count*Math.hypot(tangent[0],tangent[1]);
+                if(run>longest){longest=run;longestPoint=x+","+z+" direction="+dx+","+dz+" tangent="+tangent[0]+","+tangent[1];}
             }
         }
-        System.out.println("HYDROLOGY_TRANSITIONS tiles="+tiles.size()+" shore_pairs="+shoreCount+" shore_max="+shoreMaximum+" dry_pairs="+transitionCount+" excess="+excess+" final_max="+finalMaximum+" cliff_run="+longest+" at="+excessPoint);
+        System.out.println("HYDROLOGY_TRANSITIONS tiles="+tiles.size()+" shore_pairs="+shoreCount+" shore_max="+shoreMaximum+" dry_pairs="+transitionCount+" excess="+excess+" final_max="+finalMaximum+" cliff_run="+longest+" cliff_at="+longestPoint+" at="+excessPoint);
         assertTrue(shoreCount>10000 && transitionCount>10000);
         assertTrue(shoreMaximum<=8,"水際で斜面が切断される: "+shoreMaximum);
         assertTrue(longest<=16,"D1にない8B以上の急な面を16B超連ねる移行帯: "+longest);

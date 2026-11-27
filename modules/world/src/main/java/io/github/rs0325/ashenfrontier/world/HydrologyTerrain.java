@@ -92,8 +92,11 @@ final class HydrologyTerrain {
     private final int lakeY;
     private final int sourceOwner;
     private final int sourceZ;
+    private final TerrainDetails details;
+    private final int canyonReach;
 
-    HydrologyTerrain(MapVersion version,FixedMapData background) {
+    HydrologyTerrain(MapVersion version,FixedMapData background,TerrainDetails details) {
+        this.details=details;
         seed=background.seed();samples=ThreadLocal.withInitial(()->new Samples(seed));
         for(int side=0;side<2;side++) {
             double station=-24;
@@ -162,7 +165,9 @@ final class HydrologyTerrain {
             }
         } catch(IOException|RuntimeException e) {throw new IllegalStateException("固定マップ版 "+version.mapVersion()+": 水系資産を読めません",e);}
         int reachId=0;
-        for(var reach:layout.reaches().values().stream().sorted(java.util.Comparator.comparing(HydrologyLayout.Reach::id)).toList()) {
+        var ordered=layout.reaches().values().stream().sorted(java.util.Comparator.comparing(HydrologyLayout.Reach::id)).toList();
+        canyonReach=ordered.stream().map(HydrologyLayout.Reach::id).toList().indexOf("R15");
+        for(var reach:ordered) {
             int id=reachId++;
             var points=reach.profile();double station=0;
             for(int i=0;i<points.size()-1;) {
@@ -177,7 +182,7 @@ final class HydrologyTerrain {
                 station+=s.span;i=end;
             }
         }
-        cells.replaceAll(HydrologyTerrain::localCandidates);
+        cells.replaceAll(this::localCandidates);
         cells.entrySet().removeIf(entry->entry.getValue().isEmpty());
         for(var lake:layout.lakes().values()) {
             double station=0;
@@ -191,7 +196,7 @@ final class HydrologyTerrain {
         }
     }
 
-    private static List<Segment> localCandidates(long cell,List<Segment> segments) {
+    private List<Segment> localCandidates(long cell,List<Segment> segments) {
         double x=(int)(cell>>32)*32+15.5,z=(int)cell*32+15.5;
         var local=new ArrayList<Segment>();
         for(int i=0;i<segments.size();) {
@@ -202,8 +207,8 @@ final class HydrologyTerrain {
                 width=Math.max(width,Math.max(segment.aw,segment.bw));
             }
             if(nearest>width+294)continue;
-            // セル半径は23B未満。往復の余裕と支流評価の32Bを確保する。
-            double limit=nearest+78;
+            // セル半径の往復46Bと、支流32B・峡谷の連続化48Bを確保する。
+            double limit=nearest+(segments.get(start).reach==canyonReach?102:78);
             for(int n=start;n<i;n++) {
                 var segment=segments.get(n);
                 if(segment.distance(x,z)<=limit)local.add(segment);
@@ -230,6 +235,8 @@ final class HydrologyTerrain {
     double height(int x,int z,double natural) {
         if(water(x,z)!=Integer.MIN_VALUE)return bed(x,z);
         double result=natural,bankEdge=Double.POSITIVE_INFINITY;
+        Bank canyon=null,sourceBank=null;
+        double glacier=details.glacierWeight(x,z);
         var nearby=cells.getOrDefault(key(x>>5,z>>5),List.of());
         for(int i=0;i<nearby.size();) {
             int start=i,reach=nearby.get(i).reach;double best=Double.POSITIVE_INFINITY,maxWidth=0;Segment closest=null;double fraction=0;
@@ -266,6 +273,19 @@ final class HydrologyTerrain {
                 double side=Math.signum(cross);
                 if(a.source)side+=(Math.clamp(cross/(a.length*8),-1,1)-side)*coherence;
                 var nearest=new Bank(Math.sqrt(best),a.ay+t*(a.by-a.ay),a.aw+t*(a.bw-a.aw),station,a.source,side);
+                if(reach==canyonReach && details.canyonWeight(x,z)>0) {
+                    double grade=0,width=0,total=0,margin=48;
+                    for(int k=start;k<i;k++) {
+                        var segment=nearby.get(k);
+                        double u=segment.length2==0?0:Math.clamp(((x-segment.ax)*segment.dx+(z-segment.az)*segment.dz)/segment.length2,0,1);
+                        double distance=segment.distance(x,z);
+                        double weight=1-TerrainMath.smooth((distance-nearest.distance)/margin);
+                        grade+=weight*(segment.ay+u*(segment.by-segment.ay));
+                        width+=weight*(segment.aw+u*(segment.bw-segment.aw));total+=weight;
+                    }
+                    canyon=new Bank(nearest.distance,grade/total,width/total,station,false,side);
+                }
+                if(nearest.source())sourceBank=nearest;
                 double carved=bankHeight(natural,nearest.distance,nearest.grade,nearest.width,nearest.station,nearest.source,nearest.side);
                 for(int k=start;k<i;k++) {
                     var other=nearby.get(k);
@@ -327,6 +347,21 @@ final class HydrologyTerrain {
             rise*=TerrainMath.smooth((natural-result-4)/8);
             result=Math.min(lake,Math.min(natural,result+rise));
         }
+        if(canyon!=null)result=details.canyonHeight(x,z,natural,result,canyon);
+        if(glacier>0) {
+            double support=natural;
+            if(sourceBank!=null) {
+                double d=Math.max(0,sourceBank.distance()-sourceBank.width());
+                double t=Math.max(0,d-4);
+                double spur=(14*TerrainMath.noise(seed,"d3_source_spur",x,z,47)
+                        +8*TerrainMath.noise(seed,"d3_source_cross",.73*x+.5*z,-.5*x+.7*z,19))
+                        *TerrainMath.smooth((d-12)/24);
+                support=Math.min(natural,sourceBank.grade()+1+2.7*t+.008*t*t+spur);
+                glacier*=TerrainMath.smooth((d-12)/24);
+            }
+            result+=Math.max(0,support-result)*glacier;
+        }
+        if(sourceBank!=null)result=details.headHeight(x,z,result,sourceBank);
         return result;
     }
 
@@ -513,6 +548,29 @@ final class HydrologyTerrain {
         return natural-depth*(1-TerrainMath.smooth((distance-start)/(extent-start)));
     }
 
+    record WaterBank(double distance,int waterY) {}
+
+    WaterBank waterBank(int x,int z) {
+        double nearest=Double.POSITIVE_INFINITY;int level=Integer.MIN_VALUE;
+        for(var a:cells.getOrDefault(key(x>>5,z>>5),List.of())) {
+            double t=a.length2==0?0:Math.clamp(((x-a.ax)*a.dx+(z-a.az)*a.dz)/a.length2,0,1);
+            double d=Math.hypot(x-a.ax-t*a.dx,z-a.az-t*a.dz)-(a.aw+t*(a.bw-a.aw));
+            if(d<nearest){nearest=d;level=(int)Math.floor(a.ay+t*(a.by-a.ay));}
+        }
+        if(nearest<16) {
+            nearest=Double.POSITIVE_INFINITY;
+            level=Integer.MIN_VALUE;
+            for(int dz=-3;dz<=3;dz++)for(int dx=-3;dx<=3;dx++) {
+                double distance=Math.hypot(dx,dz);
+                if(distance<4 && owner(x+dx,z+dz)>0) {
+                    nearest=Math.min(nearest,distance);level=Math.max(level,water(x+dx,z+dz));
+                }
+            }
+            if(nearest==Double.POSITIVE_INFINITY)nearest=4;
+        }
+        return new WaterBank(Math.max(0,nearest),level);
+    }
+
     int surfaceY(int x,int z,TerrainBasis basis) {
         double height=height(x,z,basis),natural=samples.get().natural(basis,x,z);
         return (int)Math.round(Math.clamp(height,height<natural?-127:63,520));
@@ -521,7 +579,7 @@ final class HydrologyTerrain {
     double height(int x,int z,TerrainBasis basis) {
         var cache=samples.get();cache.use(x,z);
         double natural=cache.natural(basis,x,z),center=cache.height(this,basis,x,z);
-        if(natural-center<.5 || water(x,z)!=Integer.MIN_VALUE)return center;
+        if(natural-center<.001 || water(x,z)!=Integer.MIN_VALUE)return center;
         double head=0;
         for(var segment:cells.getOrDefault(key(x>>5,z>>5),List.of())) {
             if(!segment.source || segment.station>=160)continue;
